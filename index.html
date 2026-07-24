@@ -434,6 +434,9 @@
           };
 
           const currentWeekConfig = WEEKS.find(w => w.id === activeWeek);
+          
+          // Check if all header identification fields are filled
+          const isReadyToSubmit = studentInfo.name.trim() !== '' && studentInfo.id.trim() !== '' && studentInfo.alias.trim() !== '';
 
           return (
             <div className="min-h-screen text-slate-800 font-sans pb-24 selection:bg-blue-200">
@@ -444,14 +447,14 @@
                   <span>DOTE 3090 Mini-Games</span>
                 </h1>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <input type="text" placeholder="Your Name" 
-                    className="px-3 py-2 rounded text-black bg-slate-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  <input type="text" placeholder="Your Name *" 
+                    className={`px-3 py-2 rounded text-black focus:outline-none focus:ring-2 font-medium transition-colors ${!studentInfo.name ? 'bg-red-100 placeholder-red-400 focus:ring-red-500' : 'bg-slate-100 focus:bg-white focus:ring-blue-500'}`}
                     value={studentInfo.name} onChange={(e) => handleInfoChange('name', e.target.value)} />
-                  <input type="text" placeholder="Student ID" 
-                    className="px-3 py-2 rounded text-black bg-slate-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  <input type="text" placeholder="Student ID *" 
+                    className={`px-3 py-2 rounded text-black focus:outline-none focus:ring-2 font-medium transition-colors ${!studentInfo.id ? 'bg-red-100 placeholder-red-400 focus:ring-red-500' : 'bg-slate-100 focus:bg-white focus:ring-blue-500'}`}
                     value={studentInfo.id} onChange={(e) => handleInfoChange('id', e.target.value)} />
-                  <input type="text" placeholder="Your Fun Alias" 
-                    className="px-3 py-2 rounded text-black bg-amber-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium border border-amber-300"
+                  <input type="text" placeholder="Your Fun Alias *" 
+                    className={`px-3 py-2 rounded text-black focus:outline-none focus:ring-2 font-medium transition-colors border ${!studentInfo.alias ? 'bg-red-100 border-red-200 placeholder-red-400 focus:ring-red-500' : 'bg-amber-50 border-amber-300 focus:bg-white focus:ring-amber-500'}`}
                     value={studentInfo.alias} onChange={(e) => handleInfoChange('alias', e.target.value)} />
                 </div>
               </header>
@@ -525,7 +528,11 @@
                     const postRevealFields = currentWeekConfig.fields.filter(f => f.postReveal);
                     
                     // Safety check: Ensure all required fields for each step are filled before allowing lock
-                    const isStep1Ready = step1Fields.every(f => rData[f.id] !== undefined && rData[f.id] !== '');
+                    const areAliasesReady = Array.from({ length: numPartners }).every((_, idx) => {
+                      const aliasVal = rData[`partnerAlias${idx + 1}`];
+                      return aliasVal !== undefined && aliasVal.trim() !== '';
+                    });
+                    const isStep1Ready = step1Fields.every(f => rData[f.id] !== undefined && rData[f.id] !== '') && areAliasesReady;
                     const isStep2Ready = step2Fields.every(f => f.label.includes('Optional') || (rData[f.id] !== undefined && rData[f.id] !== ''));
                     
                     let headerStyle = "bg-slate-200 text-slate-700 border-slate-300";
@@ -709,8 +716,18 @@
                   <p className="text-slate-300 mb-6 font-medium max-w-lg mx-auto leading-relaxed">
                     Click the button below to copy your answers, then paste them directly into your Canvas/Blackboard submission box!
                   </p>
+                  
+                  {!isReadyToSubmit && (
+                    <div className="mb-6 p-4 bg-red-900/40 border border-red-500 rounded-lg max-w-lg mx-auto">
+                      <p className="text-red-200 font-bold flex items-center justify-center gap-2">
+                        ⚠️ Please fill in your Name, Student ID, and Alias at the top of the page first!
+                      </p>
+                    </div>
+                  )}
+
                   <button onClick={handleCopySubmission}
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-black py-4 px-8 rounded-xl w-full sm:w-auto shadow-lg transition-all transform active:scale-95 text-lg flex items-center justify-center gap-3 mx-auto">
+                    disabled={!isReadyToSubmit}
+                    className={`font-black py-4 px-8 rounded-xl w-full sm:w-auto shadow-lg transition-all transform active:scale-95 text-lg flex items-center justify-center gap-3 mx-auto ${isReadyToSubmit ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}>
                     📋 COPY SUBMISSION
                   </button>
                   
