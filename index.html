@@ -363,7 +363,7 @@
           const handleReflectionChange = (weekId, text) => setReflections(prev => ({ ...prev, [weekId]: text }));
 
           const handleLockStep1 = (weekId, roundNum) => {
-            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const timeStr = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
             setRoundsData(prev => {
               const weekData = prev[weekId] || {};
               const roundData = weekData[roundNum] || {};
@@ -372,7 +372,7 @@
           };
 
           const handleLockStep2 = (weekId, roundNum) => {
-            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const timeStr = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
             setRoundsData(prev => {
               const weekData = prev[weekId] || {};
               const roundData = weekData[roundNum] || {};
