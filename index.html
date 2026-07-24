@@ -524,6 +524,10 @@
                     const step2Fields = currentWeekConfig.fields.filter(f => f.step === 2);
                     const postRevealFields = currentWeekConfig.fields.filter(f => f.postReveal);
                     
+                    // Safety check: Ensure all required fields for each step are filled before allowing lock
+                    const isStep1Ready = step1Fields.every(f => rData[f.id] !== undefined && rData[f.id] !== '');
+                    const isStep2Ready = step2Fields.every(f => f.label.includes('Optional') || (rData[f.id] !== undefined && rData[f.id] !== ''));
+                    
                     let headerStyle = "bg-slate-200 text-slate-700 border-slate-300";
                     let statusText = "🔓 Not Started";
                     if (isStep2Locked) { headerStyle = "bg-emerald-100 text-emerald-800 border-emerald-300"; statusText = "✅ Round Complete"; }
@@ -591,7 +595,8 @@
                           {!isStep1Locked && (
                             <div className="flex justify-end mt-2">
                               <button onClick={() => handleLockStep1(activeWeek, roundNum)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg shadow transition-colors flex items-center gap-2 text-sm active:scale-95">
+                                disabled={!isStep1Ready}
+                                className={`font-bold py-2.5 px-6 rounded-lg shadow transition-colors flex items-center gap-2 text-sm active:scale-95 ${isStep1Ready ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}>
                                 🔒 Lock My Choices
                               </button>
                             </div>
@@ -636,7 +641,8 @@
                           {isStep1Locked && !isStep2Locked && (
                             <div className="flex justify-end mt-2">
                               <button onClick={() => handleLockStep2(activeWeek, roundNum)}
-                                className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-6 rounded-lg shadow transition-colors flex items-center gap-2 text-sm active:scale-95">
+                                disabled={!isStep2Ready}
+                                className={`font-bold py-2.5 px-6 rounded-lg shadow transition-colors flex items-center gap-2 text-sm active:scale-95 ${isStep2Ready ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}>
                                 🔒 Record & Reveal Score
                               </button>
                             </div>
