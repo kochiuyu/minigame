@@ -5,6 +5,9 @@ export interface GameField {
   options?: string[];
   step?: number;
   postReveal?: boolean;
+  min?: number;
+  max?: number;
+  defaultValue?: number | string;
 }
 
 export type RoundData = {
@@ -12,12 +15,16 @@ export type RoundData = {
   isStep2Locked?: boolean;
   step1Time?: string;
   step2Time?: string;
-  [key: string]: string | boolean | undefined;
+  [key: string]: string | number | boolean | undefined;
 };
 
-export type WeekConfig = {
+export interface GameConfig {
   id: number;
   title: string;
+  shortTitle: string;
+  category: string;
+  icon: string;
+  keyTakeaway: string;
   purpose: string;
   strategies: string;
   payoffs: string;
@@ -25,7 +32,10 @@ export type WeekConfig = {
   partners?: number;
   fields: GameField[];
   calculate: (data: RoundData) => Record<string, string | number | undefined> | null;
-};
+}
+
+// Backward compatibility alias for WeekConfig
+export type WeekConfig = GameConfig;
 
 export interface StudentInfo {
   name: string;
@@ -33,12 +43,23 @@ export interface StudentInfo {
   alias: string;
 }
 
+export type UserRole = 'student' | 'instructor';
+
+export interface AuthSession {
+  role: UserRole;
+  name: string;
+  id?: string;
+  alias?: string;
+  roomCode?: string;
+}
+
 export type RoundsState = {
-  [weekId: number]: {
+  [gameId: number]: {
     [roundNum: number]: RoundData;
   };
 };
 
 export type ReflectionsState = {
-  [weekId: number]: string;
+  [gameId: number]: string;
 };
+
