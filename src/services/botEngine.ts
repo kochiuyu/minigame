@@ -18,6 +18,7 @@ export interface BotDecisionContext {
   history: RoundHistoryEntry[];
   botValuation?: number;
   studentValuation?: number;
+  currentNode?: number;
 }
 
 export interface BotDecision {
@@ -39,6 +40,7 @@ export interface GameSpecificBot {
   title: string;
   tagline: string;
   backstory: string;
+  strategySummary?: string;
   color: string;
   badgeBg: string;
   badgeBorder: string;
@@ -46,6 +48,14 @@ export interface GameSpecificBot {
   decide: (context: BotDecisionContext) => BotDecision;
   getAnticipationThought: (round: number, history: RoundHistoryEntry[]) => string;
 }
+
+export function getBotStrategySummary(bot: GameSpecificBot): string {
+  if (bot.strategySummary && bot.strategySummary.trim().length > 0) {
+    return bot.strategySummary;
+  }
+  return bot.tagline || bot.backstory || "Plays with an adaptive strategic profile.";
+}
+
 
 // -------------------------------------------------------------
 // 1. REPEATED PRISONER'S DILEMMA BOTS (Game 6 & 1)
@@ -1677,6 +1687,134 @@ export const TRUST_GAME_BOTS: GameSpecificBot[] = [
   }
 ];
 
+// -------------------------------------------------------------
+// 12. THE CENTIPEDE GAME BOTS (Game 20)
+// -------------------------------------------------------------
+export const CENTIPEDE_BOTS: GameSpecificBot[] = [
+  {
+    id: 'always_defect_centipede',
+    gameId: 20,
+    name: 'Zero (Always Defect)',
+    avatar: '🛑',
+    title: 'Subgame Perfect Defector',
+    tagline: 'Always takes at the very first opportunity. Pure backward induction with zero trust.',
+    strategySummary: 'Always takes the pot at the first opportunity (Node 2, 4, or 6). Executes strict backward induction (SPNE) with zero trust extended.',
+    backstory: 'Guided by textbook non-cooperative game theory. Zero assumes that in the subgame perfect Nash equilibrium (SPNE), any rational opponent will eventually Take. Therefore, Zero preemptively Takes at Node 2 (or any node he reaches) to lock in the larger payoff before you can defect.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Subgame Perfection', value: 100, color: 'bg-rose-500' },
+      { label: 'Defection Tendency', value: 100, color: 'bg-red-500' },
+      { label: 'Trust & Tolerance', value: 0, color: 'bg-slate-500' }
+    ],
+    getAnticipationThought: (_round, history) => {
+      if (history.length > 0 && history[history.length - 1].playerAction === 'Take') {
+        return "You took early last match. My backward induction logic was fully vindicated: taking immediately is the only rational choice.";
+      }
+      return "Subgame Perfect Nash Equilibrium (SPNE) mandates taking at my very first node. I will never pass control to you.";
+    },
+    decide: ({ currentNode = 2 }) => {
+      const node = currentNode || 2;
+      const botPayoff = node === 2 ? 4 : node === 4 ? 6 : 8;
+      const playerPayoff = node === 2 ? 1 : node === 4 ? 3 : 5;
+      return {
+        action: 'Take',
+        rationale: `Always Defect (SPNE): Took immediately at Node ${node} to lock in ${botPayoff} pts (leaving you with ${playerPayoff} pts). Zero trust extended.`
+      };
+    }
+  },
+  {
+    id: 'tit_for_tat_centipede',
+    gameId: 20,
+    name: 'Echo (Tit-for-Tat)',
+    avatar: '🤝',
+    title: 'Conditional Reciprocator',
+    tagline: 'Passes to grow the pot as long as you pass; only defects at the terminal node or in retaliation.',
+    strategySummary: 'Passes at Nodes 2 and 4 to expand the joint pot as long as you pass; takes at Node 6 or retaliates if repeatedly betrayed.',
+    backstory: 'Believes mutual trust unlocks enormous collective wealth. Echo passes at Node 2 and Node 4 to escalate the pot, only taking at the final decision Node 6 (or early if you repeatedly defected at Node 1 in previous matches).',
+    color: 'text-blue-400',
+    badgeBg: 'bg-blue-950/40',
+    badgeBorder: 'border-blue-700/60',
+    gauges: [
+      { label: 'Reciprocity', value: 95, color: 'bg-blue-500' },
+      { label: 'Cooperative Trust', value: 85, color: 'bg-emerald-500' },
+      { label: 'Endgame Realism', value: 90, color: 'bg-amber-500' }
+    ],
+    getAnticipationThought: (_round, history) => {
+      const earlyTakes = history.filter(h => h.playerAction === 'Take' && Number((h as any).exitNode || 1) <= 2).length;
+      if (earlyTakes > 0) {
+        return "You defected early in past matches. I am wary, but willing to cooperate if you demonstrate trust!";
+      }
+      return "If you Pass at Node 1, I will happily Pass at Node 2 to grow our pot toward the cooperative frontier!";
+    },
+    decide: ({ currentNode = 2, history = [] }) => {
+      const node = currentNode || 2;
+      // If player repeatedly defected at node 1 in earlier matches, bot retaliates
+      const earlyTakes = history.filter(h => h.playerAction === 'Take' && Number((h as any).exitNode || 1) <= 2).length;
+      if (earlyTakes >= 2 && node === 2) {
+        return {
+          action: 'Take',
+          rationale: `Retaliation: You defected early in previous matches. Taking at Node 2 (+4 pts) to prevent exploitation.`
+        };
+      }
+
+      if (node < 6) {
+        return {
+          action: 'Pass',
+          rationale: `Tit-for-Tat: You passed earlier to grow the pot. Passing at Node ${node} to escalate collective surplus toward Node ${node + 1}!`
+        };
+      } else {
+        // Node 6: Endgame harvest
+        return {
+          action: 'Take',
+          rationale: `Endgame Harvest: We reached Node 6 through mutual trust! Taking pot (+8 pts for Bot, +5 pts for You).`
+        };
+      }
+    }
+  },
+  {
+    id: 'empirical_palfrey_centipede',
+    gameId: 20,
+    name: 'Palfrey (Behavioral Economist)',
+    avatar: '🧪',
+    title: 'Behavioral Economist (Sometimes Passes)',
+    tagline: 'A behavioral economist who sometimes passes to test mutual trust, calibrated to human laboratory data.',
+    strategySummary: 'Calibrated to human laboratory trials: passes with 80% probability at Node 2, 45% at Node 4, and 15% at Node 6 to test cooperation.',
+    backstory: 'Modeled after experimental findings by behavioral economists McKelvey & Palfrey (1992). Unlike strict game theory bots, Palfrey knows real humans rarely defect immediately. Palfrey sometimes passes (80% at Node 2, 45% at Node 4, 15% at Node 6) to test cooperation before taking.',
+    color: 'text-amber-400',
+    badgeBg: 'bg-amber-950/40',
+    badgeBorder: 'border-amber-700/60',
+    gauges: [
+      { label: 'Pass Likelihood (Node 2)', value: 80, color: 'bg-emerald-500' },
+      { label: 'Pass Likelihood (Node 4)', value: 45, color: 'bg-amber-500' },
+      { label: 'Pass Likelihood (Node 6)', value: 15, color: 'bg-rose-500' }
+    ],
+    getAnticipationThought: () => {
+      return "Real humans rarely play SPNE. In lab trials, players pass early to test trust, then defect at intermediate nodes.";
+    },
+    decide: ({ currentNode = 2 }) => {
+      const node = currentNode || 2;
+      const passProb = node === 2 ? 0.80 : node === 4 ? 0.45 : 0.15;
+      const roll = Math.random();
+      const willPass = roll < passProb;
+
+      if (willPass && node < 6) {
+        return {
+          action: 'Pass',
+          rationale: `Empirical Pass (${Math.round(passProb * 100)}% lab rate): Passed at Node ${node} to test trust and expand the pot.`
+        };
+      } else {
+        const botPayoff = node === 2 ? 4 : node === 4 ? 6 : 8;
+        return {
+          action: 'Take',
+          rationale: `Empirical Defection: Took at Node ${node} to secure ${botPayoff} pts (modeled after lab exit distributions).`
+        };
+      }
+    }
+  }
+];
+
 // Helper to retrieve the custom bot roster for any game
 export function getBotsForGame(gameId: number): GameSpecificBot[] {
   switch (gameId) {
@@ -1705,6 +1843,8 @@ export function getBotsForGame(gameId: number): GameSpecificBot[] {
       return BATTLE_OF_SEXES_BOTS;
     case 19:
       return TRUST_GAME_BOTS;
+    case 20:
+      return CENTIPEDE_BOTS;
     default:
       return PD_BOTS;
   }

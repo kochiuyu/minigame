@@ -234,6 +234,23 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
             "Reciprocal Norms: Human trustworthiness is sustained by fairness norms, guilt aversion, and reciprocal goodwill."
           ]
         };
+      case 20:
+        return {
+          concept: "Backward Induction & Rosenthal's Centipede Paradox",
+          formula: "\\text{SPNE: } s_1^* = \\text{Take at } N_1 \\implies (2, 0) \\quad \\text{vs.} \\quad \\text{Social Optimum: } (8, 8)",
+          keyFinding:
+            data.botInfo?.id === 'always_defect_centipede'
+              ? "Zero executed textbook backward induction: defecting at his very first opportunity (Node 2) to claim 4 pts (leaving you with 1 pt), validating the cold Subgame Perfect Nash Equilibrium (SPNE)."
+              : data.botInfo?.id === 'tit_for_tat_centipede'
+              ? "Echo reciprocated your trust by passing at earlier nodes to grow the collective pot, allowing you to reach advanced nodes and multiply wealth 4x beyond the SPNE prediction!"
+              : "Backward induction predicts that rational self-interest unravels from the final terminal node back to Node 1, ending the game immediately for (2, 0). Yet real human experiments (McKelvey & Palfrey, 1992) show players routinely Pass, generating massive mutual gains.",
+          caseStudy: "Venture Capital Milestone Tranches: In high-growth startups, investors do not deploy $50M on Day 1. Instead, they release capital sequentially in tranches (Seed -> Series A -> Series B). Each milestone passed increases valuation and mutual surplus, relying on sequential reciprocal trust rather than immediate liquidation.",
+          rulesSummary: [
+            "Subgame Perfect Unraveling: At Node 6, Bot takes (8 > 7). Anticipating this, Player takes at Node 5 (6 > 5). This logic ripples all the way back to Node 1, predicting an immediate (2, 0) exit.",
+            "Rosenthal's Paradox: The SPNE prediction is Pareto-dominated by almost every subsequent outcome in the game. Pure theoretical rationality yields the single worst collective outcome.",
+            "Empirical Altruism & Bounded Rationality: Laboratory experiments find only ~7% of games end at Node 1. Real humans use altruism, quantal response (noise), or conditional trust to build huge mutual surpluses."
+          ]
+        };
       default:
         return {
           concept: "Game Theoretic Strategic Equilibrium",
@@ -272,26 +289,26 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0">
           <button
             type="button"
             onClick={() => onOpenWhatIfSandbox(data.gameId)}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+            className="min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer flex-1 sm:flex-none"
           >
             <span>∫ Test in What-If Sandbox</span>
           </button>
           <button
             type="button"
             onClick={onRestartExperiment}
-            className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
+            className="min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer flex items-center justify-center flex-1 sm:flex-none"
           >
             Restart
           </button>
         </div>
       </div>
 
-      {/* Scoreboard Metrics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Scoreboard Metrics Cards - Stack cleanly on mobile */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Your Cumulative Payoff</div>
           <div className="text-2xl font-black text-white font-mono tabular-nums mt-1">
@@ -506,12 +523,12 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
 
       {/* Try Against Another Game Persona */}
       {availableBots.length > 0 && (
-        <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
-          <div className="text-xs font-bold text-white mb-2 flex items-center justify-between">
+        <div className="bg-slate-950/60 p-3 sm:p-4 rounded-xl border border-slate-800">
+          <div className="text-xs font-bold text-white mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <span>Face a Different Strategic Opponent in this Game:</span>
             <span className="text-[10px] text-slate-400">Click to switch opponent persona and run a new trial</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2">
             {availableBots.map(b => {
               const isCurrent = data.botInfo.id === b.id;
               return (
@@ -519,17 +536,17 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
                   key={b.id}
                   type="button"
                   onClick={() => onChangeBot(b.id)}
-                  className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                  className={`w-full min-h-[44px] p-2.5 rounded-xl text-left border transition-all cursor-pointer flex items-center ${
                     isCurrent
                       ? `${b.badgeBg} ${b.badgeBorder} border-2 ring-1 ring-blue-500/30`
                       : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{b.avatar}</span>
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold text-white truncate">{b.name}</div>
-                      <div className={`text-[10px] truncate ${b.color}`}>{b.title}</div>
+                  <div className="flex items-center gap-2.5 w-full">
+                    <span className="text-xl shrink-0">{b.avatar}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-bold text-white break-words">{b.name}</div>
+                      <div className={`text-[11px] leading-tight break-words ${b.color}`}>{b.title}</div>
                     </div>
                   </div>
                 </button>

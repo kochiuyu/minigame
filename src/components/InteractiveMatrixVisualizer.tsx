@@ -13,6 +13,12 @@ interface InteractiveMatrixVisualizerProps {
   publicGoodsContr?: number;
   ultimatumOffer?: number;
   trustInvestment?: number;
+  // Centipede Game props
+  centipedeNode?: number;
+  centipedePath?: Array<{ node: number; player: 'You' | 'Bot'; action: 'Take' | 'Pass'; payoffs?: { player: number; bot: number } }>;
+  centipedeEnded?: boolean;
+  centipedeExitNode?: number;
+  centipedeExitAction?: 'Take' | 'Pass';
   onSelectAction?: (action: any) => void;
 }
 
@@ -27,6 +33,11 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
   publicGoodsContr = 10,
   ultimatumOffer = 4,
   trustInvestment = 5,
+  centipedeNode = 1,
+  centipedePath = [],
+  centipedeEnded = false,
+  centipedeExitNode,
+  centipedeExitAction,
   onSelectAction
 }) => {
   // 1. REPEATED PRISONER'S DILEMMA 2x2 MATRIX
@@ -37,139 +48,143 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
     const botWillDefect = anticipatedBotAction === 'Defect';
 
     return (
-      <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-3 font-sans text-xs">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-slate-950/90 rounded-2xl p-2 sm:p-4 border border-slate-800 space-y-2.5 font-sans text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
             <span>⚡ Interactive Payoff Matrix</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-blue-400">Live State Illumination</span>
+            <span className="text-slate-600 hidden sm:inline">·</span>
+            <span className="text-blue-400 font-semibold sm:font-bold">Live State Illumination</span>
           </div>
-          <span className="text-[10px] text-slate-500 font-mono">
+          <span className="text-[11px] text-slate-400 font-mono">
             Highlighted row = your candidate choice
           </span>
         </div>
 
-        {/* 2x2 Matrix Grid */}
-        <div className="grid grid-cols-12 gap-1.5 text-center font-mono">
-          {/* Top-left empty spacer */}
-          <div className="col-span-3"></div>
+        {/* 2x2 Matrix Grid - Fits 375px Without Scrollbar */}
+        <div className="w-full">
+          <div className="w-full grid grid-cols-12 gap-1 sm:gap-1.5 text-center font-mono">
+            {/* Top-left empty spacer */}
+            <div className="col-span-2"></div>
 
-          {/* Bot Choice Column Headers */}
-          <div className="col-span-4 bg-slate-900/90 py-1.5 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300">
-            Bot Cooperates
-            {botWillCoop && (
-              <span className="block text-[9px] text-emerald-400 font-normal">
-                ● Anticipated
-              </span>
-            )}
-          </div>
-          <div className="col-span-5 bg-slate-900/90 py-1.5 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300">
-            Bot Defects
-            {botWillDefect && (
-              <span className="block text-[9px] text-rose-400 font-normal">
-                ● Anticipated
-              </span>
-            )}
-          </div>
+            {/* Bot Choice Column Headers */}
+            <div className="col-span-5 bg-slate-900/90 py-1.5 px-1 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300 leading-tight">
+              Bot Cooperates
+              {botWillCoop && (
+                <span className="block text-[11px] text-emerald-400 font-normal">
+                  ● Anticipated
+                </span>
+              )}
+            </div>
+            <div className="col-span-5 bg-slate-900/90 py-1.5 px-1 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300 leading-tight">
+              Bot Defects
+              {botWillDefect && (
+                <span className="block text-[11px] text-rose-400 font-normal">
+                  ● Anticipated
+                </span>
+              )}
+            </div>
 
-          {/* Row 1: You Cooperate */}
-          <div
-            onClick={() => onSelectAction && onSelectAction('Cooperate')}
-            className={`col-span-3 flex items-center justify-center py-3 rounded-lg border font-bold text-[11px] cursor-pointer transition-all ${
-              isCoop
-                ? 'bg-emerald-600 text-white border-emerald-500 shadow-md ring-1 ring-emerald-400'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
-            }`}
-          >
-            <span>You Coop</span>
-          </div>
+            {/* Row 1: You Cooperate */}
+            <div
+              onClick={() => onSelectAction && onSelectAction('Cooperate')}
+              className={`col-span-2 min-h-[44px] flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg border font-bold text-[11px] cursor-pointer transition-all leading-tight text-center ${
+                isCoop
+                  ? 'bg-emerald-600 text-white border-emerald-500 shadow-md ring-1 ring-emerald-400'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+              }`}
+            >
+              <span>You</span>
+              <span>Coop</span>
+            </div>
 
-          {/* Cell (Coop, Coop) */}
-          <div
-            className={`col-span-4 p-2.5 rounded-xl border transition-all ${
-              isCoop && botWillCoop
-                ? 'bg-emerald-950/60 border-emerald-500 shadow-lg ring-2 ring-emerald-500/50'
-                : isCoop
-                ? 'bg-emerald-950/20 border-emerald-900/60'
-                : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
-              Pareto Optimum
+            {/* Cell (Coop, Coop) */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border transition-all text-center ${
+                isCoop && botWillCoop
+                  ? 'bg-emerald-950/60 border-emerald-500 shadow-lg ring-2 ring-emerald-500/50'
+                  : isCoop
+                  ? 'bg-emerald-950/20 border-emerald-900/60'
+                  : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-emerald-400 font-bold uppercase tracking-tight leading-tight break-words">
+                Pareto Optimum
+              </div>
+              <div className="text-sm sm:text-base font-black text-white mt-0.5">
+                +$2 <span className="text-slate-400 font-normal">/</span> +$2
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">You: +$2 · Bot: +$2</div>
             </div>
-            <div className="text-sm font-black text-white mt-0.5">
-              +$2 <span className="text-slate-400 font-normal">/</span> +$2
-            </div>
-            <div className="text-[9px] text-slate-400 mt-0.5">You: +$2 · Bot: +$2</div>
-          </div>
 
-          {/* Cell (Coop, Defect) */}
-          <div
-            className={`col-span-5 p-2.5 rounded-xl border transition-all ${
-              isCoop && botWillDefect
-                ? 'bg-rose-950/60 border-rose-500 shadow-lg ring-2 ring-rose-500/50'
-                : isCoop
-                ? 'bg-rose-950/20 border-rose-900/60'
-                : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-rose-400 font-bold uppercase tracking-wider">
-              Sucker's Payoff
+            {/* Cell (Coop, Defect) */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border transition-all text-center ${
+                isCoop && botWillDefect
+                  ? 'bg-rose-950/60 border-rose-500 shadow-lg ring-2 ring-rose-500/50'
+                  : isCoop
+                  ? 'bg-rose-950/20 border-rose-900/60'
+                  : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-rose-400 font-bold uppercase tracking-tight leading-tight break-words">
+                Sucker's Payoff
+              </div>
+              <div className="text-sm sm:text-base font-black text-rose-300 mt-0.5">
+                $0 <span className="text-slate-400 font-normal">/</span> +$3
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">You: $0 · Bot: +$3</div>
             </div>
-            <div className="text-sm font-black text-rose-300 mt-0.5">
-              $0 <span className="text-slate-400 font-normal">/</span> +$3
-            </div>
-            <div className="text-[9px] text-slate-400 mt-0.5">You: $0 · Bot: +$3</div>
-          </div>
 
-          {/* Row 2: You Defect */}
-          <div
-            onClick={() => onSelectAction && onSelectAction('Defect')}
-            className={`col-span-3 flex items-center justify-center py-3 rounded-lg border font-bold text-[11px] cursor-pointer transition-all ${
-              isDefect
-                ? 'bg-rose-600 text-white border-rose-500 shadow-md ring-1 ring-rose-400'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
-            }`}
-          >
-            <span>You Defect</span>
-          </div>
+            {/* Row 2: You Defect */}
+            <div
+              onClick={() => onSelectAction && onSelectAction('Defect')}
+              className={`col-span-2 min-h-[44px] flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg border font-bold text-[11px] cursor-pointer transition-all leading-tight text-center ${
+                isDefect
+                  ? 'bg-rose-600 text-white border-rose-500 shadow-md ring-1 ring-rose-400'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+              }`}
+            >
+              <span>You</span>
+              <span>Defect</span>
+            </div>
 
-          {/* Cell (Defect, Coop) */}
-          <div
-            className={`col-span-4 p-2.5 rounded-xl border transition-all ${
-              isDefect && botWillCoop
-                ? 'bg-amber-950/60 border-amber-500 shadow-lg ring-2 ring-amber-500/50'
-                : isDefect
-                ? 'bg-amber-950/20 border-amber-900/60'
-                : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">
-              Temptation Payoff
+            {/* Cell (Defect, Coop) */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border transition-all text-center ${
+                isDefect && botWillCoop
+                  ? 'bg-amber-950/60 border-amber-500 shadow-lg ring-2 ring-amber-500/50'
+                  : isDefect
+                  ? 'bg-amber-950/20 border-amber-900/60'
+                  : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-amber-400 font-bold uppercase tracking-tight leading-tight break-words">
+                Temptation Payoff
+              </div>
+              <div className="text-sm sm:text-base font-black text-amber-300 mt-0.5">
+                +$3 <span className="text-slate-400 font-normal">/</span> $0
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">You: +$3 · Bot: $0</div>
             </div>
-            <div className="text-sm font-black text-amber-300 mt-0.5">
-              +$3 <span className="text-slate-400 font-normal">/</span> $0
-            </div>
-            <div className="text-[9px] text-slate-400 mt-0.5">You: +$3 · Bot: $0</div>
-          </div>
 
-          {/* Cell (Defect, Defect) */}
-          <div
-            className={`col-span-5 p-2.5 rounded-xl border transition-all ${
-              isDefect && botWillDefect
-                ? 'bg-red-950/70 border-red-500 shadow-lg ring-2 ring-red-500/50'
-                : isDefect
-                ? 'bg-red-950/30 border-red-900/60'
-                : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-red-400 font-bold uppercase tracking-wider">
-              Nash Equilibrium Trap
+            {/* Cell (Defect, Defect) */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border transition-all text-center ${
+                isDefect && botWillDefect
+                  ? 'bg-red-950/70 border-red-500 shadow-lg ring-2 ring-red-500/50'
+                  : isDefect
+                  ? 'bg-red-950/30 border-red-900/60'
+                  : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-red-400 font-bold uppercase tracking-tight leading-tight break-words">
+                Nash Trap
+              </div>
+              <div className="text-sm sm:text-base font-black text-slate-200 mt-0.5">
+                +$1 <span className="text-slate-400 font-normal">/</span> +$1
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">You: +$1 · Bot: +$1</div>
             </div>
-            <div className="text-sm font-black text-slate-200 mt-0.5">
-              +$1 <span className="text-slate-400 font-normal">/</span> +$1
-            </div>
-            <div className="text-[9px] text-slate-400 mt-0.5">You: +$1 · Bot: +$1</div>
           </div>
         </div>
       </div>
@@ -183,15 +198,15 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
     const isTruthful = auctionBid === auctionValuation;
 
     return (
-      <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-3 font-sans text-xs">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-4 border border-slate-800 space-y-3 font-sans text-xs max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
             <span>🏷️ Vickrey Strategy Spectrum</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-blue-400">Bid vs. Valuation</span>
+            <span className="text-slate-600 hidden sm:inline">·</span>
+            <span className="text-blue-400 font-semibold sm:font-bold">Bid vs. Valuation</span>
           </div>
           <span
-            className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${
+            className={`text-[10px] sm:text-[11px] font-mono font-bold px-2 py-0.5 rounded-md self-start sm:self-auto ${
               isTruthful
                 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                 : isOverbidding
@@ -284,14 +299,14 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
         : 'Level 0 Random';
 
     return (
-      <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-3 font-sans text-xs">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-4 border border-slate-800 space-y-3 font-sans text-xs max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
             <span>💭 Cognitive Depth Spectrum</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-indigo-400">Level-k Reasoning</span>
+            <span className="text-slate-600 hidden sm:inline">·</span>
+            <span className="text-indigo-400 font-semibold sm:font-bold">Level-k Reasoning</span>
           </div>
-          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-950 text-indigo-300 border border-indigo-800">
+          <span className="text-[10px] sm:text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-950 text-indigo-300 border border-indigo-800 self-start sm:self-auto">
             {depthCategory} (Guess: {guess})
           </span>
         </div>
@@ -355,12 +370,12 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
     const totalReturnPreview = Math.round((kept + privateDividend) * 10) / 10;
 
     return (
-      <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-3 font-sans text-xs">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-4 border border-slate-800 space-y-3 font-sans text-xs max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
             <span>🌍 Token Allocation & Payoff Breakdown</span>
           </div>
-          <span className="text-[10px] font-mono text-emerald-400 font-bold">
+          <span className="text-[10px] sm:text-[11px] font-mono text-emerald-400 font-bold self-start sm:self-auto">
             Projected: ${totalReturnPreview}
           </span>
         </div>
@@ -405,138 +420,142 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
     const botWillHare = anticipatedBotAction === 'Hare';
 
     return (
-      <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-3 font-sans text-xs">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-slate-950/90 rounded-2xl p-2 sm:p-4 border border-slate-800 space-y-2.5 font-sans text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
             <span>🦌 Stag Hunt Payoff Matrix</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-blue-400">Payoff Dominance vs. Risk Dominance</span>
+            <span className="text-slate-600 hidden sm:inline">·</span>
+            <span className="text-emerald-400 font-semibold sm:font-bold">Trust & Coordination</span>
           </div>
-          <span className="text-[10px] text-slate-500 font-mono">
+          <span className="text-[11px] text-slate-400 font-mono">
             Highlighted row = your candidate choice
           </span>
         </div>
 
-        {/* 2x2 Matrix Grid */}
-        <div className="grid grid-cols-12 gap-1.5 text-center font-mono">
-          <div className="col-span-3"></div>
+        {/* 2x2 Matrix Grid - Fits 375px Without Scrollbar */}
+        <div className="w-full">
+          <div className="w-full grid grid-cols-12 gap-1 sm:gap-1.5 text-center font-mono">
+            <div className="col-span-2"></div>
 
-          {/* Bot Choice Headers */}
-          <div className="col-span-4 bg-slate-900/90 py-1.5 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300">
-            Bot Hunts Stag
-            {botWillStag && (
-              <span className="block text-[9px] text-emerald-400 font-normal">
-                ● Anticipated
-              </span>
-            )}
-          </div>
-          <div className="col-span-5 bg-slate-900/90 py-1.5 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300">
-            Bot Hunts Hare
-            {botWillHare && (
-              <span className="block text-[9px] text-amber-400 font-normal">
-                ● Anticipated
-              </span>
-            )}
-          </div>
+            {/* Bot Choice Headers */}
+            <div className="col-span-5 bg-slate-900/90 py-1.5 px-1 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300 leading-tight">
+              Bot Hunts Stag
+              {botWillStag && (
+                <span className="block text-[11px] text-emerald-400 font-normal">
+                  ● Anticipated
+                </span>
+              )}
+            </div>
+            <div className="col-span-5 bg-slate-900/90 py-1.5 px-1 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300 leading-tight">
+              Bot Hunts Hare
+              {botWillHare && (
+                <span className="block text-[11px] text-amber-400 font-normal">
+                  ● Anticipated
+                </span>
+              )}
+            </div>
 
-          {/* Row 1: You Hunt Stag */}
-          <div
-            onClick={() => onSelectAction && onSelectAction('Stag')}
-            className={`col-span-3 flex items-center justify-center py-3 rounded-lg border font-bold text-[11px] cursor-pointer transition-all ${
-              isStag
-                ? 'bg-emerald-600 text-white border-emerald-500 shadow-md ring-1 ring-emerald-400'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>You Stag</span>
-          </div>
+            {/* Row 1: You Hunt Stag */}
+            <div
+              onClick={() => onSelectAction && onSelectAction('Stag')}
+              className={`col-span-2 min-h-[44px] flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg border font-bold text-[11px] cursor-pointer transition-all leading-tight text-center ${
+                isStag
+                  ? 'bg-emerald-600 text-white border-emerald-500 shadow-md ring-1 ring-emerald-400'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+              }`}
+            >
+              <span>You</span>
+              <span>Stag</span>
+            </div>
 
-          {/* Cell (Stag, Stag) */}
-          <div
-            className={`col-span-4 p-2.5 rounded-xl border transition-all ${
-              isStag && botWillStag
-                ? 'bg-emerald-950/70 border-emerald-500 shadow-lg ring-2 ring-emerald-500/50'
-                : isStag
-                ? 'bg-emerald-950/30 border-emerald-900/60'
-                : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
-              Payoff Dominant (Social Max)
+            {/* Cell (Stag, Stag) */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border transition-all text-center ${
+                isStag && botWillStag
+                  ? 'bg-emerald-950/70 border-emerald-500 shadow-lg ring-2 ring-emerald-500/50'
+                  : isStag
+                  ? 'bg-emerald-950/30 border-emerald-900/60'
+                  : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-emerald-400 font-bold uppercase tracking-tight leading-tight break-words">
+                Payoff Dominant (Max)
+              </div>
+              <div className="text-sm sm:text-base font-black text-white mt-0.5">
+                +$10 <span className="text-slate-400 font-normal">/</span> +$10
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">You: +$10 · Bot: +$10</div>
             </div>
-            <div className="text-sm font-black text-white mt-0.5">
-              +$10 <span className="text-slate-400 font-normal">/</span> +$10
-            </div>
-            <div className="text-[9px] text-slate-400 mt-0.5">You: +$10 · Bot: +$10</div>
-          </div>
 
-          {/* Cell (Stag, Hare) */}
-          <div
-            className={`col-span-5 p-2.5 rounded-xl border transition-all ${
-              isStag && botWillHare
-                ? 'bg-rose-950/70 border-rose-500 shadow-lg ring-2 ring-rose-500/50'
-                : isStag
-                ? 'bg-rose-950/30 border-rose-900/60'
-                : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-rose-400 font-bold uppercase tracking-wider">
-              Cooperation Starvation
+            {/* Cell (Stag, Hare) */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border transition-all text-center ${
+                isStag && botWillHare
+                  ? 'bg-rose-950/70 border-rose-500 shadow-lg ring-2 ring-rose-500/50'
+                  : isStag
+                  ? 'bg-rose-950/30 border-rose-900/60'
+                  : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-rose-400 font-bold uppercase tracking-tight leading-tight break-words">
+                Starvation Risk
+              </div>
+              <div className="text-sm sm:text-base font-black text-rose-300 mt-0.5">
+                $0 <span className="text-slate-400 font-normal">/</span> +$4
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">You: $0 · Bot: +$4</div>
             </div>
-            <div className="text-sm font-black text-rose-300 mt-0.5">
-              $0 <span className="text-slate-400 font-normal">/</span> +$4
-            </div>
-            <div className="text-[9px] text-slate-400 mt-0.5">You: $0 · Bot: +$4</div>
-          </div>
 
-          {/* Row 2: You Hunt Hare */}
-          <div
-            onClick={() => onSelectAction && onSelectAction('Hare')}
-            className={`col-span-3 flex items-center justify-center py-3 rounded-lg border font-bold text-[11px] cursor-pointer transition-all ${
-              isHare
-                ? 'bg-amber-600 text-white border-amber-500 shadow-md ring-1 ring-amber-400'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>You Hare</span>
-          </div>
+            {/* Row 2: You Hunt Hare */}
+            <div
+              onClick={() => onSelectAction && onSelectAction('Hare')}
+              className={`col-span-2 min-h-[44px] flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg border font-bold text-[11px] cursor-pointer transition-all leading-tight text-center ${
+                isHare
+                  ? 'bg-amber-600 text-white border-amber-500 shadow-md ring-1 ring-amber-400'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+              }`}
+            >
+              <span>You</span>
+              <span>Hare</span>
+            </div>
 
-          {/* Cell (Hare, Stag) */}
-          <div
-            className={`col-span-4 p-2.5 rounded-xl border transition-all ${
-              isHare && botWillStag
-                ? 'bg-amber-950/70 border-amber-500 shadow-lg ring-2 ring-amber-500/50'
-                : isHare
-                ? 'bg-amber-950/30 border-amber-900/60'
-                : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">
-              Safe Free-Ride
+            {/* Cell (Hare, Stag) */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border transition-all text-center ${
+                isHare && botWillStag
+                  ? 'bg-amber-950/70 border-amber-500 shadow-lg ring-2 ring-amber-500/50'
+                  : isHare
+                  ? 'bg-amber-950/30 border-amber-900/60'
+                  : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-amber-400 font-bold uppercase tracking-tight leading-tight break-words">
+                Safe Free-Ride
+              </div>
+              <div className="text-sm sm:text-base font-black text-amber-300 mt-0.5">
+                +$4 <span className="text-slate-400 font-normal">/</span> $0
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">You: +$4 · Bot: $0</div>
             </div>
-            <div className="text-sm font-black text-amber-300 mt-0.5">
-              +$4 <span className="text-slate-400 font-normal">/</span> $0
-            </div>
-            <div className="text-[9px] text-slate-400 mt-0.5">You: +$4 · Bot: $0</div>
-          </div>
 
-          {/* Cell (Hare, Hare) */}
-          <div
-            className={`col-span-5 p-2.5 rounded-xl border transition-all ${
-              isHare && botWillHare
-                ? 'bg-blue-950/70 border-blue-500 shadow-lg ring-2 ring-blue-500/50'
-                : isHare
-                ? 'bg-blue-950/30 border-blue-900/60'
-                : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">
-              Risk-Dominant Equilibrium
+            {/* Cell (Hare, Hare) */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border transition-all text-center ${
+                isHare && botWillHare
+                  ? 'bg-blue-950/70 border-blue-500 shadow-lg ring-2 ring-blue-500/50'
+                  : isHare
+                  ? 'bg-blue-950/30 border-blue-900/60'
+                  : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-blue-400 font-bold uppercase tracking-tight leading-tight break-words">
+                Risk-Dominant Nash
+              </div>
+              <div className="text-sm sm:text-base font-black text-slate-200 mt-0.5">
+                +$4 <span className="text-slate-400 font-normal">/</span> +$4
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">You: +$4 · Bot: +$4</div>
             </div>
-            <div className="text-sm font-black text-slate-200 mt-0.5">
-              +$4 <span className="text-slate-400 font-normal">/</span> +$4
-            </div>
-            <div className="text-[9px] text-slate-400 mt-0.5">You: +$4 · Bot: +$4</div>
           </div>
         </div>
       </div>
@@ -565,15 +584,15 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
     }
 
     return (
-      <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-3 font-sans text-xs">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-4 border border-slate-800 space-y-3 font-sans text-xs max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
             <span>🏷️ Bertrand Market Share & Margin Visualizer</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-blue-400">MC = $10</span>
+            <span className="text-slate-600 hidden sm:inline">·</span>
+            <span className="text-blue-400 font-semibold sm:font-bold">MC = $10</span>
           </div>
           <span
-            className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${
+            className={`text-[10px] sm:text-[11px] font-mono font-bold px-2 py-0.5 rounded-md self-start sm:self-auto ${
               marketShare === 100
                 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                 : marketShare === 50
@@ -633,120 +652,122 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
     const isCrash = isHawk && botWillHawk;
 
     return (
-      <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-3 font-sans text-xs">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <span>🦅 Hawk-Dove Payoff Matrix & Collision Radar</span>
+      <div className="bg-slate-950/90 rounded-2xl p-2 sm:p-4 border border-slate-800 space-y-2.5 font-sans text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
+            <span>🦅 Hawk-Dove Payoff Matrix</span>
+            <span className="text-slate-600 hidden sm:inline">·</span>
+            <span className="text-rose-400 font-semibold sm:font-bold">Collision Radar</span>
           </div>
-          <span className="text-[10px] text-slate-500 font-mono">
+          <span className="text-[11px] text-slate-400 font-mono">
             {isCrash ? '⚠️ Catastrophic Clash Risk' : 'Live State Illumination'}
           </span>
         </div>
 
         {/* Collision Danger Warning Banner */}
         {isCrash && (
-          <div className="p-2.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 font-mono text-xs flex items-center gap-2 animate-pulse">
-            <span className="text-lg">💥</span>
-            <div>
+          <div className="p-2 sm:p-2.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 font-mono text-xs flex items-center gap-2 animate-pulse">
+            <span className="text-base sm:text-lg">💥</span>
+            <div className="leading-tight text-[11px] sm:text-xs">
               <strong>MUTUAL HAWK COLLISION DETECTED!</strong> Both players crash into the -10 catastrophe zone.
             </div>
           </div>
         )}
 
-        {/* 2x2 Matrix Grid */}
-        <div className="grid grid-cols-12 gap-1.5 text-center font-mono">
-          <div className="col-span-3"></div>
-          <div className="col-span-4 bg-slate-900/90 py-1.5 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300">
-            Bot Plays Dove
-            {botWillDove && <span className="block text-[9px] text-emerald-400 font-normal">● Anticipated</span>}
-          </div>
-          <div className="col-span-5 bg-slate-900/90 py-1.5 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300">
-            Bot Plays Hawk
-            {botWillHawk && <span className="block text-[9px] text-rose-400 font-normal">● Anticipated</span>}
-          </div>
-
-          {/* Row 1: You Dove */}
-          <div
-            onClick={() => onSelectAction && onSelectAction('Dove')}
-            className={`col-span-3 py-3 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all ${
-              isDove ? 'bg-emerald-950/60 border-emerald-500 text-white font-bold' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            <span className="text-base">🕊️</span>
-            <span className="text-xs font-bold mt-0.5">You Dove</span>
-            <span className="text-[9px] text-slate-400 font-normal">Swerve / Share</span>
-          </div>
-
-          {/* Cell: You Dove, Bot Dove */}
-          <div
-            className={`col-span-4 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isDove && botWillDove ? 'bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500/40' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-slate-400 font-sans">Equal Resource Split</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-emerald-400">+3</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-slate-300">+3</span>
+        {/* 2x2 Matrix Grid - Fits 375px Without Scrollbar */}
+        <div className="w-full">
+          <div className="w-full grid grid-cols-12 gap-1 sm:gap-1.5 text-center font-mono">
+            <div className="col-span-2"></div>
+            <div className="col-span-5 bg-slate-900/90 py-1.5 px-1 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300 leading-tight">
+              Bot Plays Dove
+              {botWillDove && <span className="block text-[11px] text-emerald-400 font-normal">● Anticipated</span>}
             </div>
-            <div className="text-[9px] text-emerald-400 font-mono mt-0.5">Mutual Peace</div>
-          </div>
-
-          {/* Cell: You Dove, Bot Hawk */}
-          <div
-            className={`col-span-5 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isDove && botWillHawk ? 'bg-amber-950/80 border-amber-500 ring-2 ring-amber-500/40' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-slate-400 font-sans">You Concede</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-amber-400">0</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-slate-300">+6</span>
+            <div className="col-span-5 bg-slate-900/90 py-1.5 px-1 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300 leading-tight">
+              Bot Plays Hawk
+              {botWillHawk && <span className="block text-[11px] text-rose-400 font-normal">● Anticipated</span>}
             </div>
-            <div className="text-[9px] text-slate-400 font-mono mt-0.5">Pure Nash Equilibrium</div>
-          </div>
 
-          {/* Row 2: You Hawk */}
-          <div
-            onClick={() => onSelectAction && onSelectAction('Hawk')}
-            className={`col-span-3 py-3 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all ${
-              isHawk ? 'bg-rose-950/60 border-rose-500 text-white font-bold' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            <span className="text-base">🦅</span>
-            <span className="text-xs font-bold mt-0.5">You Hawk</span>
-            <span className="text-[9px] text-slate-400 font-normal">Fight / Aggress</span>
-          </div>
-
-          {/* Cell: You Hawk, Bot Dove */}
-          <div
-            className={`col-span-4 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isHawk && botWillDove ? 'bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500/40' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-slate-400 font-sans">You Exploit Dove</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-emerald-400">+6</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-slate-300">0</span>
+            {/* Row 1: You Dove */}
+            <div
+              onClick={() => onSelectAction && onSelectAction('Dove')}
+              className={`col-span-2 min-h-[44px] py-1.5 px-0.5 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all leading-tight text-center ${
+                isDove ? 'bg-emerald-950/60 border-emerald-500 text-white font-bold' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span className="text-base">🕊️</span>
+              <span className="text-[11px] font-bold mt-0.5">Dove</span>
             </div>
-            <div className="text-[9px] text-emerald-400 font-mono mt-0.5">Pure Nash Equilibrium</div>
-          </div>
 
-          {/* Cell: You Hawk, Bot Hawk */}
-          <div
-            className={`col-span-5 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isHawk && botWillHawk ? 'bg-rose-950 border-rose-500 ring-2 ring-rose-500 animate-pulse' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-rose-400 font-sans font-bold">Catastrophic Crash!</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-rose-400">-10</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-rose-400">-10</span>
+            {/* Cell: You Dove, Bot Dove */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isDove && botWillDove ? 'bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500/40' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-slate-300 font-sans font-bold leading-tight break-words">Equal Split</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-emerald-400">+3</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-slate-300">+3</span>
+              </div>
+              <div className="text-[11px] text-emerald-400 font-mono mt-0.5 leading-tight">Mutual Peace</div>
             </div>
-            <div className="text-[9px] text-rose-400 font-mono mt-0.5">Mutual Ruin</div>
+
+            {/* Cell: You Dove, Bot Hawk */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isDove && botWillHawk ? 'bg-amber-950/80 border-amber-500 ring-2 ring-amber-500/40' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-slate-300 font-sans font-bold leading-tight break-words">You Concede</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-amber-400">0</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-slate-300">+6</span>
+              </div>
+              <div className="text-[11px] text-amber-400 font-mono mt-0.5 leading-tight">Nash Equilibrium</div>
+            </div>
+
+            {/* Row 2: You Hawk */}
+            <div
+              onClick={() => onSelectAction && onSelectAction('Hawk')}
+              className={`col-span-2 min-h-[44px] py-1.5 px-0.5 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all leading-tight text-center ${
+                isHawk ? 'bg-rose-950/60 border-rose-500 text-white font-bold' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span className="text-base">🦅</span>
+              <span className="text-[11px] font-bold mt-0.5">Hawk</span>
+            </div>
+
+            {/* Cell: You Hawk, Bot Dove */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isHawk && botWillDove ? 'bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500/40' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-slate-300 font-sans font-bold leading-tight break-words">You Exploit</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-emerald-400">+6</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-slate-300">0</span>
+              </div>
+              <div className="text-[11px] text-emerald-400 font-mono mt-0.5 leading-tight">Nash Equilibrium</div>
+            </div>
+
+            {/* Cell: You Hawk, Bot Hawk */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isHawk && botWillHawk ? 'bg-rose-950 border-rose-500 ring-2 ring-rose-500 animate-pulse' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-rose-400 font-sans font-bold leading-tight break-words">Crash!</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-rose-400">-10</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-rose-400">-10</span>
+              </div>
+              <div className="text-[11px] text-rose-400 font-mono mt-0.5 leading-tight">Mutual Ruin</div>
+            </div>
           </div>
         </div>
       </div>
@@ -762,13 +783,13 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
     const isFair = offer >= 3 && offer < 4.5;
 
     return (
-      <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-3 font-sans text-xs">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-4 border border-slate-800 space-y-3 font-sans text-xs max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
             <span>🍰 Ultimatum $10 Surplus Split & Acceptance Radar</span>
           </div>
           <span
-            className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${
+            className={`text-[10px] sm:text-[11px] font-mono font-bold px-2 py-0.5 rounded-md self-start sm:self-auto ${
               isEgalitarian
                 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                 : isFair
@@ -829,110 +850,112 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
     const botWillTails = anticipatedBotAction === 'Tails';
 
     return (
-      <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-3 font-sans text-xs">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-slate-950/90 rounded-2xl p-2 sm:p-4 border border-slate-800 space-y-2.5 font-sans text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
             <span>🪙 Matching Pennies Payoff Matrix</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-blue-400">Pure Conflict Zero-Sum</span>
+            <span className="text-slate-600 hidden sm:inline">·</span>
+            <span className="text-blue-400 font-semibold sm:font-bold">Pure Conflict Zero-Sum</span>
           </div>
-          <span className="text-[10px] text-slate-500 font-mono">
+          <span className="text-[11px] text-slate-400 font-mono leading-tight">
             You: Matcher (wants Match) · Bot: Mismatcher (wants Differ)
           </span>
         </div>
 
-        {/* 2x2 Matrix Grid */}
-        <div className="grid grid-cols-12 gap-1.5 text-center font-mono">
-          <div className="col-span-3"></div>
-          <div className="col-span-4 bg-slate-900/90 py-1.5 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300">
-            Bot Plays Heads
-            {botWillHeads && <span className="block text-[9px] text-amber-400 font-normal">● Anticipated</span>}
-          </div>
-          <div className="col-span-5 bg-slate-900/90 py-1.5 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300">
-            Bot Plays Tails
-            {botWillTails && <span className="block text-[9px] text-amber-400 font-normal">● Anticipated</span>}
-          </div>
-
-          {/* Row 1: You Heads */}
-          <div
-            onClick={() => onSelectAction && onSelectAction('Heads')}
-            className={`col-span-3 py-3 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all ${
-              isHeads ? 'bg-indigo-950/70 border-indigo-500 text-white font-bold ring-1 ring-indigo-400' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            <span className="text-base">👑</span>
-            <span className="text-xs font-bold mt-0.5">You Heads</span>
-          </div>
-
-          {/* Cell (Heads, Heads) - Match! You Win */}
-          <div
-            className={`col-span-4 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isHeads && botWillHeads ? 'bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-emerald-400 font-sans font-bold">MATCH! (You Win)</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-emerald-400">+2</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-slate-400">0</span>
+        {/* 2x2 Matrix Grid - Fits 375px Without Scrollbar */}
+        <div className="w-full">
+          <div className="w-full grid grid-cols-12 gap-1 sm:gap-1.5 text-center font-mono">
+            <div className="col-span-2"></div>
+            <div className="col-span-5 bg-slate-900/90 py-1.5 px-1 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300 leading-tight">
+              Bot Plays Heads
+              {botWillHeads && <span className="block text-[11px] text-amber-400 font-normal">● Anticipated</span>}
             </div>
-            <div className="text-[9px] text-slate-400 font-mono mt-0.5">You: +2 · Bot: 0</div>
-          </div>
-
-          {/* Cell (Heads, Tails) - Mismatch! Bot Wins */}
-          <div
-            className={`col-span-5 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isHeads && botWillTails ? 'bg-rose-950/80 border-rose-500 ring-2 ring-rose-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-rose-400 font-sans font-bold">MISMATCH (Bot Wins)</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-rose-400">0</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-slate-300">+2</span>
+            <div className="col-span-5 bg-slate-900/90 py-1.5 px-1 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300 leading-tight">
+              Bot Plays Tails
+              {botWillTails && <span className="block text-[11px] text-amber-400 font-normal">● Anticipated</span>}
             </div>
-            <div className="text-[9px] text-slate-400 font-mono mt-0.5">You: 0 · Bot: +2</div>
-          </div>
 
-          {/* Row 2: You Tails */}
-          <div
-            onClick={() => onSelectAction && onSelectAction('Tails')}
-            className={`col-span-3 py-3 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all ${
-              isTails ? 'bg-indigo-950/70 border-indigo-500 text-white font-bold ring-1 ring-indigo-400' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            <span className="text-base">🪙</span>
-            <span className="text-xs font-bold mt-0.5">You Tails</span>
-          </div>
-
-          {/* Cell (Tails, Heads) - Mismatch! Bot Wins */}
-          <div
-            className={`col-span-4 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isTails && botWillHeads ? 'bg-rose-950/80 border-rose-500 ring-2 ring-rose-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-rose-400 font-sans font-bold">MISMATCH (Bot Wins)</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-rose-400">0</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-slate-300">+2</span>
+            {/* Row 1: You Heads */}
+            <div
+              onClick={() => onSelectAction && onSelectAction('Heads')}
+              className={`col-span-2 min-h-[44px] py-1.5 px-0.5 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all leading-tight text-center ${
+                isHeads ? 'bg-indigo-950/70 border-indigo-500 text-white font-bold ring-1 ring-indigo-400' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span className="text-base">👑</span>
+              <span className="text-[11px] font-bold mt-0.5">Heads</span>
             </div>
-            <div className="text-[9px] text-slate-400 font-mono mt-0.5">You: 0 · Bot: +2</div>
-          </div>
 
-          {/* Cell (Tails, Tails) - Match! You Win */}
-          <div
-            className={`col-span-5 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isTails && botWillTails ? 'bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-emerald-400 font-sans font-bold">MATCH! (You Win)</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-emerald-400">+2</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-slate-400">0</span>
+            {/* Cell (Heads, Heads) - Match! You Win */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isHeads && botWillHeads ? 'bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-emerald-400 font-sans font-bold leading-tight break-words">MATCH! (Win)</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-emerald-400">+2</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-slate-400">0</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5 leading-tight">You: +2 · Bot: 0</div>
             </div>
-            <div className="text-[9px] text-slate-400 font-mono mt-0.5">You: +2 · Bot: 0</div>
+
+            {/* Cell (Heads, Tails) - Mismatch! Bot Wins */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isHeads && botWillTails ? 'bg-rose-950/80 border-rose-500 ring-2 ring-rose-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-rose-400 font-sans font-bold leading-tight break-words">MISMATCH (Loss)</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-rose-400">0</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-slate-300">+2</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5 leading-tight">You: 0 · Bot: +2</div>
+            </div>
+
+            {/* Row 2: You Tails */}
+            <div
+              onClick={() => onSelectAction && onSelectAction('Tails')}
+              className={`col-span-2 min-h-[44px] py-1.5 px-0.5 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all leading-tight text-center ${
+                isTails ? 'bg-indigo-950/70 border-indigo-500 text-white font-bold ring-1 ring-indigo-400' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span className="text-base">🪙</span>
+              <span className="text-[11px] font-bold mt-0.5">Tails</span>
+            </div>
+
+            {/* Cell (Tails, Heads) - Mismatch! Bot Wins */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isTails && botWillHeads ? 'bg-rose-950/80 border-rose-500 ring-2 ring-rose-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-rose-400 font-sans font-bold leading-tight break-words">MISMATCH (Loss)</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-rose-400">0</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-slate-300">+2</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5 leading-tight">You: 0 · Bot: +2</div>
+            </div>
+
+            {/* Cell (Tails, Tails) - Match! You Win */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isTails && botWillTails ? 'bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-emerald-400 font-sans font-bold leading-tight break-words">MATCH! (Win)</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-emerald-400">+2</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-slate-400">0</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5 leading-tight">You: +2 · Bot: 0</div>
+            </div>
           </div>
         </div>
       </div>
@@ -948,12 +971,12 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
     const isCoordinated = (isOpera && botWillOpera) || (isFootball && botWillFootball);
 
     return (
-      <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-3 font-sans text-xs">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-slate-950/90 rounded-2xl p-2 sm:p-4 border border-slate-800 space-y-2.5 font-sans text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
             <span>🎭 Battle of the Sexes Payoff Matrix</span>
           </div>
-          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${
+          <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md self-start sm:self-auto ${
             isCoordinated
               ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
               : 'bg-amber-950 text-amber-400 border border-amber-800'
@@ -962,100 +985,100 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
           </span>
         </div>
 
-        {/* 2x2 Matrix Grid */}
-        <div className="grid grid-cols-12 gap-1.5 text-center font-mono">
-          <div className="col-span-3"></div>
-          <div className="col-span-4 bg-slate-900/90 py-1.5 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300">
-            Bot Plays Opera
-            {botWillOpera && <span className="block text-[9px] text-blue-400 font-normal">● Anticipated</span>}
-          </div>
-          <div className="col-span-5 bg-slate-900/90 py-1.5 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300">
-            Bot Plays Football
-            {botWillFootball && <span className="block text-[9px] text-amber-400 font-normal">● Anticipated</span>}
-          </div>
-
-          {/* Row 1: You Opera */}
-          <div
-            onClick={() => onSelectAction && onSelectAction('Opera')}
-            className={`col-span-3 py-3 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all ${
-              isOpera ? 'bg-purple-950/70 border-purple-500 text-white font-bold ring-1 ring-purple-400' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            <span className="text-base">🎭</span>
-            <span className="text-xs font-bold mt-0.5">You Opera</span>
-            <span className="text-[9px] text-purple-300">Your Favorite</span>
-          </div>
-
-          {/* Cell (Opera, Opera) - Your Top Nash */}
-          <div
-            className={`col-span-4 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isOpera && botWillOpera ? 'bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-emerald-400 font-sans font-bold">Nash 1 (Your Top Pick)</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-emerald-400">+3</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-slate-300">+2</span>
+        {/* 2x2 Matrix Grid - Fits 375px Without Scrollbar */}
+        <div className="w-full">
+          <div className="w-full grid grid-cols-12 gap-1 sm:gap-1.5 text-center font-mono">
+            <div className="col-span-2"></div>
+            <div className="col-span-5 bg-slate-900/90 py-1.5 px-1 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300 leading-tight">
+              Bot Plays Opera
+              {botWillOpera && <span className="block text-[11px] text-blue-400 font-normal">● Anticipated</span>}
             </div>
-            <div className="text-[9px] text-slate-400 font-mono mt-0.5">You: +3 · Bot: +2</div>
-          </div>
-
-          {/* Cell (Opera, Football) - Miscoordination */}
-          <div
-            className={`col-span-5 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isOpera && botWillFootball ? 'bg-rose-950/80 border-rose-500 ring-2 ring-rose-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-rose-400 font-sans font-bold">Miscoordination Clash</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-rose-400">0</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-rose-400">0</span>
+            <div className="col-span-5 bg-slate-900/90 py-1.5 px-1 rounded-lg border border-slate-800 text-[11px] font-bold text-slate-300 leading-tight">
+              Bot Plays Football
+              {botWillFootball && <span className="block text-[11px] text-amber-400 font-normal">● Anticipated</span>}
             </div>
-            <div className="text-[9px] text-slate-400 font-mono mt-0.5">You: 0 · Bot: 0</div>
-          </div>
 
-          {/* Row 2: You Football */}
-          <div
-            onClick={() => onSelectAction && onSelectAction('Football')}
-            className={`col-span-3 py-3 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all ${
-              isFootball ? 'bg-amber-950/70 border-amber-500 text-white font-bold ring-1 ring-amber-400' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            <span className="text-base">⚽</span>
-            <span className="text-xs font-bold mt-0.5">You Football</span>
-            <span className="text-[9px] text-amber-300">Bot Favorite</span>
-          </div>
-
-          {/* Cell (Football, Opera) - Miscoordination */}
-          <div
-            className={`col-span-4 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isFootball && botWillOpera ? 'bg-rose-950/80 border-rose-500 ring-2 ring-rose-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-rose-400 font-sans font-bold">Miscoordination Clash</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-rose-400">0</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-rose-400">0</span>
+            {/* Row 1: You Opera */}
+            <div
+              onClick={() => onSelectAction && onSelectAction('Opera')}
+              className={`col-span-2 min-h-[44px] py-1.5 px-0.5 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all leading-tight text-center ${
+                isOpera ? 'bg-purple-950/70 border-purple-500 text-white font-bold ring-1 ring-purple-400' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span className="text-base">🎭</span>
+              <span className="text-[11px] font-bold mt-0.5">Opera</span>
             </div>
-            <div className="text-[9px] text-slate-400 font-mono mt-0.5">You: 0 · Bot: 0</div>
-          </div>
 
-          {/* Cell (Football, Football) - Bot's Top Nash */}
-          <div
-            className={`col-span-5 p-2 rounded-xl border flex flex-col justify-center items-center transition-all ${
-              isFootball && botWillFootball ? 'bg-blue-950/80 border-blue-500 ring-2 ring-blue-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
-            }`}
-          >
-            <div className="text-[10px] text-blue-400 font-sans font-bold">Nash 2 (Bot Top Pick)</div>
-            <div className="text-sm font-bold mt-1">
-              <span className="text-slate-300">+2</span>
-              <span className="text-slate-600 mx-1">/</span>
-              <span className="text-blue-400">+3</span>
+            {/* Cell (Opera, Opera) - Your Top Nash */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isOpera && botWillOpera ? 'bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-emerald-400 font-sans font-bold leading-tight break-words">Your Top Nash</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-emerald-400">+3</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-slate-300">+2</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5 leading-tight">You: +3 · Bot: +2</div>
             </div>
-            <div className="text-[9px] text-slate-400 font-mono mt-0.5">You: +2 · Bot: +3</div>
+
+            {/* Cell (Opera, Football) - Miscoordination */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isOpera && botWillFootball ? 'bg-rose-950/80 border-rose-500 ring-2 ring-rose-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-rose-400 font-sans font-bold leading-tight break-words">Miscoordination</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-rose-400">0</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-rose-400">0</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5 leading-tight">You: 0 · Bot: 0</div>
+            </div>
+
+            {/* Row 2: You Football */}
+            <div
+              onClick={() => onSelectAction && onSelectAction('Football')}
+              className={`col-span-2 min-h-[44px] py-1.5 px-0.5 rounded-lg border flex flex-col justify-center items-center cursor-pointer transition-all leading-tight text-center ${
+                isFootball ? 'bg-amber-950/70 border-amber-500 text-white font-bold ring-1 ring-amber-400' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span className="text-base">⚽</span>
+              <span className="text-[11px] font-bold mt-0.5">Football</span>
+            </div>
+
+            {/* Cell (Football, Opera) - Miscoordination */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isFootball && botWillOpera ? 'bg-rose-950/80 border-rose-500 ring-2 ring-rose-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-rose-400 font-sans font-bold leading-tight break-words">Miscoordination</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-rose-400">0</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-rose-400">0</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5 leading-tight">You: 0 · Bot: 0</div>
+            </div>
+
+            {/* Cell (Football, Football) - Bot's Top Nash */}
+            <div
+              className={`col-span-5 p-1 sm:p-2.5 rounded-xl border flex flex-col justify-center items-center transition-all text-center ${
+                isFootball && botWillFootball ? 'bg-blue-950/80 border-blue-500 ring-2 ring-blue-500/40 shadow-lg' : 'bg-slate-900/40 border-slate-800/80 text-slate-400'
+              }`}
+            >
+              <div className="text-[11px] text-blue-400 font-sans font-bold leading-tight break-words">Bot's Top Nash</div>
+              <div className="text-sm sm:text-base font-bold mt-0.5">
+                <span className="text-slate-300">+2</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-blue-400">+3</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5 leading-tight">You: +2 · Bot: +3</div>
+            </div>
           </div>
         </div>
       </div>
@@ -1071,12 +1094,12 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
     const fairInvestorTotal = kept + fairReturn;
 
     return (
-      <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 space-y-3 font-sans text-xs">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-4 border border-slate-800 space-y-3 font-sans text-xs max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
             <span>🏦 Trust & Investment Tripling Visualizer</span>
           </div>
-          <span className="text-[10px] font-mono text-emerald-400 font-bold">
+          <span className="text-[10px] sm:text-[11px] font-mono text-emerald-400 font-bold self-start sm:self-auto">
             Tripled Value: ${tripled}.00
           </span>
         </div>
@@ -1110,6 +1133,221 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
           <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
             <span className="text-blue-400 text-[9px] uppercase block">If 50/50 Fair Split</span>
             <span className="text-blue-300 font-bold text-sm">${fairInvestorTotal.toFixed(1)} pts</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 11. THE CENTIPEDE GAME EXTENSIVE FORM TREE (Module 20)
+  if (moduleId === 20) {
+    const nodes = [
+      { id: 1, player: 'You' as const, pot: 2, takeYou: 2, takeBot: 0, spneAction: 'Take' },
+      { id: 2, player: 'Bot' as const, pot: 5, takeYou: 1, takeBot: 4, spneAction: 'Take' },
+      { id: 3, player: 'You' as const, pot: 6, takeYou: 4, takeBot: 2, spneAction: 'Take' },
+      { id: 4, player: 'Bot' as const, pot: 9, takeYou: 3, takeBot: 6, spneAction: 'Take' },
+      { id: 5, player: 'You' as const, pot: 10, takeYou: 6, takeBot: 4, spneAction: 'Take' },
+      { id: 6, player: 'Bot' as const, pot: 13, takeYou: 5, takeBot: 8, spneAction: 'Take' }
+    ];
+
+    // Find what happened in the current or most recent path
+    const passedNodes = new Set(
+      centipedePath.filter(p => p.action === 'Pass').map(p => p.node)
+    );
+    const takenEntry = centipedePath.find(p => p.action === 'Take');
+    const exitNodeId = centipedeExitNode || takenEntry?.node;
+    const isTerminalReached = centipedeEnded && (!exitNodeId || exitNodeId > 6 || (passedNodes.has(6) && !takenEntry));
+
+    return (
+      <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-4 border border-slate-800 space-y-3 sm:space-y-4 font-sans text-xs max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🐛 Extensive-Form Payoff Tree · 6-Node Chain (You: 1, 3, 5 · Bot: 2, 4, 6)</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2 py-0.5 rounded-md bg-rose-950/80 border border-rose-800/80 text-[10px] font-mono font-bold text-rose-300">
+              SPNE: Take at Node 1 (2, 0)
+            </span>
+            <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 border border-emerald-800/80 text-[10px] font-mono font-bold text-emerald-300">
+              Pareto Optimum: Terminal Pass (8, 8)
+            </span>
+          </div>
+        </div>
+
+        {/* Mobile Swipe Guidance Banner */}
+        <div className="sm:hidden text-[10px] text-slate-400 font-mono text-center py-1.5 px-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-center gap-1.5">
+          <span>↔️</span>
+          <span>Swipe horizontally to view all 6 decision nodes & payoffs</span>
+        </div>
+
+        {/* Tree Path Diagram (Horizontal Scrolling with Touch Pan) */}
+        <div className="overflow-x-auto max-w-full touch-pan-x pb-2 pt-1 overscroll-x-contain scrollbar-thin">
+          <div className="min-w-[620px] sm:min-w-[700px] flex items-stretch gap-1.5">
+            {nodes.map((n, idx) => {
+              const isCurrent = centipedeNode === n.id && !centipedeEnded;
+              const isPastPassed = passedNodes.has(n.id);
+              const isExitTaken = exitNodeId === n.id && (centipedeExitAction === 'Take' || takenEntry?.action === 'Take');
+              const isCandidateChoice = isCurrent && n.player === 'You';
+              const candidateIsTake = isCandidateChoice && selectedAction === 'Take';
+              const candidateIsPass = isCandidateChoice && selectedAction === 'Pass';
+
+              return (
+                <div key={n.id} className="flex-1 flex flex-col justify-between">
+                  {/* Node Header & Player Indicator */}
+                  <div
+                    className={`p-2.5 rounded-xl border transition-all relative ${
+                      isCurrent
+                        ? 'bg-blue-950/80 border-blue-500 ring-2 ring-blue-500/40 shadow-lg'
+                        : isExitTaken
+                        ? 'bg-rose-950/40 border-rose-600/80'
+                        : isPastPassed
+                        ? 'bg-emerald-950/30 border-emerald-700/60'
+                        : 'bg-slate-900/80 border-slate-800 opacity-60'
+                    }`}
+                  >
+                    {/* Node Number & Actor */}
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-mono font-bold text-slate-400">
+                        Node {n.id}
+                      </span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wide ${
+                          n.player === 'You'
+                            ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        }`}
+                      >
+                        {n.player}
+                      </span>
+                    </div>
+
+                    {/* Active turn or Status Pulse */}
+                    {isCurrent && (
+                      <div className="text-[10px] font-bold text-blue-400 flex items-center gap-1 mb-1 animate-pulse">
+                        <span className="h-1.5 w-1.5 rounded-full bg-blue-400"></span>
+                        <span>{n.player === 'You' ? 'Your Choice' : "Bot Deciding..."}</span>
+                      </div>
+                    )}
+
+                    {isPastPassed && (
+                      <div className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 mb-1">
+                        <span>✓ Passed (Pot Grew)</span>
+                      </div>
+                    )}
+
+                    {isExitTaken && (
+                      <div className="text-[10px] font-bold text-rose-400 flex items-center gap-1 mb-1">
+                        <span>🛑 Took (Game Ended)</span>
+                      </div>
+                    )}
+
+                    {/* Pass Action Indicator (Moves Right) */}
+                    <div
+                      className={`mt-1 p-1.5 rounded-lg border text-center transition-all ${
+                        candidateIsPass
+                          ? 'bg-emerald-600/30 border-emerald-400 text-white font-bold ring-1 ring-emerald-400'
+                          : isPastPassed
+                          ? 'bg-emerald-950/40 border-emerald-800 text-emerald-300'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400'
+                      }`}
+                    >
+                      <div className="text-[10px] uppercase font-mono font-semibold flex items-center justify-center gap-1">
+                        <span>Pass ➔</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400">Pass to {idx < 5 ? nodes[idx + 1].player : 'Terminal'}</div>
+                    </div>
+
+                    {/* Take Branch (Ends Game Downward) */}
+                    <div
+                      className={`mt-2 p-1.5 rounded-lg border text-center transition-all ${
+                        candidateIsTake
+                          ? 'bg-amber-600/30 border-amber-400 text-white font-bold ring-1 ring-amber-400'
+                          : isExitTaken
+                          ? 'bg-rose-900/60 border-rose-500 text-white ring-1 ring-rose-400 shadow-md'
+                          : 'bg-slate-950/80 border-slate-800/80 text-slate-300'
+                      }`}
+                    >
+                      <div className="text-[10px] font-mono font-bold text-rose-400 flex items-center justify-center gap-1">
+                        <span>↓ Take Pot</span>
+                      </div>
+                      <div className="text-xs font-mono font-black mt-0.5">
+                        <span className="text-sky-300">+{n.takeYou}</span>
+                        <span className="text-slate-500 mx-1">/</span>
+                        <span className="text-amber-300">+{n.takeBot}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                        You: {n.takeYou} · Bot: {n.takeBot}
+                      </div>
+                    </div>
+
+                    {/* Backward Induction SPNE Marker */}
+                    <div className="mt-2 text-[10px] font-mono text-center text-rose-400/80 border-t border-slate-800/80 pt-1">
+                      SPNE: Take ({n.player === 'You' ? n.takeYou : n.takeBot} &gt; {n.player === 'You' ? (idx < 5 ? nodes[idx + 1].takeYou : 7) : (idx < 5 ? nodes[idx + 1].takeBot : 7)})
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Terminal Cooperative Outcome Node */}
+            <div className="w-28 flex flex-col justify-between shrink-0">
+              <div
+                className={`p-2.5 rounded-xl border h-full flex flex-col justify-between transition-all ${
+                  isTerminalReached
+                    ? 'bg-emerald-950/90 border-emerald-500 ring-2 ring-emerald-500/40 shadow-xl'
+                    : 'bg-slate-900/60 border-slate-800 opacity-60'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-mono font-bold text-emerald-400">
+                      Terminal
+                    </span>
+                    <span className="text-sm">🏆</span>
+                  </div>
+                  <div className="text-[10px] font-bold text-emerald-300 uppercase">
+                    Mutual Pass
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                    Both passed all 6 decision nodes!
+                  </div>
+                </div>
+
+                <div className="mt-2 p-1.5 rounded-lg bg-emerald-950/60 border border-emerald-800/80 text-center font-mono">
+                  <div className="text-sm font-black text-emerald-300">
+                    +8 <span className="text-slate-500">/</span> +8
+                  </div>
+                  <div className="text-[10px] text-emerald-400">You: 8 · Bot: 8</div>
+                </div>
+
+                <div className="mt-1 text-[10px] font-mono text-center text-emerald-400/80 border-t border-emerald-900/60 pt-1">
+                  Pareto Optimum
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic Match Status Card - Responsive Stacking */}
+        <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px]">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">💡</span>
+            <div>
+              <span className="font-bold text-white">Backward Induction Paradox:</span>{' '}
+              <span className="text-slate-400">
+                Backward induction forces rational play to unravel from Node 6 back to Node 1. Real humans who trust each other earn up to 4x more!
+              </span>
+            </div>
+          </div>
+          <div className="font-mono text-xs font-bold shrink-0 sm:text-right">
+            <span className="text-slate-400 block text-[10px] uppercase">Active Stage</span>
+            <span className={centipedeEnded ? 'text-amber-400' : 'text-blue-400'}>
+              {centipedeEnded
+                ? isTerminalReached
+                  ? 'Cooperative Finish!'
+                  : `Ended at Node ${exitNodeId || '1'}`
+                : `Node ${centipedeNode} / 6 (${centipedeNode % 2 === 1 ? 'Your Turn' : "Bot's Turn"})`}
+            </span>
           </div>
         </div>
       </div>

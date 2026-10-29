@@ -19,6 +19,11 @@ export default function App() {
   const [roundsData, setRoundsData] = useState<RoundsState>({});
   const [reflections, setReflections] = useState<ReflectionsState>({});
   const [copyStatus, setCopyStatus] = useState<string>('');
+  const [soloModuleId, setSoloModuleId] = useState<number>(20);
+  const [soloNodeLabel, setSoloNodeLabel] = useState<string>('');
+  const [soloGameIndex, setSoloGameIndex] = useState<number>(12);
+  const [totalSoloGames, setTotalSoloGames] = useState<number>(12);
+  const [completedSoloGamesCount, setCompletedSoloGamesCount] = useState<number>(0);
 
   // Load data from localStorage on mount
   useEffect(() => {
@@ -278,7 +283,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 selection:bg-blue-600 selection:text-white overflow-x-hidden max-w-full">
       {/* Global Header */}
       <Header
         authSession={authSession}
@@ -293,9 +298,14 @@ export default function App() {
         }}
         currentMode={platformMode}
         onSelectMode={setPlatformMode}
+        soloModuleId={soloModuleId}
+        soloNodeLabel={soloNodeLabel}
+        soloGameIndex={soloGameIndex}
+        totalSoloGames={totalSoloGames}
+        completedSoloGamesCount={completedSoloGamesCount}
       />
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 mt-3 sm:mt-6">
+      <main className="max-w-7xl mx-auto px-2.5 sm:px-6 mt-3 sm:mt-6 max-w-full">
         {platformMode === 'solo' ? (
           <SoloLabView
             allGames={WEEKS}
@@ -304,6 +314,13 @@ export default function App() {
               setPlatformMode('sandbox');
             }}
             onSwitchToLiveClass={() => setPlatformMode('live')}
+            onModuleChange={(id, label, gameIndex, totalGames, completedCount) => {
+              setSoloModuleId(id);
+              if (label) setSoloNodeLabel(label);
+              if (gameIndex) setSoloGameIndex(gameIndex);
+              if (totalGames) setTotalSoloGames(totalGames);
+              if (completedCount !== undefined) setCompletedSoloGamesCount(completedCount);
+            }}
           />
         ) : platformMode === 'sandbox' ? (
           <div className="space-y-4">
@@ -324,6 +341,7 @@ export default function App() {
                   { id: 17, label: '🪙 Matching Pennies' },
                   { id: 18, label: '🎭 Battle of the Sexes' },
                   { id: 19, label: '🏦 The Trust Game' },
+                  { id: 20, label: '🐛 Centipede Game' },
                   { id: 13, label: '🦌 Stag Hunt' },
                   { id: 14, label: '🏷️ Bertrand Duopoly' },
                   { id: 15, label: '🦅 Hawk-Dove' },

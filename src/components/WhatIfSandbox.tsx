@@ -36,6 +36,10 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
   const [myStrategy, setMyStrategy] = useState<'TFT' | 'ALL_C' | 'ALL_D' | 'GRIM'>('TFT');
   const [opponentStrategy, setOpponentStrategy] = useState<'TFT' | 'ALL_C' | 'ALL_D' | 'RANDOM' | 'GRIM'>('TFT');
 
+  // Centipede Game Sandbox State
+  const isCentipede = game.id === 20;
+  const [centipedePassProb, setCentipedePassProb] = useState<number>(65);
+
   // SVG dimensions for graphs
   const width = 360;
   const height = 140;
@@ -587,6 +591,96 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
 
             <div className="p-2.5 rounded-xl bg-slate-800/70 border border-slate-700/80 text-[11px] text-slate-300 leading-relaxed">
               🔁 <strong>The Folk Theorem:</strong> When both players use Tit-for-Tat, mutual cooperation generates 12 points each across 6 rounds. Attempting to defect triggers retaliation, lowering cumulative payoffs down to the mutual punishment trap of 6 points.
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 5. CENTIPEDE GAME (Extensive Form & Backward Induction) */}
+      {isCentipede && (() => {
+        const q = centipedePassProb / 100;
+
+        // Strategy 1: Take immediately at Node 1
+        const expN1 = 2.0;
+
+        // Strategy 2: Pass N1, Take at N3
+        // If rival takes N2 (prob 1-q): get 1. If rival passes N2 (prob q): take N3 for 4.
+        const expN3 = (1 - q) * 1 + q * 4;
+
+        // Strategy 3: Pass N1 & N3, Take at N5
+        // N2 take (1-q): 1. N2 pass + N4 take (q * (1-q)): 3. N2 pass + N4 pass (q^2): take N5 for 6.
+        const expN5 = (1 - q) * 1 + q * (1 - q) * 3 + Math.pow(q, 2) * 6;
+
+        // Strategy 4: Pass all nodes (Terminal Cooperation)
+        // N2 take: 1. N4 take: 3. N6 take: 5. Terminal: 8.
+        const expTerm = (1 - q) * 1 + q * (1 - q) * 3 + Math.pow(q, 2) * (1 - q) * 5 + Math.pow(q, 3) * 8;
+
+        const strats = [
+          { name: 'Take at Node 1 (SPNE)', val: expN1, color: 'text-rose-400', barColor: 'bg-rose-500' },
+          { name: 'Pass to Node 3 Take', val: expN3, color: 'text-amber-400', barColor: 'bg-amber-500' },
+          { name: 'Pass to Node 5 Take', val: expN5, color: 'text-blue-400', barColor: 'bg-blue-500' },
+          { name: 'Pass to Terminal (+8)', val: expTerm, color: 'text-emerald-400', barColor: 'bg-emerald-500' }
+        ];
+
+        const bestStrat = [...strats].sort((a, b) => b.val - a.val)[0];
+
+        return (
+          <div className="space-y-4 font-sans text-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <span className="font-bold text-slate-300">
+                Opponent Passing Probability ($q$):
+              </span>
+              <span className="font-mono text-base font-black text-amber-400">
+                {centipedePassProb}%
+              </span>
+            </div>
+
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={centipedePassProb}
+              onChange={(e) => setCentipedePassProb(parseInt(e.target.value, 10))}
+              className="w-full accent-amber-500 h-2 bg-slate-800 rounded-lg cursor-pointer"
+            />
+
+            {/* Expected Payoff Comparison Bars */}
+            <div className="space-y-2.5 bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between">
+                <span>Expected Payoff by Strategy</span>
+                <span className="text-emerald-400 font-bold">Optimal: {bestStrat.name}</span>
+              </div>
+
+              {strats.map((s, idx) => {
+                const maxVal = 8.0;
+                const pct = Math.min(100, (s.val / maxVal) * 100);
+                const isBest = s.name === bestStrat.name;
+
+                return (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className={`${s.color} font-medium flex items-center gap-1`}>
+                        {isBest && <span>★</span>}
+                        <span>{s.name}</span>
+                      </span>
+                      <span className="font-mono font-bold text-white">
+                        {s.val.toFixed(2)} pts
+                      </span>
+                    </div>
+                    <div className="h-4 bg-slate-900 rounded-lg overflow-hidden border border-slate-800 p-0.5">
+                      <div
+                        className={`h-full ${s.barColor} rounded transition-all duration-300`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-slate-800/70 border border-slate-700/80 text-[11px] text-slate-300 leading-relaxed">
+              🐛 <strong>Behavioral Threshold ($q^* = 33\%$):</strong> If you believe opponent pass probability is under 33%, backward induction dominates and taking at Node 1 yields higher expected value ($2.0$ pts). As soon as opponent trust exceeds $33\%$, passing to Node 3, 5, or Terminal strictly dominates, explaining why human players in lab experiments build massive cooperative gains!
             </div>
           </div>
         );

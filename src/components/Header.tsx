@@ -11,6 +11,11 @@ interface HeaderProps {
   onSelectWeek?: (gameId: number) => void;
   currentMode: 'solo' | 'live' | 'sandbox';
   onSelectMode: (mode: 'solo' | 'live' | 'sandbox') => void;
+  soloModuleId?: number;
+  soloNodeLabel?: string;
+  soloGameIndex?: number;
+  totalSoloGames?: number;
+  completedSoloGamesCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,7 +27,12 @@ export const Header: React.FC<HeaderProps> = ({
   allWeeks = [],
   onSelectWeek,
   currentMode,
-  onSelectMode
+  onSelectMode,
+  soloModuleId,
+  soloNodeLabel,
+  soloGameIndex,
+  totalSoloGames,
+  completedSoloGamesCount
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
@@ -34,14 +44,14 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 py-2 sm:py-2.5 flex flex-wrap md:flex-nowrap items-center justify-between gap-2 sm:gap-4">
         {/* Zone 1: Brand Wordmark */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white font-mono text-sm shadow-sm">
+          <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white font-mono text-sm shadow-sm shrink-0">
             Γ
           </div>
           <div>
-            <div className="text-sm sm:text-base font-bold tracking-tight text-white whitespace-nowrap leading-tight">
+            <div className="text-xs sm:text-base font-bold tracking-tight text-white whitespace-nowrap leading-tight">
               DOTE 3090 <span className="text-slate-400 font-normal hidden sm:inline">Game Theory Lab</span>
             </div>
             <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1.5">
@@ -49,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
               {currentWeek && currentMode === 'live' && (
                 <>
                   <span>·</span>
-                  <span className="text-amber-300 font-semibold truncate max-w-[130px] sm:max-w-none">
+                  <span className="text-amber-300 font-semibold truncate max-w-[110px] sm:max-w-none">
                     {currentWeek.icon} {currentWeek.shortTitle || currentWeek.title}
                   </span>
                 </>
@@ -59,11 +69,11 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zone 2: Primary Platform Mode Switcher */}
-        <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+        <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800 shrink-0">
           <button
             type="button"
             onClick={() => onSelectMode('solo')}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-[44px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               currentMode === 'solo'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -76,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => onSelectMode('live')}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-[44px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               currentMode === 'live'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -89,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => onSelectMode('sandbox')}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-[44px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               currentMode === 'sandbox'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -102,19 +112,19 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zone 3: Quick Game Picker (in Live mode) or Status & Sign-Out */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {currentMode === 'live' && onSelectWeek && allWeeks.length > 0 && (
             <div className="relative hidden md:block">
               <button
                 type="button"
                 onClick={() => setIsGameMenuOpen(prev => !prev)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 border border-slate-700 ${
+                className={`min-h-[44px] px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1 border border-slate-700 ${
                   isGameMenuOpen ? 'bg-slate-700 text-amber-300' : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}
                 title="Browse full classroom games catalog"
               >
                 <span>🎮 Games ({allWeeks.length})</span>
-                <span className="text-[9px]">▾</span>
+                <span className="text-[10px]">▾</span>
               </button>
             </div>
           )}
@@ -201,18 +211,39 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
 
           {isStudent && (
-            <span className="text-slate-400 font-mono text-[11px] bg-slate-800 px-2 py-1 rounded border border-slate-700 hidden sm:inline-block">
-              {completedRoundsCount}/{totalRounds} Rds
+            <span className="text-slate-400 font-mono text-[11px] bg-slate-800 px-2.5 py-1 rounded border border-slate-700 hidden sm:inline-block">
+              {currentMode === 'solo' ? (
+                <span className="text-sky-300 font-semibold flex items-center gap-1.5">
+                  <span>Game {soloGameIndex || 1} of {totalSoloGames || 12}</span>
+                  {soloModuleId === 20 ? (
+                    <>
+                      <span className="text-slate-500">·</span>
+                      <span className="text-amber-300 font-normal">
+                        {soloNodeLabel || '6-Node Chain (Player: 1, 3, 5 · Bot: 2, 4, 6)'}
+                      </span>
+                    </>
+                  ) : completedSoloGamesCount !== undefined && completedSoloGamesCount > 0 ? (
+                    <>
+                      <span className="text-slate-500">·</span>
+                      <span className="text-emerald-400 font-normal">{completedSoloGamesCount} of {totalSoloGames || 12} Done</span>
+                    </>
+                  ) : null}
+                </span>
+              ) : currentMode === 'sandbox' ? (
+                <span className="text-amber-300 font-semibold">What-If Curves Sandbox</span>
+              ) : (
+                `${completedRoundsCount}/${totalRounds} Rds`
+              )}
             </span>
           )}
         </div>
 
         {/* Zone 3: Profile & Sign-Out Actions */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {isStudent && (
             <button
               onClick={() => setIsProfileOpen(prev => !prev)}
-              className="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer"
+              className="min-h-[44px] text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center"
             >
               ID: {authSession.id || 'N/A'}
             </button>
@@ -220,7 +251,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={onSignOut}
-            className="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer flex items-center gap-1.5"
+            className="min-h-[44px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
             title="Leave session and return to sign-in portal"
           >
             <span className="hidden sm:inline">Exit /</span>
