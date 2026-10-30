@@ -6,6 +6,7 @@ import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave';
 import { getServerMatch } from '../utils/serverMatchmaking';
 import { drawValuation, resolveAuction, CompetitorBid } from '../utils/auctionEngine';
 import { generateRandomRoundData, generateFullFreshTrial } from '../utils/trialGenerator';
+import { safeStorage } from '../utils/safeStorage';
 
 interface StudentMobileViewProps {
   currentWeek: WeekConfig;
@@ -141,7 +142,7 @@ export const StudentMobileView: React.FC<StudentMobileViewProps> = ({
   // Direct persistence backup to localStorage
   const persistDirectlyToLocalStorage = (roundNum: number, data: RoundData) => {
     try {
-      const raw = localStorage.getItem('gameTheoryRounds');
+      const raw = safeStorage.getItem('gameTheoryRounds');
       const allRounds: RoundsState = raw ? JSON.parse(raw) : {};
       const weekData = allRounds[currentWeek.id] || {};
       allRounds[currentWeek.id] = {
@@ -151,20 +152,20 @@ export const StudentMobileView: React.FC<StudentMobileViewProps> = ({
           ...data
         }
       };
-      localStorage.setItem('gameTheoryRounds', JSON.stringify(allRounds));
-    } catch (e) {
-      console.error('Failed to persist draft to localStorage', e);
+      safeStorage.setItem('gameTheoryRounds', JSON.stringify(allRounds));
+    } catch {
+      // Safe fallback
     }
   };
 
   const persistReflectionDirectly = (text: string) => {
     try {
-      const raw = localStorage.getItem('gameTheoryReflections');
+      const raw = safeStorage.getItem('gameTheoryReflections');
       const allReflections: ReflectionsState = raw ? JSON.parse(raw) : {};
       allReflections[currentWeek.id] = text;
-      localStorage.setItem('gameTheoryReflections', JSON.stringify(allReflections));
-    } catch (e) {
-      console.error('Failed to persist reflection to localStorage', e);
+      safeStorage.setItem('gameTheoryReflections', JSON.stringify(allReflections));
+    } catch {
+      // Safe fallback
     }
   };
 
@@ -422,12 +423,12 @@ export const StudentMobileView: React.FC<StudentMobileViewProps> = ({
       onResetTrial();
     } else {
       try {
-        const raw = localStorage.getItem('gameTheoryRounds');
+        const raw = safeStorage.getItem('gameTheoryRounds');
         const allRounds: RoundsState = raw ? JSON.parse(raw) : {};
         delete allRounds[currentWeek.id];
-        localStorage.setItem('gameTheoryRounds', JSON.stringify(allRounds));
-      } catch (e) {
-        console.error(e);
+        safeStorage.setItem('gameTheoryRounds', JSON.stringify(allRounds));
+      } catch {
+        // Safe fallback
       }
       setActiveRoundNum(1);
     }
@@ -612,7 +613,7 @@ export const StudentMobileView: React.FC<StudentMobileViewProps> = ({
                 title="Generate fresh randomized sample data across all rounds"
               >
                 <span>⚡</span>
-                <span>Simulate 6 Rds</span>
+                <span>Simulate {totalRounds} Rds</span>
               </button>
               {completedRounds.length > 0 && (
                 <button

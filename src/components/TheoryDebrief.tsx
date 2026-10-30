@@ -1,6 +1,7 @@
 import React from 'react';
 import { BotArchetype, BOT_PROFILES, GameSpecificBot } from '../services/botEngine';
 import { MathFormula, FormattedMathText } from './MathFormula';
+import { GlossaryTerm, AnnotateGlossaryText } from './GlossaryTerm';
 
 export interface DebriefData {
   gameTitle: string;
@@ -26,6 +27,8 @@ export interface DebriefData {
     playerPayoff: number;
     botPayoff: number;
     botRationale: string;
+    playerValuation?: number;
+    botValuation?: number;
   }>;
 }
 
@@ -136,15 +139,15 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
       case 12:
         return {
           concept: "Public Goods Dilemma & Marginal Per-Capita Return (MPCR)",
-          formula: "\\text{MPCR} = \\frac{1.6}{4} = 0.4 < 1.0 \\quad (\\text{Nash} = 0, \\text{Social Optimum} = 20)",
+          formula: "\\text{MPCR} = \\frac{1.6}{2} = 0.8 < 1.0 \\quad (\\text{Nash} = 0, \\text{Social Optimum} = 20 \\text{ tokens} \\implies 32 \\text{ pts})",
           keyFinding:
             data.botArchetype === 'GREEDY'
-              ? "The Greedy Free-Rider contributed 0 tokens, pocketing their full private endowment while capturing 40% of your public contributions."
+              ? "The Greedy Free-Rider contributed 0 tokens, pocketing their full private endowment while capturing 80% dividends on your public contributions."
               : "When players reciprocate, public contributions multiply group welfare by 160%, achieving the Pareto-efficient cooperative frontier.",
           caseStudy: "Global Climate Treaties: Reducing carbon emissions benefits the entire global biosphere, but individual nations pay 100% of the abatement cost while receiving only a fraction of the climate dividend.",
           rulesSummary: [
-            "Individual Dominance: Since each token placed in public returns only $0.40, individual rationality dictates contributing 0.",
-            "Collective Tragedy: If everyone follows individual rationality, all earn $20. If everyone cooperates, all earn $32.",
+            "Individual Dominance: Since each token placed in public returns only 0.80 points to the contributor (1.6x / 2 players), individual rationality dictates contributing 0.",
+            "Collective Tragedy: If everyone follows individual rationality, all earn 20 points. If everyone cooperates, all earn 32 points.",
             "Conditional Cooperation: Human societies enforce contributions through peer punishment, social reputation, and transparent audits."
           ]
         };
@@ -220,18 +223,18 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
       case 19:
         return {
           concept: "Berg-Dickhaut-McCabe Trust & Behavioral Reciprocity",
-          formula: "\\text{SPNE: } X^* = 0, \\; Y^*(X) = 0 \\implies \\Pi_1 = 10, \\; \\Pi_2 = 0 \\quad (\\text{Social Max: } X = 10, \\; Y = 15)",
+          formula: "\\text{SPNE: } X^* = 0, \\; Y^*(X) = 0 \\implies \\Pi_1 = 10, \\; \\Pi_2 = 0 \\quad (\\text{Social Max: } X = 10, \\; Y = 15 \\implies \\Pi_1 = 15, \\; \\Pi_2 = 15)",
           keyFinding:
             data.botInfo?.id === 'gage_fair_reciprocator'
-              ? "Gage returned 50% of the tripled investment (1.5x), proving how mutual trust and reciprocity unlock the full 30-token social optimum."
+              ? "Gage returned 50% of the tripled investment (1.5x), proving how mutual trust and reciprocity unlock the full 30-token social optimum (15 pts each)."
               : data.botInfo?.id === 'silas_selfish_trustee'
               ? "Silas demonstrated textbook Homo Economicus: in single-shot backward induction, a selfish trustee returns $0, penalizing the vulnerable investor."
               : "Across thousands of laboratory trust experiments, humans send over 50% of their endowment, and trustees reciprocate enough to generate positive returns for both parties.",
           caseStudy: "Angel Venture Capital: Seed-stage startup investing is fundamentally a real-world Trust Game. Angels wire millions of dollars to founders before product-market fit; high social trust and reputational reciprocity enable startup innovation.",
           rulesSummary: [
-            "Backward Induction Failure: Selfish rationality predicts zero trust (X = 0), trapping society in a zero-growth safe state (10 pts).",
-            "Trust as Capital Multiplier: Entrusting funds triples wealth (3x), creating 20 points of brand-new economic surplus.",
-            "Reciprocal Norms: Human trustworthiness is sustained by fairness norms, guilt aversion, and reciprocal goodwill."
+            "Backward Induction (SPNE): Selfish rationality predicts zero trust (X = 0), leaving the investor with 10 pts and trustee with 0 pts (total joint payoff 10 pts).",
+            "Social Maximum: Sending all 10 pts triples capital to 30 pts (total joint payoff 30 pts); with a fair 50/50 return, both players receive 15 pts each.",
+            "Reciprocal Norms: Real markets and laboratory interactions rely on social trust, guilt aversion, and mutual fairness to overcome the zero-trust trap."
           ]
         };
       case 20:
@@ -266,6 +269,319 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
   };
 
   const insights = getGameTheoryInsights();
+
+  const getWholeMatchFrequencies = () => {
+    const rounds = data.roundsSummary || [];
+    const count = rounds.length || 1;
+    const pScore = data.playerTotalScore ?? 0;
+    const bScore = data.botTotalScore ?? 0;
+    let equilibriumBenchmark = "";
+    let studentFrequencies = "";
+    let gapSentence = "";
+
+    const getScoreCmp = (p: number, b: number, isDollar: boolean = false) => {
+      const pStr = isDollar ? `$${Number(p.toFixed(2))}` : `${p}`;
+      const bStr = isDollar ? `$${Number(b.toFixed(2))}` : `${b}`;
+      if (p > b) {
+        return `You outscored the bot ${pStr} to ${bStr}`;
+      } else if (b > p) {
+        return `The bot outscored you ${bStr} to ${pStr}`;
+      } else {
+        return `You tied with the bot ${pStr} to ${bStr}`;
+      }
+    };
+
+    switch (data.gameId) {
+      case 1:
+      case 6: {
+        const coop = rounds.filter(r => r.playerAction === 'Cooperate').length;
+        const defect = count - coop;
+        const pct = Math.round((coop / count) * 100);
+        const scoreCmp = getScoreCmp(pScore, bScore, true);
+        equilibriumBenchmark = `100% Defection / 0% Cooperate · SPNE Defection: $1.00/round each ($${(count * 1).toFixed(2)} each over ${count} rounds) vs Pareto Optimum: $2.00/round each ($${(count * 2).toFixed(2)} each over ${count} rounds)`;
+        studentFrequencies = `${coop}/${count} Cooperate (${pct}%) · ${defect}/${count} Defect (${100 - pct}%)`;
+        if (pct <= 15) {
+          gapSentence = pScore <= bScore
+            ? `Close to equilibrium: ${scoreCmp}. You defected in ${100 - pct}% of rounds (cooperated in only ${pct}%), adhering closely to the SPNE dominant strategy, though mutual defection locked both of you into the low-payoff trap ($1.00/rd).`
+            : `Close to equilibrium: ${scoreCmp}. You defected in ${100 - pct}% of rounds, following dominant strategy defection and capitalizing on ${botProfile.name}'s cooperative openings.`;
+        } else if (pct <= 49) {
+          gapSentence = pScore < bScore
+            ? `Noticeable deviation: ${scoreCmp}. You cooperated in ${pct}% of rounds, but unilateral cooperative gestures were repeatedly exploited by defection.`
+            : `Noticeable deviation: ${scoreCmp}. You cooperated in ${pct}% of rounds, earning points through selective reciprocity while avoiding prolonged defection feuds.`;
+        } else {
+          gapSentence = pScore < bScore
+            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You attempted high cooperation (${pct}% Cooperate), but ${botProfile.name} defected unsparingly against your goodwill.`
+            : `Productive deviation from theory: ${scoreCmp}. By choosing Cooperate in ${pct}% of rounds rather than the 100% Defect SPNE prediction, you cultivated mutual reciprocity with ${botProfile.name}, generating mutual payoffs that substantially Pareto-dominated the SPNE defection trap.`;
+        }
+        break;
+      }
+      case 13: {
+        const stag = rounds.filter(r => r.playerAction === 'Stag').length;
+        const hare = count - stag;
+        const pct = Math.round((stag / count) * 100);
+        const scoreCmp = getScoreCmp(pScore, bScore);
+        equilibriumBenchmark = `Payoff-Dominant Nash: +10 pts/round each (${count * 10} pts over ${count} rounds) · Risk-Dominant Nash: +4 pts/round each (${count * 4} pts over ${count} rounds)`;
+        studentFrequencies = `${stag}/${count} Stag (${pct}%) · ${hare}/${count} Hare (${100 - pct}%)`;
+        if (pct >= 80) {
+          gapSentence = pScore < bScore
+            ? `Close to equilibrium: ${scoreCmp}. You committed to the payoff-dominant Stag equilibrium in ${pct}% of rounds, but suffered miscoordination penalties when ${botProfile.name} retreated to safe Hare.`
+            : `Close to equilibrium: ${scoreCmp}. You committed firmly to the payoff-dominant Stag equilibrium in ${pct}% of rounds, helped by mutual assurance and coordinated trust with ${botProfile.name}.`;
+        } else if (pct <= 20) {
+          gapSentence = pScore >= bScore
+            ? `Close to equilibrium: ${scoreCmp}. You hunted safe Hare in ${100 - pct}% of rounds, adhering strictly to the risk-dominant safe Nash equilibrium (+4 pts/rd) to eliminate all vulnerability to betrayal.`
+            : `Close to equilibrium: ${scoreCmp}. You locked into the risk-dominant Hare strategy (${100 - pct}%), securing safety but falling behind as ${botProfile.name} captured higher Stag returns.`;
+        } else if (pct >= 35 && pct <= 65) {
+          gapSentence = `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You split choices across Stag (${pct}%) and Hare (${100 - pct}%), as strategic hesitation and mutual miscoordination caused both players to oscillate between ambition and fear.`;
+        } else {
+          gapSentence = pScore >= bScore
+            ? `Noticeable deviation: ${scoreCmp}. You chose Stag in ${pct}% of rounds, adapting effectively by hunting Stag when assurance was present and retreating to Hare when trust faltered.`
+            : `Noticeable deviation: ${scoreCmp}. You chose Stag in ${pct}% of rounds, but uncoordinated switches caused you to waste turns hunting Stag alone.`;
+        }
+        break;
+      }
+      case 14: {
+        const prices = rounds.map(r => Number(r.playerAction) || 0);
+        const avg = Math.round(prices.reduce((a, b) => a + b, 0) / count);
+        const undercut = rounds.filter(r => Number(r.playerAction) < Number(r.botAction)).length;
+        const scoreCmp = getScoreCmp(pScore, bScore, true);
+        equilibriumBenchmark = `Bertrand Nash: $0 profit/round ($0 over ${count} rounds at P = MC = $10.00) · Monopoly Collusion ($40): $450 profit/round each ($${count * 450} each over ${count} rounds)`;
+        studentFrequencies = `Average Price: $${avg}.00 · ${undercut}/${count} Undercut Wins`;
+        if (avg <= 13) {
+          gapSentence = pScore < bScore
+            ? `Close to equilibrium: ${scoreCmp}. Your average price of $${avg}.00 was near marginal cost ($10), but ${botProfile.name} underpriced you on key rounds to capture all market demand.`
+            : `Close to equilibrium: ${scoreCmp}. Your average price of $${avg}.00 was within $${avg - 10} of marginal cost ($10), reproducing the zero-profit Bertrand paradox where competitive undercutting wipes out economic margins.`;
+        } else if (avg <= 26) {
+          gapSentence = pScore < bScore
+            ? `Noticeable deviation: ${scoreCmp}. Your average price of $${avg}.00 was midway between cost and monopoly, but ${botProfile.name} timed aggressive undercuts whenever you posted higher margins.`
+            : `Noticeable deviation: ${scoreCmp}. Your average price of $${avg}.00 hovered midway between marginal cost ($10) and monopoly ($40), balancing price margins against market share capture.`;
+        } else {
+          gapSentence = pScore < bScore
+            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You attempted high collusive pricing ($${avg}.00 avg), but ${botProfile.name} undercut the cartel consistently to capture all demand.`
+            : `Productive deviation from theory: ${scoreCmp}. Your average price of $${avg}.00 stood $${avg - 10} above marginal cost, demonstrating tacit collusion that generated joint profit while avoiding the cutthroat Bertrand trap.`;
+        }
+        break;
+      }
+      case 7: {
+        const truthful = rounds.filter(r => Math.abs(Number(r.playerAction) - (r.playerValuation || 0)) < 0.01).length;
+        const overbid = rounds.filter(r => Number(r.playerAction) > (r.playerValuation || 0) + 0.01).length;
+        const underbid = rounds.filter(r => Number(r.playerAction) < (r.playerValuation || 0) - 0.01).length;
+        const pct = Math.round((truthful / count) * 100);
+        const scoreCmp = getScoreCmp(pScore, bScore, true);
+        equilibriumBenchmark = `Weakly Dominant Strategy: 100% Truthful Bidding (Bid = Exact Valuation b = v across all ${count} auctions)`;
+        studentFrequencies = `${truthful}/${count} Truthful Bids (${pct}%) · ${overbid} Overbids · ${underbid} Underbids`;
+        if (pct >= 85) {
+          gapSentence = pScore >= bScore
+            ? `Close to equilibrium: ${scoreCmp}. You played the weakly dominant strategy of truthful bidding (b = v) in ${pct}% of auctions, letting the second-price clearing mechanism protect your profit margins.`
+            : `Close to equilibrium: ${scoreCmp}. You bid truthfully in ${pct}% of rounds, following dominant strategy theory; although ${botProfile.name} realized higher valuation draws, your truthful discipline guaranteed you never suffered the Winner's Curse.`;
+        } else if (pct >= 50) {
+          gapSentence = pScore < bScore
+            ? `Noticeable deviation: ${scoreCmp}. You bid truthfully in ${pct}% of rounds but deviated in others (${overbid} overbids, ${underbid} underbids), eroding your margins.`
+            : `Noticeable deviation: ${scoreCmp}. You bid truthfully in ${pct}% of rounds with occasional deviations, winning key auctions without severe winner's curse penalties.`;
+        } else {
+          gapSentence = pScore < bScore
+            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You deviated from your valuation in ${count - truthful}/${count} auctions (${overbid > underbid ? 'frequently overbidding due to competitive fever' : 'underbidding and forfeiting profitable lots'}), falling behind due to distorted first-price bidding habits.`
+            : `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You deviated in ${count - truthful}/${count} auctions, yet finished ahead due to favorable valuation spreads, though dominant strategy theory confirms truthful bidding maximizes expected profits.`;
+        }
+        break;
+      }
+      case 11: {
+        const guesses = rounds.map(r => Number(r.playerAction) || 0);
+        const avg = Math.round(guesses.reduce((a, b) => a + b, 0) / count);
+        const scoreCmp = getScoreCmp(pScore, bScore);
+        equilibriumBenchmark = `Guess = 0 (Unique Nash: 5 pts/round each on tie, ${count * 5} pts over ${count} rounds; L0 ~50, L1 ~33, L2 ~22)`;
+        studentFrequencies = `Average Guess: ${avg} (Iterated Benchmarks: L0 ~50, L1 ~33, L2 ~22, Nash: 0)`;
+        if (avg <= 10) {
+          gapSentence = pScore < bScore
+            ? `Close to equilibrium: ${scoreCmp}. Although your average guess of ${avg} approached the mathematical Nash equilibrium (0), competitors only reason 1–2 steps ahead (~22 to ~33), meaning pure game theory overshot human opponents.`
+            : `Close to equilibrium: ${scoreCmp}. Your average guess of ${avg} approached the theoretical Nash equilibrium of 0, successfully winning contests as the field iterated downward.`;
+        } else if (avg <= 35) {
+          gapSentence = pScore >= bScore
+            ? `Noticeable deviation: ${scoreCmp}. Your average guess of ${avg} departed from mathematical equilibrium (0) but won contests because targeting Level-1 (~33) or Level-2 (~22) accurately anticipates human bounded rationality.`
+            : `Noticeable deviation: ${scoreCmp}. Your average guess of ${avg} targeted intermediate cognitive depth, but ${botProfile.name} anticipated the group average more accurately.`;
+        } else {
+          gapSentence = pScore < bScore
+            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. Your average guess of ${avg} anchored near the intuitive midpoint (~50), falling behind because you did not apply iterative 2/3 elimination.`
+            : `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. Your average guess of ${avg} anchored near the intuitive center (~50), winning rounds only because your opponents also exhibited Level-0 heuristics.`;
+        }
+        break;
+      }
+      case 12: {
+        const contribs = rounds.map(r => Number(r.playerAction) || 0);
+        const avg = Math.round((contribs.reduce((a, b) => a + b, 0) / count) * 10) / 10;
+        const pct = Math.round((avg / 20) * 100);
+        const scoreCmp = getScoreCmp(pScore, bScore);
+        equilibriumBenchmark = `Nash Trap: 20 pts/round each (${count * 20} pts over ${count} rounds) · Social Optimum: 32 pts/round each (${count * 32} pts over ${count} rounds)`;
+        studentFrequencies = `Average Contribution: ${avg}/20 Tokens (${pct}% Giving Rate)`;
+        if (pct <= 15) {
+          gapSentence = pScore >= bScore
+            ? `Close to equilibrium: ${scoreCmp}. You contributed only ${avg}/20 tokens (${pct}%), adhering closely to the free-riding dominant strategy and keeping your private endowment safe while collecting pool dividends.`
+            : `Close to equilibrium: ${scoreCmp}. You contributed only ${avg}/20 tokens (${pct}%), adhering to the dominant free-riding strategy, but mutual low contributions trapped both players at low scores.`;
+        } else if (pct <= 45) {
+          gapSentence = pScore < bScore
+            ? `Noticeable deviation: ${scoreCmp}. You contributed an average of ${avg}/20 tokens (${pct}%), but ${botProfile.name} free-rode on your public funding. Many people are conditional cooperators who are willing to contribute if others do, but cooperation tends to collapse when free-riders go unpunished.`
+            : `Noticeable deviation: ${scoreCmp}. You contributed an average of ${avg}/20 tokens (${pct}%), balancing prosocial public investment with defensive self-preservation.`;
+        } else {
+          gapSentence = pScore < bScore
+            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You contributed generously (${pct}% of endowment), but suffered free-rider exploitation as ${botProfile.name} contributed less. Many people are conditional cooperators who are willing to contribute if others do, but cooperation tends to collapse when free-riders go unpunished.`
+            : `Productive deviation from theory: ${scoreCmp}. By contributing ${pct}% of your endowment (${avg}/20 tokens) rather than the 0-token dominant strategy, you unlocked mutual wealth multiplication through reciprocal collective investment.`;
+        }
+        break;
+      }
+      case 15: {
+        const hawk = rounds.filter(r => r.playerAction === 'Hawk').length;
+        const dove = count - hawk;
+        const pct = Math.round((hawk / count) * 100);
+        const crashes = rounds.filter(r => r.playerAction === 'Hawk' && r.botAction === 'Hawk').length;
+        const hawkEssGap = Math.abs(pct - 23);
+        const scoreCmp = getScoreCmp(pScore, bScore);
+        equilibriumBenchmark = `Per round: Peaceful Sharing (Dove, Dove) = +3 pts/rd each · Exploit (Hawk, Dove) = +6 pts/rd vs 0 · Collision = -10 pts/rd each [Over ${count} rounds: Dove/Dove = +${count * 3} each · Mixed ESS = ~${(count * 2.3).toFixed(1)} each]`;
+        studentFrequencies = `${hawk}/${count} Hawk (${pct}%) · ${dove}/${count} Dove (${100 - pct}%) · ${crashes} Fight${crashes === 1 ? '' : 's'}`;
+        if (hawkEssGap <= 8) {
+          gapSentence = pScore < bScore
+            ? `Close to equilibrium: ${scoreCmp}. Although your overall mix was near the 23% ESS benchmark (${pct}% Hawk), the ORDER of your choices was predictable, resulting in ${crashes} mutual fight${crashes === 1 ? '' : 's'} (-10 pts each); a true mixed strategy must also be unpredictable round to round to prevent an opponent from anticipating your aggression.`
+            : `Close to equilibrium: ${scoreCmp}. You chose Hawk in ${pct}% of rounds (within ${hawkEssGap}% of the 23% mixed ESS benchmark), using randomized deterrence effectively to secure resources with no costly Hawk-Hawk fights.`;
+        } else if (hawkEssGap <= 25) {
+          gapSentence = pScore < bScore
+            ? pct < 23
+              ? `Noticeable deviation: ${scoreCmp}. You played Hawk in only ${pct}% of rounds (yielding too frequently compared to the 23% ESS mix); always yielding gets exploited by an aggressive bot, surrendering territory without contesting it despite having ${crashes > 0 ? `${crashes} costly fight${crashes === 1 ? '' : 's'}` : 'no costly Hawk-Hawk fights'}.`
+              : `Noticeable deviation: ${scoreCmp}. You played Hawk in ${pct}% of rounds (exceeding the 23% ESS mix); aggressive over-escalation triggered ${crashes} costly Hawk-Hawk fight${crashes === 1 ? '' : 's'} (-10 pts each), dragging down your score.`
+            : `Noticeable deviation: ${scoreCmp}. You played Hawk in ${pct}% of rounds (a ${hawkEssGap}% gap from 23% ESS), staying ahead by timing your aggressive claims when ${botProfile.name} yielded, with no costly Hawk-Hawk fights.`;
+        } else {
+          gapSentence = pScore < bScore
+            ? pct < 23
+              ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You played Hawk in only ${pct}% of rounds; always yielding gets exploited by an aggressive bot, handing 6 points per round to ${botProfile.name} while earning 0, even with no costly Hawk-Hawk fights.`
+              : `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You played Hawk in ${pct}% of rounds; stubborn aggression against an unyielding opponent resulted in ${crashes} devastating Hawk-Hawk fight${crashes === 1 ? '' : 's'} (-10 pts each), turning competition into mutual destruction.`
+            : `Productive deviation from theory: ${scoreCmp}. You played Hawk in ${pct}% of rounds, departing widely from the 23% ESS baseline, yet forced concessions from ${botProfile.name} while avoiding costly Hawk-Hawk fights.`;
+        }
+        break;
+      }
+      case 9:
+      case 16: {
+        const offers = rounds.map(r => Number(r.playerAction) || 0);
+        const avg = Math.round((offers.reduce((a, b) => a + b, 0) / count) * 10) / 10;
+        const accepted = rounds.filter(r => r.botAction === 'Accept').length;
+        const pct = Math.round((avg / 10) * 100);
+        const scoreCmp = getScoreCmp(pScore, bScore, true);
+        equilibriumBenchmark = `SPNE: Proposer $9.00/round ($${(count * 9).toFixed(2)} over ${count} rounds) · Responder $1.00/round ($${(count * 1).toFixed(2)} over ${count} rounds)`;
+        studentFrequencies = `Average Offer: $${avg.toFixed(2)} of $10.00 (${pct}% Share) · ${accepted}/${count} Accepted`;
+        if (avg <= 1.50) {
+          gapSentence = pScore < bScore || accepted < count
+            ? `Close to equilibrium: ${scoreCmp}. Your average offer of $${avg.toFixed(2)} adhered strictly to the 10% SPNE prediction ($1.00), but ${botProfile.name} vetoed low-ball offers to $0 to punish perceived greed.`
+            : `Close to equilibrium: ${scoreCmp}. Your average offer of $${avg.toFixed(2)} adhered closely to the 10% SPNE prediction ($1.00), helped by finding a rational partner who accepted positive crumbs.`;
+        } else if (avg <= 3.20) {
+          gapSentence = pScore < bScore || accepted < count
+            ? `Noticeable deviation: ${scoreCmp}. Your average offer of $${avg.toFixed(2)} (${pct}%) fell into the 20–30% danger zone, where rejections destroyed surplus.`
+            : `Noticeable deviation: ${scoreCmp}. Your average offer of $${avg.toFixed(2)} (${pct}%) earned points by probing the boundary of acceptable bargaining concessions.`;
+        } else {
+          gapSentence = pScore >= bScore * 0.8
+            ? `Productive deviation from theory: ${scoreCmp}. Your average offer of $${avg.toFixed(2)} (${pct}%) departed substantially from the selfish $1 SPNE prediction to satisfy social fairness norms, securing agreement in ${accepted}/${count} matches and avoiding costly vetoes.`
+            : `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. Offering $${avg.toFixed(2)} (${pct}%) ensured guaranteed agreement, though high generosity conceded the majority of the surplus to your partner.`;
+        }
+        break;
+      }
+      case 17: {
+        const heads = rounds.filter(r => r.playerAction === 'Heads').length;
+        const tails = count - heads;
+        const pct = Math.round((heads / count) * 100);
+        const wins = rounds.filter(r => r.playerAction === r.botAction).length;
+        const penniesGap = Math.abs(pct - 50);
+        const scoreCmp = getScoreCmp(pScore, bScore);
+        equilibriumBenchmark = `Minimax EV: 1.0 pt/round each (${(count * 1.0).toFixed(1)} pts over ${count} rounds) · Stake per round: +2 pts for winner, 0 for loser (p = 0.50 mix)`;
+        studentFrequencies = `${heads}/${count} Heads (${pct}%) · ${tails}/${count} Tails (${100 - pct}%) · Matched ${wins}/${count} (${Math.round((wins / count) * 100)}% Win Rate)`;
+        if (penniesGap <= 6) {
+          gapSentence = pScore < bScore
+            ? `Close to equilibrium: ${scoreCmp}. Although your overall choice mix was near theoretical 50/50 (${pct}% Heads / ${100 - pct}% Tails), the ORDER of your choices was predictable, allowing ${botProfile.name} to anticipate your sequence; a true mixed strategy must also be unpredictable round to round, not just 50/50 in aggregate.`
+            : `Close to equilibrium: ${scoreCmp}. Your choice frequency was ${pct}% Heads and ${100 - pct}% Tails (within ${penniesGap}% of theoretical 50/50), maintaining true round-to-round unpredictability that prevented pattern exploitation and protected your expected payoff.`;
+        } else if (penniesGap <= 18) {
+          gapSentence = pScore < bScore
+            ? `Noticeable deviation: ${scoreCmp}. Your choice frequency was ${pct}% Heads and ${100 - pct}% Tails (a ${penniesGap}% gap from 50/50), and the ORDER of your choices looked predictable to ${botProfile.name}; a true mixed strategy must also be unpredictable round to round, in addition to maintaining a 50/50 frequency balance.`
+            : `Noticeable deviation: ${scoreCmp}. Your choice frequency tilted slightly to ${pct}% Heads (a ${penniesGap}% gap from 50/50), yet you outscored ${botProfile.name} by timing your coin shifts effectively.`;
+        } else {
+          gapSentence = pScore < bScore
+            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. Your choices tilted heavily to ${pct >= 50 ? `${pct}% Heads` : `${100 - pct}% Tails`} (a large ${penniesGap}% gap from 50/50), and the ORDER of your choices looked predictable, allowing ${botProfile.name} to anticipate your habits; a true mixed strategy must be unpredictable round to round, not anchored to recognizable patterns.`
+            : `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You heavily favored ${pct >= 50 ? 'Heads' : 'Tails'} (${pct >= 50 ? pct : 100 - pct}%), yet stayed ahead because your opponent failed to counter your directional anchor quickly enough.`;
+        }
+        break;
+      }
+      case 18: {
+        const opera = rounds.filter(r => r.playerAction === 'Opera').length;
+        const football = count - opera;
+        const pct = Math.round((opera / count) * 100);
+        const coords = rounds.filter(r => (r.playerAction === 'Opera' && r.botAction === 'Opera') || (r.playerAction === 'Football' && r.botAction === 'Football')).length;
+        const scoreCmp = getScoreCmp(pScore, bScore);
+        equilibriumBenchmark = `Coordinated Payoffs: +3 or +2 pts/round (+${count * 3} or +${count * 2} pts over ${count} rounds) · Miscoordination: 0 pts/round (0 pts over ${count} rounds)`;
+        studentFrequencies = `${opera}/${count} Opera (${pct}%) · ${football}/${count} Football (${100 - pct}%) · Coordinated: ${coords}/${count}`;
+        if (coords >= Math.round(count * 0.7) || pct === 100 || pct === 0) {
+          gapSentence = pScore < bScore
+            ? `Close to equilibrium: ${scoreCmp}. Although you coordinated in ${coords}/${count} rounds, you repeatedly conceded to the bot's preferred venue rather than alternating turns fairly.`
+            : (40 <= pct && pct <= 60)
+            ? `Close to equilibrium: ${scoreCmp}. You coordinated across rounds with an even ${pct}% Opera / ${100 - pct}% Football split, establishing an egalitarian turn-taking convention that maximized joint welfare.`
+            : `Close to equilibrium: ${scoreCmp}. You coordinated successfully in ${coords}/${count} rounds, asserting preference priority to lead scoring.`;
+        } else if (coords >= Math.round(count * 0.4)) {
+          gapSentence = pScore < bScore
+            ? `Noticeable deviation: ${scoreCmp}. You coordinated in ${coords}/${count} rounds, but miscoordination clashes reduced your score as neither player established a clear convention.`
+            : `Noticeable deviation: ${scoreCmp}. You coordinated in ${coords}/${count} rounds, capturing surplus by asserting your preferred venue whenever coordination succeeded.`;
+        } else {
+          gapSentence = `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. Miscoordination destroyed surplus in ${count - coords}/${count} rounds because both players stubbornly insisted on their own favorite event, collapsing payoffs to zero.`;
+        }
+        break;
+      }
+      case 19: {
+        const invs = rounds.map(r => Number(r.playerAction) || 0);
+        const avg = Math.round((invs.reduce((a, b) => a + b, 0) / count) * 10) / 10;
+        const pct = Math.round((avg / 10) * 100);
+        const scoreCmp = getScoreCmp(pScore, bScore);
+        equilibriumBenchmark = `SPNE: Investor keeps 10 pts/round, Trustee gets 0 (${count * 10} vs 0 over ${count} rounds) · Social Maximum: 15 pts each/round for fair 50/50 return (${count * 15} pts each over ${count} rounds; 30 pts/round joint total)`;
+        studentFrequencies = `Average Transfer: ${avg}/10 pts (${pct}% Trust Rate)`;
+        if (pct <= 15) {
+          gapSentence = pScore >= bScore
+            ? `Close to equilibrium: ${scoreCmp}. You transferred only ${avg}/10 pts (${pct}% trust rate), strictly adhering to the 0-point SPNE baseline and protecting your endowment from trustee moral hazard.`
+            : `Close to equilibrium: ${scoreCmp}. You transferred only ${avg}/10 pts (${pct}% trust rate), adhering to SPNE backward induction; you kept your capital safe, but missed out on the 3x surplus growth available through mutual trust.`;
+        } else if (pct <= 45) {
+          gapSentence = pScore < bScore
+            ? `Noticeable deviation: ${scoreCmp}. You entrusted an average of ${avg}/10 pts (${pct}%), but earned less because the trustee returned too little surplus.`
+            : `Noticeable deviation: ${scoreCmp}. You entrusted an average of ${avg}/10 pts (${pct}%), earning points by prudently probing ${botProfile.name}'s trustworthiness.`;
+        } else {
+          gapSentence = pScore < bScore && pScore <= count * 10
+            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You placed high trust in ${botProfile.name} by transferring ${pct}% of your endowment, but suffered losses because your partner exploited your vulnerability and kept the tripled wealth.`
+            : `Productive deviation from theory: ${scoreCmp}. By entrusting ${pct}% of your capital (${avg}/10 pts) instead of the 0-point SPNE prediction, you unlocked reciprocal wealth multiplication to generate high mutual returns with ${botProfile.name}.`;
+        }
+        break;
+      }
+      case 20: {
+        const n1Takes = rounds.filter(r => String(r.playerAction).includes('Node 1')).length;
+        const passedN1 = count - n1Takes;
+        const pct = Math.round((passedN1 / count) * 100);
+        const scoreCmp = getScoreCmp(pScore, bScore);
+        equilibriumBenchmark = `SPNE Defection: +2 pts/chain for you, 0 for bot (${count * 2} vs 0 over ${count} chains) · Social Optimum: +8 pts each/chain (${count * 8} pts each over ${count} chains)`;
+        studentFrequencies = `${n1Takes}/${count} Node 1 Takes · ${passedN1}/${count} Chains Passed Beyond Node 1 (${pct}% Passing Rate)`;
+        if (pct <= 15) {
+          gapSentence = pScore >= bScore
+            ? `Close to equilibrium: ${scoreCmp}. You took at Node 1 in ${n1Takes}/${count} chains (${100 - pct}% immediate defection), adhering to SPNE backward induction and securing +2 pts while giving the bot 0.`
+            : `Close to equilibrium: ${scoreCmp}. You followed backward induction by taking at Node 1, guaranteeing +2 pts per chain but leaving the 16-point cooperative jackpot unclaimed.`;
+        } else if (pct <= 50) {
+          gapSentence = pScore < bScore
+            ? `Noticeable deviation: ${scoreCmp}. You passed beyond Node 1 in ${pct}% of chains, but ${botProfile.name} took early at intermediate nodes, leaving you with lower payoffs.`
+            : `Noticeable deviation: ${scoreCmp}. You passed beyond Node 1 in ${pct}% of chains, timing your exits to claim larger shares before the bot could defect.`;
+        } else {
+          gapSentence = pScore < bScore && pScore <= count * 2
+            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You consistently passed to grow the collective pot (${pct}% passing rate), but earned less because the bot defected ahead of you at advanced nodes.`
+            : `Productive deviation from theory: ${scoreCmp}. You passed beyond Node 1 in ${pct}% of chains, directly defying the cold backward induction prediction to build sequential reciprocal wealth with ${botProfile.name}.`;
+        }
+        break;
+      }
+      default: {
+        equilibriumBenchmark = "Symmetric Nash Equilibrium Best Response Profile";
+        studentFrequencies = `${count} Decision Rounds Completed`;
+        gapSentence = "Strategic alignment of mutual actions determined comparative performance against theoretical benchmark.";
+        break;
+      }
+    }
+
+    return { equilibriumBenchmark, studentFrequencies, gapSentence };
+  };
+
+  const wholeMatchStats = getWholeMatchFrequencies();
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-2 text-slate-100 font-sans">
@@ -315,7 +631,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
             {data.playerTotalScore} <span className="text-xs font-normal text-slate-400">pts</span>
           </div>
           <div className="text-[11px] text-blue-400 font-semibold mt-1">
-            {efficiency}% of Pareto Optimum
+            {efficiency}% of <GlossaryTerm term="pareto-efficiency">Pareto Optimum</GlossaryTerm>
           </div>
         </div>
 
@@ -330,7 +646,9 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         </div>
 
         <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nash Benchmark</div>
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <GlossaryTerm term="nash-equilibrium">Nash Benchmark</GlossaryTerm>
+          </div>
           <div className="text-2xl font-black text-amber-400 font-mono tabular-nums mt-1">
             {data.nashBenchmarkScore} <span className="text-xs font-normal text-slate-400">pts</span>
           </div>
@@ -340,13 +658,56 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         </div>
 
         <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Social Optimum (Pareto)</div>
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <GlossaryTerm term="social-optimum">Social Optimum</GlossaryTerm> (<GlossaryTerm term="pareto-efficiency">Pareto</GlossaryTerm>)
+          </div>
           <div className="text-2xl font-black text-emerald-400 font-mono tabular-nums mt-1">
             {data.paretoOptimumScore} <span className="text-xs font-normal text-slate-400">pts</span>
           </div>
           <div className="text-[11px] text-emerald-500 font-semibold mt-1">
             Maximum Group Welfare
           </div>
+        </div>
+      </div>
+
+      {/* Whole Match Choice Frequencies & Theoretical Equilibrium Comparison */}
+      <div className="bg-slate-950/80 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-800/80 pb-2">
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>⚖️ Whole Match Decisions vs. Equilibrium Prediction</span>
+            <span className="text-slate-600">·</span>
+            <span className="text-blue-400 font-mono">{(data.roundsSummary || []).length} Rounds Analyzed</span>
+          </div>
+          <div className="text-xs font-mono font-bold text-slate-300">
+            Total Points: <strong className="text-emerald-400">You: {data.playerTotalScore}</strong> vs <strong className={botProfile.color}>{botProfile.name}: {data.botTotalScore}</strong>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="bg-slate-900/90 p-3 sm:p-3.5 rounded-xl border border-rose-900/50 space-y-1.5">
+            <div className="text-[10px] font-bold text-rose-400 uppercase tracking-wider flex items-center justify-between">
+              <span><GlossaryTerm term="nash-equilibrium">Equilibrium Prediction Benchmark</GlossaryTerm></span>
+              <span className="font-mono text-rose-300">Theory</span>
+            </div>
+            <div className="text-xs sm:text-sm font-black text-white font-mono leading-snug">
+              <AnnotateGlossaryText text={wholeMatchStats.equilibriumBenchmark} />
+            </div>
+          </div>
+
+          <div className="bg-slate-900/90 p-3 sm:p-3.5 rounded-xl border border-emerald-900/50 space-y-1.5">
+            <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+              <span>Your Actual Choice Frequencies</span>
+              <span className="font-mono text-emerald-300">{(data.roundsSummary || []).length} Rds Played</span>
+            </div>
+            <div className="text-xs sm:text-sm font-black text-white font-mono leading-snug">
+              {wholeMatchStats.studentFrequencies}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border border-blue-900/50 text-xs sm:text-sm text-slate-200 leading-relaxed">
+          <strong className="text-sky-300 font-semibold block sm:inline mb-1 sm:mb-0">Gap Interpretation: </strong>
+          <span><AnnotateGlossaryText text={wholeMatchStats.gapSentence} /></span>
         </div>
       </div>
 
@@ -374,9 +735,9 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
               </div>
               <div className="text-xs font-mono font-bold">
                 {diffFromNash >= 0 ? (
-                  <span className="text-emerald-400">▲ +${diffFromNash} above Nash Equilibrium</span>
+                  <span className="text-emerald-400">▲ +${diffFromNash} above <GlossaryTerm term="nash-equilibrium">Nash Equilibrium</GlossaryTerm></span>
                 ) : (
-                  <span className="text-rose-400">▼ -${Math.abs(diffFromNash)} below Nash Equilibrium</span>
+                  <span className="text-rose-400">▼ -${Math.abs(diffFromNash)} below <GlossaryTerm term="nash-equilibrium">Nash Equilibrium</GlossaryTerm></span>
                 )}
               </div>
             </div>
@@ -425,7 +786,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-amber-400 font-semibold flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-                    <span>Nash Equilibrium Benchmark (Rational Self-Interest)</span>
+                    <span><GlossaryTerm term="nash-equilibrium">Nash Equilibrium Benchmark</GlossaryTerm> (Rational Self-Interest)</span>
                   </span>
                   <span className="font-mono font-bold text-amber-400">
                     ${data.nashBenchmarkScore} pts
@@ -444,7 +805,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                    <span>Pareto Social Optimum (Max Group Efficiency)</span>
+                    <span><GlossaryTerm term="pareto-efficiency">Pareto Social Optimum</GlossaryTerm> (Max Group Efficiency)</span>
                   </span>
                   <span className="font-mono font-bold text-emerald-400">
                     ${data.paretoOptimumScore} pts
@@ -469,7 +830,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
             <div className="text-[10px] font-mono text-blue-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
               <span>📚 Formal Theory Model</span>
               <span className="text-slate-600">·</span>
-              <span>{insights.concept}</span>
+              <span><AnnotateGlossaryText text={insights.concept} /></span>
             </div>
             <h3 className="text-base sm:text-lg font-black text-white mt-0.5 tracking-tight">
               Theoretical Foundation & Equilibrium Dynamics

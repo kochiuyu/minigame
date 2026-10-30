@@ -7,6 +7,7 @@ import { SoloLabView } from './components/SoloLabView';
 import { WhatIfSandbox } from './components/WhatIfSandbox';
 import { WEEKS } from './data/weeks';
 import { StudentInfo, RoundsState, ReflectionsState, RoundData, AuthSession } from './types';
+import { safeStorage } from './utils/safeStorage';
 
 export default function App() {
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
@@ -19,24 +20,24 @@ export default function App() {
   const [roundsData, setRoundsData] = useState<RoundsState>({});
   const [reflections, setReflections] = useState<ReflectionsState>({});
   const [copyStatus, setCopyStatus] = useState<string>('');
-  const [soloModuleId, setSoloModuleId] = useState<number>(20);
-  const [soloNodeLabel, setSoloNodeLabel] = useState<string>('');
-  const [soloGameIndex, setSoloGameIndex] = useState<number>(12);
+  const [soloModuleId, setSoloModuleId] = useState<number>(6);
+  const [soloNodeLabel, setSoloNodeLabel] = useState<string>('Game 1 of 12');
+  const [soloGameIndex, setSoloGameIndex] = useState<number>(1);
   const [totalSoloGames, setTotalSoloGames] = useState<number>(12);
   const [completedSoloGamesCount, setCompletedSoloGamesCount] = useState<number>(0);
 
-  // Load data from localStorage on mount
+  // Load data from safeStorage on mount
   useEffect(() => {
     try {
-      const savedAuth = localStorage.getItem('gameTheoryAuthSession');
-      const savedInfo = localStorage.getItem('gameTheoryStudentInfo');
-      const savedRounds = localStorage.getItem('gameTheoryRounds');
-      const savedReflections = localStorage.getItem('gameTheoryReflections');
-      const savedWeek = localStorage.getItem('gameTheoryActiveWeek');
-      const savedRound = localStorage.getItem('gameTheoryActiveRound');
-      const savedTotalRounds = localStorage.getItem('gameTheoryTotalRounds');
-      const savedPlatformMode = localStorage.getItem('gameTheoryPlatformMode');
-      const savedSandboxGame = localStorage.getItem('gameTheorySandboxGame');
+      const savedAuth = safeStorage.getItem('gameTheoryAuthSession');
+      const savedInfo = safeStorage.getItem('gameTheoryStudentInfo');
+      const savedRounds = safeStorage.getItem('gameTheoryRounds');
+      const savedReflections = safeStorage.getItem('gameTheoryReflections');
+      const savedWeek = safeStorage.getItem('gameTheoryActiveWeek');
+      const savedRound = safeStorage.getItem('gameTheoryActiveRound');
+      const savedTotalRounds = safeStorage.getItem('gameTheoryTotalRounds');
+      const savedPlatformMode = safeStorage.getItem('gameTheoryPlatformMode');
+      const savedSandboxGame = safeStorage.getItem('gameTheorySandboxGame');
 
       if (savedAuth) setAuthSession(JSON.parse(savedAuth));
       if (savedInfo) setStudentInfo(JSON.parse(savedInfo));
@@ -50,29 +51,29 @@ export default function App() {
         setPlatformMode(savedPlatformMode);
       }
       if (savedSandboxGame) setSandboxGameId(parseInt(savedSandboxGame, 10));
-    } catch (e) {
-      console.error("Could not load local storage", e);
+    } catch {
+      // Graceful fallback without console error
     }
   }, []);
 
-  // Save data to localStorage on change
+  // Save data to safeStorage on change
   useEffect(() => {
     try {
       if (authSession) {
-        localStorage.setItem('gameTheoryAuthSession', JSON.stringify(authSession));
+        safeStorage.setItem('gameTheoryAuthSession', JSON.stringify(authSession));
       } else {
-        localStorage.removeItem('gameTheoryAuthSession');
+        safeStorage.removeItem('gameTheoryAuthSession');
       }
-      localStorage.setItem('gameTheoryStudentInfo', JSON.stringify(studentInfo));
-      localStorage.setItem('gameTheoryRounds', JSON.stringify(roundsData));
-      localStorage.setItem('gameTheoryReflections', JSON.stringify(reflections));
-      localStorage.setItem('gameTheoryActiveWeek', String(activeWeekId));
-      localStorage.setItem('gameTheoryActiveRound', String(activeRoundNum));
-      localStorage.setItem('gameTheoryTotalRounds', String(totalRounds));
-      localStorage.setItem('gameTheoryPlatformMode', platformMode);
-      localStorage.setItem('gameTheorySandboxGame', String(sandboxGameId));
-    } catch (e) {
-      console.error("Could not save to local storage", e);
+      safeStorage.setItem('gameTheoryStudentInfo', JSON.stringify(studentInfo));
+      safeStorage.setItem('gameTheoryRounds', JSON.stringify(roundsData));
+      safeStorage.setItem('gameTheoryReflections', JSON.stringify(reflections));
+      safeStorage.setItem('gameTheoryActiveWeek', String(activeWeekId));
+      safeStorage.setItem('gameTheoryActiveRound', String(activeRoundNum));
+      safeStorage.setItem('gameTheoryTotalRounds', String(totalRounds));
+      safeStorage.setItem('gameTheoryPlatformMode', platformMode);
+      safeStorage.setItem('gameTheorySandboxGame', String(sandboxGameId));
+    } catch {
+      // Graceful fallback
     }
   }, [authSession, studentInfo, roundsData, reflections, activeWeekId, activeRoundNum, totalRounds, platformMode, sandboxGameId]);
 
@@ -115,9 +116,9 @@ export default function App() {
         [activeWeekId]: newRounds
       };
       try {
-        localStorage.setItem('gameTheoryRounds', JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to save fresh trial', e);
+        safeStorage.setItem('gameTheoryRounds', JSON.stringify(updated));
+      } catch {
+        // Safe fallback
       }
       return updated;
     });
@@ -129,9 +130,9 @@ export default function App() {
       const updated = { ...prev };
       delete updated[activeWeekId];
       try {
-        localStorage.setItem('gameTheoryRounds', JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to clear rounds', e);
+        safeStorage.setItem('gameTheoryRounds', JSON.stringify(updated));
+      } catch {
+        // Safe fallback
       }
       return updated;
     });

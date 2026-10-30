@@ -8,7 +8,9 @@ import {
 } from '../services/botEngine';
 import { TheoryDebrief, DebriefData } from './TheoryDebrief';
 import { InteractiveMatrixVisualizer } from './InteractiveMatrixVisualizer';
+import { GlossaryTerm, AnnotateGlossaryText } from './GlossaryTerm';
 import { drawValuation } from '../utils/auctionEngine';
+import { safeStorage } from '../utils/safeStorage';
 
 interface SoloLabViewProps {
   allGames: GameConfig[];
@@ -137,7 +139,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   // Track completed Solo Lab games across the 12-game suite
   const [completedGameIds, setCompletedGameIds] = useState<number[]>(() => {
     try {
-      const saved = localStorage.getItem('gameTheoryCompletedSoloGames');
+      const saved = safeStorage.getItem('gameTheoryCompletedSoloGames');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -149,7 +151,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       if (!prev.includes(gameId)) {
         const updated = [...prev, gameId];
         try {
-          localStorage.setItem('gameTheoryCompletedSoloGames', JSON.stringify(updated));
+          safeStorage.setItem('gameTheoryCompletedSoloGames', JSON.stringify(updated));
         } catch {}
         return updated;
       }
@@ -1000,29 +1002,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     <span>🔁 How to Play:</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed text-xs">
-                    Choose simultaneously: <strong className="text-emerald-400">Cooperate (🤝)</strong> to pursue mutual gain ($2 each), or <strong className="text-rose-400">Defect (⚔️)</strong> to seek selfish temptation ($3 for you, leaving opponent with $0). If both defect, both fall into the trap earning only $1.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 text-center font-mono text-[11px] pt-1">
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                      <div className="text-emerald-400 font-bold">Mutual Coop (🤝, 🤝)</div>
-                      <div className="text-slate-300 mt-0.5">$2 for you, $2 for Bot</div>
-                    </div>
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                      <div className="text-rose-400 font-bold">Mutual Defect (⚔️, ⚔️)</div>
-                      <div className="text-slate-300 mt-0.5">$1 for you, $1 for Bot</div>
-                    </div>
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                      <div className="text-amber-400 font-bold">You Defect / Bot Coops</div>
-                      <div className="text-slate-300 mt-0.5">$3 for you, $0 for Bot</div>
-                    </div>
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                      <div className="text-red-400 font-bold">You Coop / Bot Defects</div>
-                      <div className="text-slate-300 mt-0.5">$0 for you, $3 for Bot</div>
-                    </div>
-                  </div>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
+                    <li>
+                      <strong className="text-white">Actions:</strong> Simultaneously choose <strong className="text-emerald-400">Cooperate (🤝)</strong> or <strong className="text-rose-400">Defect (⚔️)</strong> each round across a 5-round repeated match.
+                    </li>
+                    <li>
+                      <strong className="text-amber-300">Payoff Stakes:</strong> Mutual Coop = <strong className="text-emerald-400">+$2.00 each</strong> · Mutual Defect = <strong className="text-rose-400">+$1.00 each</strong> · Unilateral Defection = <strong className="text-amber-400">+$3.00</strong> for defector, <strong className="text-slate-400">$0.00</strong> for cooperator.
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="Cooperative play yields double the Nash trap (+2 vs +1), but defection tempts each player with +3 unless credibly deterred by retaliatory threats." />
+                    </li>
+                  </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    Finite Repeated Game: Backward induction predicts mutual defection on every trial ($1, $1).
+                    <AnnotateGlossaryText text="Finite Repeated Game: Backward induction predicts mutual defection on every trial ($1, $1)." />
                   </div>
                 </div>
               )}
@@ -1032,15 +1025,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     <span>🦌 How to Play:</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed text-xs">
-                    Choose whether to <strong className="text-emerald-400">Hunt Stag (🦌)</strong> or <strong className="text-amber-400">Hunt Hare (🐇)</strong> without prior communication. Hunting Stag yields a massive +10 pts but requires mutual coordination; hunting Hare safely guarantees +4 pts solo.
-                  </p>
-                  <ul className="list-disc pl-4 space-y-1 text-slate-300 text-xs">
-                    <li><strong className="text-emerald-400">Hunt Stag</strong>: If both hunt Stag, both get <strong className="text-white">+10 pts</strong>! If you hunt alone, you get <strong className="text-rose-400">0 pts</strong>.</li>
-                    <li><strong className="text-amber-400">Hunt Hare</strong>: Risk-free solo action. You get <strong className="text-white">+4 pts</strong> guaranteed regardless of partner.</li>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
+                    <li>
+                      <strong className="text-white">Actions:</strong> Simultaneously choose to <strong className="text-emerald-400">Hunt Stag (🦌)</strong> for high reward or <strong className="text-amber-400">Hunt Hare (🐇)</strong> for safety without prior communication.
+                    </li>
+                    <li>
+                      <strong className="text-amber-300">Payoff Stakes:</strong> Both Hunt Stag = <strong className="text-emerald-400">+10 pts each</strong> · Both Hunt Hare = <strong className="text-amber-300">+4 pts each</strong> · Solo Stag attempt = <strong className="text-rose-400">0 pts</strong> (partner hunting Hare gets <strong className="text-white">+4 pts</strong>).
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="Hunting Stag is payoff-dominant (+10) but risky; hunting Hare is risk-dominant, guaranteeing +4 pts regardless of what your partner does." />
+                    </li>
                   </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    Two Nash Equilibria: (Stag, Stag) is Payoff Dominant (+10); (Hare, Hare) is Risk Dominant (+4).
+                    <AnnotateGlossaryText text="Two Nash Equilibria: (Stag, Stag) is Payoff Dominant (+10); (Hare, Hare) is Risk Dominant (+4)." />
                   </div>
                 </div>
               )}
@@ -1050,15 +1048,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     <span>🏷️ How to Play:</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed text-xs">
-                    Select a product price between $10 and $50 (production cost $MC = $10; demand $Q = 100 - P$). The firm with the strictly lower price captures 100% of market demand, while tied prices split demand 50/50.
-                  </p>
-                  <ul className="list-disc pl-4 space-y-1 text-slate-300 text-xs">
-                    <li><strong className="text-emerald-400">Strictly Lower Price</strong>: Sells 100% of demand ($Q = 100 - P$); higher price sells 0 units.</li>
-                    <li><strong className="text-amber-400">Tied Prices</strong>: Sells 50% of demand each. Production cost is $10 per unit.</li>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
+                    <li>
+                      <strong className="text-white">Actions:</strong> Select a product price between <strong className="text-white">$10 and $50</strong> per unit (marginal production cost is <strong className="text-amber-300">MC = $10</strong>; market demand is <strong className="text-sky-300">Q = 100 - P</strong>).
+                    </li>
+                    <li>
+                      <strong className="text-amber-300">Payoff Stakes:</strong> Strictly lower price captures <strong className="text-emerald-400">100% of market profit</strong> (P - 10) × (100 - P); tied prices split profit <strong className="text-blue-300">50/50</strong>; higher price sells zero and earns <strong className="text-rose-400">$0</strong>.
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="Tacit collusion near $40 yields +$450 profit each, but the temptation to undercut by $1 sparks a price war down to marginal cost ($10)." />
+                    </li>
                   </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    Bertrand Paradox: Price competition with identical goods drives equilibrium price to cost ($P = $10, profit = $0).
+                    <AnnotateGlossaryText text="Bertrand Paradox: Price competition with identical goods drives equilibrium price to cost ($P = $10, profit = $0)." />
                   </div>
                 </div>
               )}
@@ -1068,15 +1071,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     <span>⚖️ How to Play:</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed text-xs">
-                    Submit a sealed bid ($b \in [1, 10]$) for an item you privately value at <strong className="text-emerald-400 font-mono">${studentValuation}.00</strong>. The highest bidder wins, but pays the runner-up's bid (the second-highest price), NOT their own bid!
-                  </p>
-                  <ul className="list-disc pl-4 space-y-1 text-slate-300 text-xs">
-                    <li><strong className="text-white">Winner</strong>: Highest bidder wins item and pays second-highest bid.</li>
-                    <li><strong className="text-emerald-400">Profit</strong>: True Valuation ($${studentValuation}.00) - Clearing Price Paid. Loser gets $0.</li>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
+                    <li>
+                      <strong className="text-white">Actions:</strong> Submit a sealed bid ($1 to $10) for an item you privately value at <strong className="text-emerald-400 font-mono">${studentValuation}.00</strong> (drawn uniformly at random).
+                    </li>
+                    <li>
+                      <strong className="text-amber-300">Payoff Stakes:</strong> Highest bidder wins the item and pays the <strong className="text-amber-400">second-highest bid</strong> (Profit = Valuation - Price Paid); outbid players pay <strong className="text-slate-400">$0</strong> and earn <strong className="text-slate-400">0 pts</strong>.
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="Truthful bidding (b = v) is weakly dominant—shading below value risks missing profitable wins, while overbidding risks negative profit." />
+                    </li>
                   </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    Weakly Dominant Strategy: Bidding your exact true valuation (b = v = ${studentValuation}.00) dominates all other bids.
+                    <AnnotateGlossaryText text={`Weakly Dominant Strategy: Bidding your exact true valuation (b = v = $${studentValuation}.00) dominates all other bids.`} />
                   </div>
                 </div>
               )}
@@ -1086,15 +1094,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     <span>💭 How to Play:</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed text-xs">
-                    Submit an integer guess between 0 and 100. The winning target is exactly <strong className="text-amber-300">2/3 of the average</strong> of your guess and the bot's guess. Whoever is closest to the 2/3 target wins 10 points (ties split 5-5).
-                  </p>
-                  <ul className="list-disc pl-4 space-y-1 text-slate-300 text-xs">
-                    <li><strong className="text-white">Target Formula</strong>: Target = (2/3) × (Your Guess + Bot Guess) / 2.</li>
-                    <li><strong className="text-emerald-400">Winner</strong>: Smallest absolute distance |Guess - Target| wins 10 points.</li>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
+                    <li>
+                      <strong className="text-white">Actions:</strong> Pick an integer guess between <strong className="text-white">0 and 100</strong>; the target number is exactly <strong className="text-amber-300">2/3 of the average</strong> of your guess and the bot's guess.
+                    </li>
+                    <li>
+                      <strong className="text-amber-300">Payoff Stakes:</strong> The player closest to the 2/3 target wins <strong className="text-emerald-400">+10 pts</strong>; exact ties split the prize <strong className="text-blue-300">+5 pts each</strong>; the further player gets <strong className="text-rose-400">0 pts</strong>.
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="Outsmart your opponent by guessing their level of strategic depth (Level-0 guesses ~50, Level-1 guesses ~33, Level-2 guesses ~22, while Nash is 0)." />
+                    </li>
                   </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    Common Knowledge Equilibrium: Iterated elimination of dominated strategies cascades infinitely to Guess = 0.
+                    <AnnotateGlossaryText text="Common Knowledge Equilibrium: Iterated elimination of dominated strategies cascades infinitely to Guess = 0." />
                   </div>
                 </div>
               )}
@@ -1104,15 +1117,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     <span>🌍 How to Play:</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed text-xs">
-                    You receive 20 tokens each trial. Choose how many tokens (0 to 20) to contribute to the public pool. Contributed tokens are multiplied by 1.6x and divided equally, while kept tokens remain yours privately.
-                  </p>
-                  <ul className="list-disc pl-4 space-y-1 text-slate-300 text-xs">
-                    <li><strong className="text-white">Payoff</strong>: (20 - c) + 0.8 × (c + c_bot). Kept tokens earn $1.00 each.</li>
-                    <li><strong className="text-amber-400">Dilemma</strong>: Free-riding tempts contributing 0, but mutual cooperation yields 32 pts each.</li>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
+                    <li>
+                      <strong className="text-white">Actions:</strong> Receive <strong className="text-white">20 private tokens</strong> each round; choose how many tokens (0 to 20) to contribute to the shared community pool.
+                    </li>
+                    <li>
+                      <strong className="text-amber-300">Payoff Stakes:</strong> Kept tokens stay yours (<strong className="text-white">+1 pt each</strong>); contributed pool tokens are multiplied by <strong className="text-emerald-400">1.6x</strong> and split equally (<strong className="text-emerald-400">+0.80 pts</strong> return per token).
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="If both contribute 20 tokens, both earn the maximum +32 pts; free-riding tempts contributing 0, causing the Nash trap of 20 pts." />
+                    </li>
                   </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    Dominant Strategy Equilibrium: Contribute 0 tokens (Nash trap of 20 pts vs social optimum 32 pts).
+                    <AnnotateGlossaryText text="Dominant Strategy Equilibrium: Contribute 0 tokens (Nash trap of 20 pts vs social optimum 32 pts)." />
                   </div>
                 </div>
               )}
@@ -1122,16 +1140,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     <span>🦅 How to Play:</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed text-xs">
-                    Choose <strong className="text-emerald-400">Dove (🕊️)</strong> for peaceful sharing (+3 pts each) or <strong className="text-rose-400">Hawk (🦅)</strong> to aggressively fight for the entire territory (+6 pts). If BOTH play Hawk, a devastating head-on collision inflicts -10 pts on each!
-                  </p>
-                  <ul className="list-disc pl-4 space-y-1 text-slate-300 text-xs">
-                    <li><strong className="text-emerald-400">Mutual Dove</strong>: Split resource peacefully (<strong className="text-white">+3 pts each</strong>).</li>
-                    <li><strong className="text-rose-400">Hawk vs Dove</strong>: Hawk grabs all (<strong className="text-emerald-400">+6 pts</strong>), Dove retreats (0 pts).</li>
-                    <li><strong className="text-red-500 font-bold">Mutual Hawk Clash</strong>: Severe collision damage (<strong className="text-rose-400">-10 pts each</strong>)!</li>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
+                    <li>
+                      <strong className="text-white">Actions:</strong> Simultaneously choose <strong className="text-emerald-400">Dove (🕊️)</strong> to peacefully share territory, or <strong className="text-rose-400">Hawk (🦅)</strong> to fight aggressively for total control.
+                    </li>
+                    <li>
+                      <strong className="text-amber-300">Payoff Stakes:</strong> Both Dove = <strong className="text-emerald-400">+3 pts each</strong> · Hawk vs Dove = Hawk grabs <strong className="text-amber-400">+6 pts</strong>, Dove gets <strong className="text-slate-400">0 pts</strong> · Both Hawk = mutual crash (<strong className="text-rose-500 font-bold">-10 pts each</strong>)!
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="Anti-coordinate with your rival: exploit peaceful Doves with Hawk (+6), but yield to Dove (0) when facing an aggressive Hawk to avoid the -10 collision." />
+                    </li>
                   </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    Anti-Coordination Nash: (Hawk, Dove) and (Dove, Hawk). Mixed ESS: Randomize Hawk ~23% of the time.
+                    <AnnotateGlossaryText text="Anti-Coordination Nash: (Hawk, Dove) and (Dove, Hawk). Mixed ESS: Randomize Hawk ~23% of the time." />
                   </div>
                 </div>
               )}
@@ -1141,15 +1163,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     <span>🍰 How to Play:</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed text-xs">
-                    As Proposer, you divide a <strong className="text-white">$10.00 prize</strong>. Offer an amount ($0 to $10) to the Responder Bot. If the Bot accepts, you keep (10 - Offer) and the bot receives Offer. If the bot rejects, BOTH players receive $0.00!
-                  </p>
-                  <ul className="list-disc pl-4 space-y-1 text-slate-300 text-xs">
-                    <li><strong className="text-emerald-400">Accept</strong>: Proposer receives $10 - Offer, Responder receives Offer.</li>
-                    <li><strong className="text-rose-400">Reject</strong>: Deal collapses; entire $10 pie destroyed ($0 for both).</li>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
+                    <li>
+                      <strong className="text-white">Actions:</strong> As Proposer, offer an amount from <strong className="text-white">$0.00 to $10.00</strong> to the Responder Bot from a total $10.00 prize pie.
+                    </li>
+                    <li>
+                      <strong className="text-amber-300">Payoff Stakes:</strong> If Responder <strong className="text-emerald-400">Accepts</strong>, you keep <strong className="text-white">$10 - Offer</strong> and Responder gets <strong className="text-emerald-400">Offer</strong>; if <strong className="text-rose-400">Rejected</strong>, both players receive <strong className="text-rose-400">$0.00</strong>!
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="Theory predicts offering the minimum ($1) because rational agents prefer $1 over $0, but human responders reject unfair offers (<$3)." />
+                    </li>
                   </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    Subgame Perfect Equilibrium: Proposer offers $1.00; rational Responder accepts ($1 vs $0).
+                    <AnnotateGlossaryText text="Subgame Perfect Equilibrium: Proposer offers $1.00; rational Responder accepts ($1 vs $0)." />
                   </div>
                 </div>
               )}
@@ -1159,15 +1186,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     <span>🪙 How to Play:</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed text-xs">
-                    You and the Bot choose <strong className="text-white">Heads (🪙)</strong> or <strong className="text-white">Tails (🪙)</strong> simultaneously in zero-sum conflict. As the <strong className="text-emerald-400">Matcher</strong>, you win +2 pts if coins match (HH or TT); the Bot (<strong className="text-amber-400">Mismatcher</strong>) wins +2 pts if coins differ.
-                  </p>
-                  <ul className="list-disc pl-4 space-y-1 text-slate-300 text-xs">
-                    <li><strong className="text-emerald-400">Match (HH or TT)</strong>: You win <strong className="text-white">+2 pts</strong> (Bot gets 0 pts).</li>
-                    <li><strong className="text-amber-400">Mismatch (HT or TH)</strong>: Bot wins <strong className="text-white">+2 pts</strong> (You get 0 pts).</li>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
+                    <li>
+                      <strong className="text-white">Actions:</strong> Simultaneously choose <strong className="text-white">Heads (🪙)</strong> or <strong className="text-white">Tails (🪙)</strong>; you are the <strong className="text-emerald-400">Matcher</strong> and the Bot is the <strong className="text-amber-400">Mismatcher</strong>.
+                    </li>
+                    <li>
+                      <strong className="text-amber-300">Payoff Stakes:</strong> If coins match (HH or TT), you win <strong className="text-emerald-400">+2 pts</strong> and Bot gets <strong className="text-slate-400">0 pts</strong>; if coins differ (HT or TH), Bot wins <strong className="text-amber-400">+2 pts</strong> and you get <strong className="text-slate-400">0 pts</strong>.
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="Zero-sum game with no pure equilibrium; randomize 50/50 so your opponent cannot predict or exploit your choices." />
+                    </li>
                   </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    Unique Minimax Equilibrium: Randomize Heads and Tails with exact 50/50 probability (p = 0.50).
+                    <AnnotateGlossaryText text="Unique Minimax Equilibrium: Randomize Heads and Tails with exact 50/50 probability (p = 0.50)." />
                   </div>
                 </div>
               )}
@@ -1177,16 +1209,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     <span>🎭 How to Play:</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed text-xs">
-                    You and your partner choose between <strong className="text-purple-400">Opera (🎭)</strong> and <strong className="text-amber-400">Football (⚽)</strong> without communication. You prefer Opera (+3 pts for you, +2 for Bot if coordinated); Bot prefers Football (+2 for you, +3 for Bot if coordinated).
-                  </p>
-                  <ul className="list-disc pl-4 space-y-1 text-slate-300 text-xs">
-                    <li><strong className="text-purple-400">Both Opera</strong>: +3 pts for you, +2 pts for Bot.</li>
-                    <li><strong className="text-amber-400">Both Football</strong>: +2 pts for you, +3 pts for Bot.</li>
-                    <li><strong className="text-rose-400">Miscoordination</strong>: Choose different events → <strong className="text-white">0 pts</strong> for both!</li>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
+                    <li>
+                      <strong className="text-white">Actions:</strong> Simultaneously choose between <strong className="text-purple-400">Opera (🎭)</strong> and <strong className="text-amber-400">Football (⚽)</strong> without prior communication.
+                    </li>
+                    <li>
+                      <strong className="text-amber-300">Payoff Stakes:</strong> Both Opera = <strong className="text-purple-300">+3 pts for you, +2 pts for Bot</strong> · Both Football = <strong className="text-amber-300">+2 pts for you, +3 pts for Bot</strong> · Miscoordination (clash) = <strong className="text-rose-400">0 pts each</strong>.
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="Both prefer coordinating over clashing (0 pts), but you disagree on which event is best—coordination requires concession or turn-taking." />
+                    </li>
                   </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    Two pure Nash equilibria: (Opera, Opera) and (Football, Football). Mixed strategy EV = 1.2 pts.
+                    <AnnotateGlossaryText text="Two pure Nash equilibria: (Opera, Opera) and (Football, Football). Mixed strategy EV = 1.2 pts." />
                   </div>
                 </div>
               )}
@@ -1196,15 +1232,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     <span>🏦 How to Play:</span>
                   </div>
-                  <p className="text-slate-300 leading-relaxed text-xs">
-                    As Investor, you start with 10 points and decide how much ($0 \le X \le 10$) to send to the Trustee Bot. Any points sent are <strong className="text-emerald-400">tripled (3x)</strong> upon receipt; the Trustee then chooses how much ($Y$) to return to you.
-                  </p>
-                  <ul className="list-disc pl-4 space-y-1 text-slate-300 text-xs">
-                    <li><strong className="text-white">Transfer</strong>: Sent investment $X$ becomes $3X$ in Trustee's hands.</li>
-                    <li><strong className="text-emerald-400">Your Payoff</strong>: $(10 - X) + Y$. Trustee Payoff: $3X - Y$.</li>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
+                    <li>
+                      <strong className="text-white">Actions:</strong> Start with <strong className="text-white">10 points</strong> as Investor; choose how many points (0 to 10) to send to the Trustee Bot.
+                    </li>
+                    <li>
+                      <strong className="text-amber-300">Payoff Stakes:</strong> Any sent points are <strong className="text-emerald-400">tripled (3x)</strong>; the Trustee decides how much (Y) to return: Investor gets <strong className="text-white">(10 - X) + Y</strong>, Trustee keeps <strong className="text-white">3X - Y</strong>.
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="Self-interest predicts the Trustee returns 0 pts so Investor sends 0 pts (investor keeps 10 pts, trustee gets 0); sending all 10 triples to 30 pts (joint social optimum yields 15 pts each)." />
+                    </li>
                   </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    Selfish SPNE: Backward induction predicts Trustee returns $0; rational Investor sends $0 (10 pts kept).
+                    <AnnotateGlossaryText text="Selfish SPNE: Backward induction predicts Trustee returns 0 pts; rational Investor sends 0 pts (10 pts kept vs 30 pts joint social max)." />
                   </div>
                 </div>
               )}
@@ -1212,27 +1253,22 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
               {selectedModuleId === 20 && (
                 <div className="space-y-2.5 text-slate-300">
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <span>🐛 Quick Rules:</span>
+                    <span>🐛 How to Play:</span>
                   </div>
                   <ul className="list-disc pl-4 space-y-1.5 text-slate-300 text-xs">
                     <li>
-                      <strong className="text-white">Goal:</strong> Grow the pot by passing, or take the larger share before your opponent does.
+                      <strong className="text-white">Turn Order:</strong> Alternating sequential turns along a 6-node tree; you choose at <strong className="text-sky-400">Nodes 1, 3, 5</strong>, and the Bot chooses at <strong className="text-amber-400">Nodes 2, 4, 6</strong>.
                     </li>
                     <li>
-                      <strong className="text-white">Turn Order:</strong> You choose at <strong className="text-sky-400">Nodes 1, 3, 5</strong>. The Bot chooses at <strong className="text-amber-400">Nodes 2, 4, 6</strong>.
+                      <strong className="text-amber-300">Payoff Stakes:</strong> <strong className="text-emerald-400">Pass</strong> doubles the pot and hands turn to opponent; <strong className="text-rose-400">Take</strong> ends the match to claim the larger share (N1: 2,0 · N2: 1,4 · N3: 4,2 · N4: 3,6 · N5: 6,4 · N6: 5,8).
                     </li>
                     <li>
-                      <strong className="text-emerald-400">Pass:</strong> Hand the turn to the other player and double the pot for both of you.
-                    </li>
-                    <li>
-                      <strong className="text-rose-400">Take:</strong> End the match immediately to claim the larger share (giving the other player the smaller share).
-                    </li>
-                    <li>
-                      <strong className="text-amber-300">Terminal Reward:</strong> If both players pass all 6 nodes, you both earn the maximum prize of <strong className="text-white">+8 pts each</strong>!
+                      <strong className="text-sky-300">Strategic Goal: </strong>
+                      <AnnotateGlossaryText text="Passing all 6 nodes awards the social optimum of +8 pts each; backward induction predicts taking immediately at Node 1 (2, 0)." />
                     </li>
                   </ul>
                   <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-900/60 font-mono text-center text-xs text-blue-200">
-                    6-Node Chain: Player moves at nodes 1, 3, 5 · Bot moves at nodes 2, 4, 6. Theory predicts Take at Node 1 (2, 0).
+                    <AnnotateGlossaryText text="6-Node Chain: Player moves at nodes 1, 3, 5 · Bot moves at nodes 2, 4, 6. Theory predicts Take at Node 1 (2, 0) via backward induction." />
                   </div>
                 </div>
               )}
@@ -1702,7 +1738,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                     <div className="space-y-3">
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-bold text-slate-300">Invest with Trustee (0 - 10 pts):</span>
-                        <span className="font-mono text-lg font-black text-emerald-400">${trustInvestment}.00 (Tripled to ${trustInvestment * 3}.00)</span>
+                        <span className="font-mono text-lg font-black text-emerald-400">{trustInvestment} pts (Tripled to {trustInvestment * 3} pts)</span>
                       </div>
                       <input
                         type="range"
@@ -1716,11 +1752,11 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                       <div className="grid grid-cols-2 gap-2 text-center text-xs font-mono">
                         <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
                           <span className="text-slate-400 text-[10px] block uppercase">Private Vault Kept</span>
-                          <span className="text-white font-bold text-sm">${10 - trustInvestment}.00</span>
+                          <span className="text-white font-bold text-sm">{10 - trustInvestment} pts</span>
                         </div>
                         <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
                           <span className="text-emerald-400 text-[10px] block uppercase">Tripled Trustee Fund</span>
-                          <span className="text-emerald-300 font-bold text-sm">${trustInvestment * 3}.00</span>
+                          <span className="text-emerald-300 font-bold text-sm">{trustInvestment * 3} pts</span>
                         </div>
                       </div>
                     </div>
@@ -1827,246 +1863,486 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                       </p>
                     </div>
 
-                    {/* Dedicated Post-Match Debrief: Theory vs Actual Play & Behavioral Insights */}
+                    {/* Dedicated Post-Match Debrief: Whole Match vs Theory & Behavioral Insights */}
                     {lastRoundResult && (() => {
+                      const matchRounds = history.length;
+                      const playerTotal = Math.round(history.reduce((sum, h) => sum + h.playerPayoff, 0) * 10) / 10;
+                      const botTotal = Math.round(history.reduce((sum, h) => sum + h.botPayoff, 0) * 10) / 10;
+                      const totalMatchSurplus = Math.round((playerTotal + botTotal) * 10) / 10;
+
                       let conceptBadge = "Game Theory Debrief";
                       let predictionLabel = "Theoretical Prediction";
                       let predictionTitle = "Equilibrium Benchmark";
                       let predictionExplanation = "";
+                      let predictionFrequency = "";
                       let predictionPayoff = "";
-                      let actualTitle = `You: ${String(lastRoundResult.playerAction)} · ${activeBot.name}: ${String(lastRoundResult.botAction)}`;
-                      let actualExplanation = "";
+
+                      let actualFrequencyTitle = "";
+                      let actualFrequencyBreakdown = "";
+                      let gapInterpretationSentence = "";
                       let actualPayoff = "";
                       let realPeopleSentence = "";
+                      let keyTakeawaySentence = "";
 
-                      const totalSurplus = Math.round((lastRoundResult.playerPayoff + lastRoundResult.botPayoff) * 10) / 10;
+                      const getScoreCmp = (p: number, b: number, isDollar: boolean = false) => {
+                        const pStr = isDollar ? `$${Number(p.toFixed(2))}` : `${p}`;
+                        const bStr = isDollar ? `$${Number(b.toFixed(2))}` : `${b}`;
+                        if (p > b) {
+                          return `You outscored the bot ${pStr} to ${bStr}`;
+                        } else if (b > p) {
+                          return `The bot outscored you ${bStr} to ${pStr}`;
+                        } else {
+                          return `You tied with the bot ${pStr} to ${bStr}`;
+                        }
+                      };
 
                       if (selectedModuleId === 6) {
-                        conceptBadge = "Backward Induction & Finite Folk Theorem";
-                        predictionLabel = "Backward Induction (SPNE)";
-                        predictionTitle = "Mutual Defection: (Defect, Defect) [$1, $1]";
-                        predictionExplanation = "In any known finite repeated game, backward induction predicts defection on the final round, unspooling cooperation backward so rational players defect on every trial.";
-                        predictionPayoff = "Nash Trap Benchmark: $1.00 each ($2.00 total surplus)";
+                        conceptBadge = "Subgame Perfect Nash Equilibrium (SPNE)";
+                        predictionLabel = "SPNE & Dominant Strategy Defection";
+                        predictionTitle = `SPNE Defection: $1.00/round each (over ${matchRounds} rounds: $${(matchRounds * 1).toFixed(2)} each)`;
+                        predictionExplanation = `Because defection strictly dominates cooperation in every stage game ($3.00 vs $2.00 and $1.00 vs $0.00), backward induction predicts rational players defect in every round. This traps both players at $1.00 per round ($${(matchRounds * 1).toFixed(2)} over ${matchRounds} rounds) instead of the $2.00 per round cooperative optimum ($${(matchRounds * 2).toFixed(2)} over ${matchRounds} rounds).`;
+                        predictionFrequency = "Equilibrium Benchmark: 100% Defection / 0% Cooperate in every round";
+                        predictionPayoff = `SPNE Trap: $1.00/round each ($${(matchRounds * 1).toFixed(2)} over ${matchRounds} rounds) · Pareto Optimum: $2.00/round each ($${(matchRounds * 2).toFixed(2)} over ${matchRounds} rounds)`;
 
-                        const bothCoop = lastRoundResult.playerAction === 'Cooperate' && lastRoundResult.botAction === 'Cooperate';
-                        const bothDefect = lastRoundResult.playerAction === 'Defect' && lastRoundResult.botAction === 'Defect';
-                        const diffFromNash = lastRoundResult.playerPayoff - 1;
+                        const coopCount = history.filter(h => h.playerAction === 'Cooperate').length;
+                        const defectCount = matchRounds - coopCount;
+                        const coopPct = Math.round((coopCount / matchRounds) * 100);
+                        const defectPct = 100 - coopPct;
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal, true);
 
-                        actualTitle = `You: ${lastRoundResult.playerAction} · ${activeBot.name}: ${lastRoundResult.botAction}`;
-                        actualExplanation = `You earned +${lastRoundResult.playerPayoff} pts (${diffFromNash >= 0 ? `+${diffFromNash}` : `${diffFromNash}`} vs Nash trap) and ${activeBot.name} earned +${lastRoundResult.botPayoff} pts. ${bothCoop ? "Mutual cooperation unlocked the Pareto-optimal $2 reward each!" : bothDefect ? "Mutual defection trapped both players in the suboptimal $1 outcome." : lastRoundResult.playerAction === 'Defect' ? "You exploited the bot's cooperation for the maximum temptation payoff ($3 vs $0)!" : "The bot defected and captured $3 while you received the sucker's payoff ($0)."}`;
-                        actualPayoff = `Total Surplus: $${totalSurplus}.00 (${(totalSurplus / 2).toFixed(1)}x Nash surplus)`;
+                        actualFrequencyTitle = `Your Choices Across ${matchRounds} Round${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `${coopCount}/${matchRounds} Cooperate (${coopPct}%) · ${defectCount}/${matchRounds} Defect (${defectPct}%)`;
+                        if (coopPct <= 15) {
+                          gapInterpretationSentence = playerTotal <= botTotal
+                            ? `Close to equilibrium: ${scoreCmp}. You defected in ${100 - coopPct}% of rounds (cooperated in only ${coopPct}%), adhering closely to the SPNE dominant strategy, though mutual defection locked both of you into the low-payoff trap ($1.00/rd).`
+                            : `Close to equilibrium: ${scoreCmp}. You defected in ${100 - coopPct}% of rounds, following dominant strategy defection and capitalizing on ${activeBot.name}'s cooperative openings.`;
+                        } else if (coopPct <= 49) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Noticeable deviation: ${scoreCmp}. You cooperated in ${coopPct}% of rounds, but unilateral cooperative gestures were repeatedly exploited by defection.`
+                            : `Noticeable deviation: ${scoreCmp}. You cooperated in ${coopPct}% of rounds, earning points through selective reciprocity while avoiding prolonged defection feuds.`;
+                        } else {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You attempted high cooperation (${coopPct}% Cooperate), but ${activeBot.name} defected unsparingly against your goodwill.`
+                            : `Productive deviation from theory: ${scoreCmp}. By choosing Cooperate in ${coopPct}% of rounds rather than the 100% Defect SPNE prediction, you cultivated reciprocal trust with ${activeBot.name}, generating mutual payoffs that substantially Pareto-dominated the SPNE defection trap.`;
+                        }
+                        actualPayoff = `Whole Match Score: You: $${playerTotal.toFixed(2)} · ${activeBot.name}: $${botTotal.toFixed(2)} (Surplus: $${totalMatchSurplus.toFixed(2)})`;
                         realPeopleSentence = "In laboratory trials, real players sustain high cooperation early on using conditional reciprocity (Tit-for-Tat) to earn higher payoffs, only beginning to defect in the final 1–2 rounds as the horizon closes.";
+                        keyTakeawaySentence = "Repeated interaction and credible retaliatory threats allow players to sustain mutual cooperation that strictly Pareto-dominates the one-shot defection trap.";
 
                       } else if (selectedModuleId === 13) {
                         conceptBadge = "Payoff Dominance vs. Risk Dominance";
-                        predictionLabel = "Coordination Equilibria";
-                        predictionTitle = "(Stag, Stag) [+10, +10] vs (Hare, Hare) [+4, +4]";
-                        predictionExplanation = "Two pure Nash equilibria exist: (Stag, Stag) is Payoff Dominant maximizing social welfare, but (Hare, Hare) is Risk Dominant guaranteeing +4 pts safe against betrayal.";
-                        predictionPayoff = "Payoff Dominant: 10 pts · Risk Dominant: 4 pts";
+                        predictionLabel = "Multiple Nash Equilibria";
+                        predictionTitle = "Payoff-Dominant: +10 pts/round each · Risk-Dominant: +4 pts/round each";
+                        predictionExplanation = `In Stag Hunt, (Stag, Stag) is Payoff-Dominant at +10 pts per round (${matchRounds * 10} pts over ${matchRounds} rounds), while (Hare, Hare) is Risk-Dominant at +4 pts per round (${matchRounds * 4} pts over ${matchRounds} rounds) because hunting Hare safely guarantees +4 pts without vulnerability to partner hesitation.`;
+                        predictionFrequency = "Payoff-Dominant Nash: 100% Stag (+10 pts/rd) · Risk-Dominant Nash: 100% Hare (+4 pts/rd)";
+                        predictionPayoff = `Payoff-Dominant (Stag, Stag): +10 pts/round each (${matchRounds * 10} pts over ${matchRounds} rounds) · Risk-Dominant (Hare, Hare): +4 pts/round each (${matchRounds * 4} pts over ${matchRounds} rounds)`;
 
-                        const bothStag = lastRoundResult.playerAction === 'Stag' && lastRoundResult.botAction === 'Stag';
-                        const bothHare = lastRoundResult.playerAction === 'Hare' && lastRoundResult.botAction === 'Hare';
+                        const stagCount = history.filter(h => h.playerAction === 'Stag').length;
+                        const hareCount = matchRounds - stagCount;
+                        const stagPct = Math.round((stagCount / matchRounds) * 100);
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal);
 
-                        actualTitle = `You: ${lastRoundResult.playerAction} · ${activeBot.name}: ${lastRoundResult.botAction}`;
-                        actualExplanation = `You earned +${lastRoundResult.playerPayoff} pts and ${activeBot.name} earned +${lastRoundResult.botPayoff} pts. ${bothStag ? "Superb coordination! Mutual trust successfully captured the payoff-dominant Stag (+10 pts each)." : bothHare ? "Both players retreated to the risk-dominant safety of Hare (+4 pts each)." : lastRoundResult.playerAction === 'Stag' ? "Miscoordination penalty: You took the risk to hunt Stag alone (0 pts) while the bot took safe Hare." : "The bot risked Stag alone (0 pts) while you safely banked +4 pts on Hare."}`;
-                        actualPayoff = `Total Surplus: ${totalSurplus} pts (${bothStag ? 'Payoff Dominant Max' : bothHare ? 'Risk Dominant' : 'Miscoordination'})`;
+                        actualFrequencyTitle = `Your Choices Across ${matchRounds} Round${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `${stagCount}/${matchRounds} Stag (${stagPct}%) · ${hareCount}/${matchRounds} Hare (${100 - stagPct}%)`;
+                        if (stagPct >= 80) {
+                          gapInterpretationSentence = playerTotal < botTotal || playerTotal < matchRounds * 5
+                            ? `Close to equilibrium: ${scoreCmp}. You committed to the payoff-dominant Stag equilibrium in ${stagPct}% of rounds, but suffered miscoordination penalties when ${activeBot.name} retreated to safe Hare.`
+                            : `Close to equilibrium: ${scoreCmp}. You committed firmly to the payoff-dominant Stag equilibrium in ${stagPct}% of rounds, helped by mutual assurance and coordinated trust with ${activeBot.name}.`;
+                        } else if (stagPct <= 20) {
+                          gapInterpretationSentence = playerTotal >= botTotal
+                            ? `Close to equilibrium: ${scoreCmp}. You hunted safe Hare in ${100 - stagPct}% of rounds, adhering strictly to the risk-dominant safe Nash equilibrium (+4 pts/rd) to eliminate all vulnerability to betrayal.`
+                            : `Close to equilibrium: ${scoreCmp}. You locked into the risk-dominant Hare strategy (${100 - stagPct}%), securing safety but falling behind as ${activeBot.name} captured higher Stag returns.`;
+                        } else if (stagPct >= 35 && stagPct <= 65) {
+                          gapInterpretationSentence = `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You split choices across Stag (${stagPct}%) and Hare (${100 - stagPct}%), as strategic hesitation and mutual miscoordination caused both players to oscillate between ambition and fear.`;
+                        } else {
+                          gapInterpretationSentence = playerTotal >= botTotal
+                            ? `Noticeable deviation: ${scoreCmp}. You chose Stag in ${stagPct}% of rounds, adapting effectively by hunting Stag when assurance was present and retreating to Hare when trust faltered.`
+                            : `Noticeable deviation: ${scoreCmp}. You chose Stag in ${stagPct}% of rounds, but uncoordinated switches caused you to waste turns hunting Stag alone.`;
+                        }
+                        actualPayoff = `Whole Match Score: You: ${playerTotal} pts · ${activeBot.name}: ${botTotal} pts (Surplus: ${totalMatchSurplus} pts)`;
                         realPeopleSentence = "Real players often start by testing Stag, but easily retreat to the risk-dominant safety of Hare after a single miscoordination because the fear of earning 0 outweighs the promise of +10.";
+                        keyTakeawaySentence = "High-value social coordination requires mutual strategic assurance; without trust, rational fear drives players to settle for the safe but inferior equilibrium.";
 
                       } else if (selectedModuleId === 14) {
-                        conceptBadge = "Price Competition & Bertrand Paradox";
-                        predictionLabel = "Bertrand Paradox (Nash)";
-                        predictionTitle = "Price at Marginal Cost: P = MC = $10.00";
-                        predictionExplanation = "With identical goods and unconstrained supply, aggressive price competition forces prices down to marginal cost ($10), completely destroying economic profit ($0).";
-                        predictionPayoff = "Nash Equilibrium Profit: $0.00 · Monopoly Collusion ($40): $450.00 each";
+                        conceptBadge = "Bertrand Price Competition";
+                        predictionLabel = "Bertrand Paradox Nash Equilibrium";
+                        predictionTitle = "Price at Marginal Cost: P = $10.00 ($0 profit/round)";
+                        predictionExplanation = `Price undercutting drives equilibrium price down to marginal cost ($10.00), yielding $0 profit per round ($0 over ${matchRounds} rounds). In contrast, joint monopoly collusion at $40.00 yields $450 profit per round each ($${matchRounds * 450} each over ${matchRounds} rounds).`;
+                        predictionFrequency = "Equilibrium Benchmark: 100% of prices at P = MC = $10.00 (Zero Profit)";
+                        predictionPayoff = `Bertrand Nash: $0 profit/round ($0 over ${matchRounds} rounds) · Monopoly Collusion ($40): $450 profit/round each ($${matchRounds * 450} each over ${matchRounds} rounds)`;
 
-                        const myPrice = Number(lastRoundResult.playerAction);
-                        const botPrice = Number(lastRoundResult.botAction);
-                        const wonMarket = myPrice < botPrice;
-                        const tieMarket = myPrice === botPrice;
+                        const prices = history.map(h => Number(h.playerAction));
+                        const avgPrice = Math.round(prices.reduce((a, b) => a + b, 0) / matchRounds);
+                        const minPrice = Math.min(...prices);
+                        const maxPrice = Math.max(...prices);
+                        const undercutWins = history.filter(h => Number(h.playerAction) < Number(h.botAction)).length;
+                        const tieRounds = history.filter(h => Number(h.playerAction) === Number(h.botAction)).length;
+                        const outbidRounds = history.filter(h => Number(h.playerAction) > Number(h.botAction)).length;
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal, true);
 
-                        actualTitle = `Your Price: $${myPrice} · ${activeBot.name}: $${botPrice}`;
-                        actualExplanation = wonMarket
-                          ? `You undercut ${activeBot.name} ($${myPrice} vs $${botPrice}) to capture 100% of market demand, earning $${lastRoundResult.playerPayoff} profit!`
-                          : tieMarket
-                          ? `Tied prices at $${myPrice}! Demand split 50/50, yielding $${lastRoundResult.playerPayoff} profit each.`
-                          : `${activeBot.name} undercut your price ($${botPrice} vs $${myPrice}), capturing 100% of market demand ($0 profit for you).`;
-                        actualPayoff = `Your Profit: $${lastRoundResult.playerPayoff} (${lastRoundResult.playerPayoff > 0 ? `+$${lastRoundResult.playerPayoff} above Bertrand trap` : 'Trapped at Bertrand $0'})`;
+                        actualFrequencyTitle = `Your Pricing Across ${matchRounds} Round${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `Avg Price: $${avgPrice}.00 (Range: $${minPrice}–$${maxPrice}) · ${undercutWins} Undercut Wins, ${tieRounds} Ties, ${outbidRounds} Outpriced`;
+                        if (avgPrice <= 13) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Close to equilibrium: ${scoreCmp}. Your average price of $${avgPrice}.00 was near marginal cost ($10), but ${activeBot.name} underpriced you on key rounds to capture all market demand.`
+                            : `Close to equilibrium: ${scoreCmp}. Your average price of $${avgPrice}.00 was within $${avgPrice - 10} of marginal cost ($10), reproducing the zero-profit Bertrand paradox where competitive undercutting wipes out economic margins.`;
+                        } else if (avgPrice <= 26) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Noticeable deviation: ${scoreCmp}. Your average price of $${avgPrice}.00 was midway between cost and monopoly, but ${activeBot.name} timed aggressive undercuts whenever you posted higher margins.`
+                            : `Noticeable deviation: ${scoreCmp}. Your average price of $${avgPrice}.00 hovered midway between marginal cost ($10) and monopoly ($40), balancing price margins against market share capture.`;
+                        } else {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You attempted high collusive pricing ($${avgPrice}.00 avg), but ${activeBot.name} undercut the cartel consistently to capture all demand.`
+                            : `Productive deviation from theory: ${scoreCmp}. Your average price of $${avgPrice}.00 stood $${avgPrice - 10} above marginal cost, demonstrating tacit collusion that generated joint profit while avoiding the cutthroat Bertrand trap.`;
+                        }
+                        actualPayoff = `Whole Match Profit: You: $${playerTotal} · ${activeBot.name}: $${botTotal} (Surplus: $${totalMatchSurplus})`;
                         realPeopleSentence = "Real managers and lab subjects initially try to sustain tacit collusion near $35–$40, but price cutting inevitably erupts as players cannot resist the temptation to capture 100% of the market with a $1 undercut.";
+                        keyTakeawaySentence = "Without regulatory barriers or product differentiation, unilateral incentives to undercut destroy industry profits and deliver all surplus to consumers.";
 
                       } else if (selectedModuleId === 7) {
-                        conceptBadge = "Incentive Compatibility & Dominant Strategies";
+                        conceptBadge = "Incentive Compatibility & Dominance";
                         predictionLabel = "Weakly Dominant Strategy";
-                        predictionTitle = `Truthful Bidding: Bid = True Valuation ($${studentValuation}.00)`;
-                        predictionExplanation = "Bidding exactly your true valuation (b = v) weakly dominates all other bids: the second-price clearing rule decouples what you pay from what you bid, eliminating any incentive to shave or bluff.";
-                        predictionPayoff = `Dominant Bid: $${studentValuation}.00 · True Item Value: $${studentValuation}.00`;
+                        predictionTitle = "Truthful Bidding: Bid = Valuation (b = v each round)";
+                        predictionExplanation = `In a second-price sealed-bid auction, bidding your exact private valuation (b = v) in every round is a weakly dominant strategy: the winner pays the second-highest bid, so shading never lowers what you pay and overbidding risks negative profit.`;
+                        predictionFrequency = "Equilibrium Benchmark: 100% Truthful Bids (b = v) in every auction";
+                        predictionPayoff = `Dominant Strategy: Bid b = v in each auction (Maximizes expected surplus with zero winner's curse risk across all ${matchRounds} auctions)`;
 
-                        const myBid = Number(lastRoundResult.playerAction);
-                        const rivalBid = Number(lastRoundResult.botAction);
-                        const wonAuction = myBid > rivalBid || (myBid === rivalBid && lastRoundResult.playerPayoff > 0);
-                        const clearingPrice = rivalBid;
+                        const truthfulCount = history.filter(h => Math.abs(Number(h.playerAction) - (h.playerValuation || 0)) < 0.01).length;
+                        const overbidCount = history.filter(h => Number(h.playerAction) > (h.playerValuation || 0) + 0.01).length;
+                        const underbidCount = history.filter(h => Number(h.playerAction) < (h.playerValuation || 0) - 0.01).length;
+                        const wins = history.filter(h => h.playerPayoff > 0).length;
+                        const truthfulPct = Math.round((truthfulCount / matchRounds) * 100);
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal, true);
 
-                        actualTitle = `Your Bid: $${myBid}.00 · ${activeBot.name}: $${rivalBid}.00`;
-                        actualExplanation = `${wonAuction ? `You won the item! You paid the second-highest bid ($${clearingPrice}.00), securing $${lastRoundResult.playerPayoff} profit.` : `Outbid by ${activeBot.name} ($${rivalBid}.00 vs $${myBid}.00); profit is $0.00.`} ${myBid === studentValuation ? "You played the dominant strategy of truthful bidding ($b = v)." : myBid > studentValuation ? `You overbid by $${myBid - studentValuation}.00, risking winner's curse losses if opponents bid aggressively.` : `You underbid by $${studentValuation - myBid}.00, risking missing a profitable win.`}`;
-                        actualPayoff = `Profit: $${lastRoundResult.playerPayoff}.00 (Item Value: $${studentValuation}.00 · Price Paid: $${wonAuction ? clearingPrice : 0}.00)`;
+                        actualFrequencyTitle = `Your Bidding Across ${matchRounds} Auction${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `${truthfulCount}/${matchRounds} Truthful bids (${truthfulPct}%) · ${overbidCount} Overbids · ${underbidCount} Underbids · Won ${wins}/${matchRounds}`;
+                        if (truthfulPct >= 85) {
+                          gapInterpretationSentence = playerTotal >= botTotal
+                            ? `Close to equilibrium: ${scoreCmp}. You played the weakly dominant strategy of truthful bidding (b = v) in ${truthfulPct}% of auctions, letting the second-price clearing mechanism protect your profit margins.`
+                            : `Close to equilibrium: ${scoreCmp}. You bid truthfully in ${truthfulPct}% of rounds, following dominant strategy theory; although ${activeBot.name} realized higher valuation draws, your truthful discipline guaranteed you never suffered the Winner's Curse.`;
+                        } else if (truthfulPct >= 50) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Noticeable deviation: ${scoreCmp}. You bid truthfully in ${truthfulPct}% of rounds but deviated in others (${overbidCount} overbids, ${underbidCount} underbids), eroding your margins.`
+                            : `Noticeable deviation: ${scoreCmp}. You bid truthfully in ${truthfulPct}% of rounds with occasional deviations, winning key auctions without severe winner's curse penalties.`;
+                        } else {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You deviated from your valuation in ${matchRounds - truthfulCount}/${matchRounds} auctions (${overbidCount > underbidCount ? 'frequently overbidding due to competitive fever' : 'underbidding and forfeiting profitable lots'}), falling behind due to distorted first-price bidding habits.`
+                            : `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You deviated in ${matchRounds - truthfulCount}/${matchRounds} auctions, yet finished ahead due to favorable valuation spreads, though dominant strategy theory confirms truthful bidding maximizes expected profits.`;
+                        }
+                        actualPayoff = `Whole Match Profit: You: $${playerTotal}.00 · ${activeBot.name}: $${botTotal}.00`;
                         realPeopleSentence = "In laboratory auctions, real bidders systematically overbid (b > v) due to competitive excitement and a mistaken fear of losing, which exposes them to winner's curse losses when competitors bid aggressively.";
+                        keyTakeawaySentence = "Decoupling what you pay from what you bid makes truthful revelation optimal, removing the strategic complexity of predicting rival bids.";
 
                       } else if (selectedModuleId === 11) {
-                        conceptBadge = "Level-k Strategic Depth & Iterated Dominance";
-                        predictionLabel = "Common Knowledge Nash Equilibrium";
-                        predictionTitle = "Unique Equilibrium Guess: 0";
-                        predictionExplanation = "Iterated elimination of strictly dominated strategies eliminates any guess > 66.7, then > 44.4, cascading infinitely (50 → 33 → 22 → ... → 0) under common knowledge of rationality.";
-                        predictionPayoff = "Level-0: 50 · Level-1: 33 · Level-2: 22 · Nash: 0";
+                        conceptBadge = "Level-k Reasoning & Iterated Dominance";
+                        predictionLabel = "Nash Equilibrium via Iterated Dominance";
+                        predictionTitle = "Nash Equilibrium: Guess = 0 (5 pts/round each on tie)";
+                        predictionExplanation = `Iterated elimination of strictly dominated guesses cascades infinitely to 0. If both players play Nash (0), average is 0, target is 0, and players tie for 5 pts per round (${matchRounds * 5} pts each over ${matchRounds} rounds).`;
+                        predictionFrequency = "Equilibrium Benchmark: Guess = 0 (Level-0: ~50, Level-1: ~33, Level-2: ~22)";
+                        predictionPayoff = `Unique Nash: Guess = 0 (5 pts/round each on tie, ${matchRounds * 5} pts over ${matchRounds} rounds) · Level-1: ~33 · Level-2: ~22`;
 
-                        const myGuess = Number(lastRoundResult.playerAction);
-                        const botGuess = Number(lastRoundResult.botAction);
-                        const avg = (myGuess + botGuess) / 2;
-                        const target = Math.round((avg * 2 / 3) * 10) / 10;
-                        const myDist = Math.abs(myGuess - target);
-                        const botDist = Math.abs(botGuess - target);
-                        const iWon = myDist < botDist;
-                        const tied = myDist === botDist;
+                        const guesses = history.map(h => Number(h.playerAction));
+                        const avgGuess = Math.round(guesses.reduce((a, b) => a + b, 0) / matchRounds);
+                        const minGuess = Math.min(...guesses);
+                        const maxGuess = Math.max(...guesses);
+                        const winsCount = history.filter(h => h.playerPayoff > (h.botPayoff || 0)).length;
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal);
 
-                        actualTitle = `Your Guess: ${myGuess} · ${activeBot.name}: ${botGuess}`;
-                        actualExplanation = `Average guess was ${avg.toFixed(1)} and the 2/3 target was ${target.toFixed(1)}. ${iWon ? `You were closer to the target (distance ${myDist.toFixed(1)} vs ${botDist.toFixed(1)}) and won +10 points!` : tied ? `Exact tie in distance to the target! Split +5 points each.` : `${activeBot.name} was closer to the target (distance ${botDist.toFixed(1)} vs ${myDist.toFixed(1)}) and claimed 10 points.`}`;
-                        actualPayoff = `Target: ${target.toFixed(1)} · Winner: ${iWon ? 'You (+10 pts)' : tied ? 'Tied (+5 pts each)' : activeBot.name + ' (+10 pts)'}`;
+                        actualFrequencyTitle = `Your Guessing Across ${matchRounds} Round${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `Avg Guess: ${avgGuess} (Range: ${minGuess}–${maxGuess}) · Won ${winsCount}/${matchRounds} Contests (Nash Benchmark: 0)`;
+                        if (avgGuess <= 10) {
+                          gapInterpretationSentence = playerTotal < botTotal || winsCount === 0
+                            ? `Close to equilibrium: ${scoreCmp}. Although your average guess of ${avgGuess} approached the mathematical Nash equilibrium (0), competitors only reason 1–2 steps ahead (~22 to ~33), meaning pure game theory overshot human opponents.`
+                            : `Close to equilibrium: ${scoreCmp}. Your average guess of ${avgGuess} approached the theoretical Nash equilibrium of 0, successfully winning contests as the field iterated downward.`;
+                        } else if (avgGuess <= 35) {
+                          gapInterpretationSentence = playerTotal >= botTotal
+                            ? `Noticeable deviation: ${scoreCmp}. Your average guess of ${avgGuess} departed from mathematical equilibrium (0) but won ${winsCount}/${matchRounds} contests because targeting Level-1 (~33) or Level-2 (~22) accurately anticipates human bounded rationality.`
+                            : `Noticeable deviation: ${scoreCmp}. Your average guess of ${avgGuess} targeted intermediate cognitive depth, but ${activeBot.name} anticipated the group average more accurately.`;
+                        } else {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. Your average guess of ${avgGuess} anchored near the intuitive midpoint (~50), falling behind because you did not apply iterative 2/3 elimination.`
+                            : `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. Your average guess of ${avgGuess} anchored near the intuitive center (~50), winning ${winsCount} rounds only because your opponents also exhibited Level-0 heuristics.`;
+                        }
+                        actualPayoff = `Whole Match Points: You: ${playerTotal} pts · ${activeBot.name}: ${botTotal} pts`;
                         realPeopleSentence = "Real human cohorts average 1 to 2 steps of strategic reasoning (Level-1 to Level-2), making guesses between 20 and 35 routinely win over the 'theoretically rational' guess of 0.";
+                        keyTakeawaySentence = "In strategic markets, success comes not from calculating the mathematical extreme, but from correctly estimating the cognitive depth of your competitors.";
 
                       } else if (selectedModuleId === 12) {
-                        conceptBadge = "Free-Rider Problem & Social Efficiency";
-                        predictionLabel = "Dominant Strategy Nash Trap";
-                        predictionTitle = "Contribute 0 Tokens (Full Free-Riding)";
-                        predictionExplanation = "Because each token contributed returns only 0.80 pts to the contributor, contributing 0 is a strictly dominant strategy, locking both players into the suboptimal Nash trap (20 pts each vs 32 pts if cooperative).";
-                        predictionPayoff = "Nash Trap: 20 pts each · Social Optimum: 32 pts each";
+                        conceptBadge = "Social Dilemma & Dominant Strategy";
+                        predictionLabel = "Dominant Strategy Free-Riding";
+                        predictionTitle = `Contribute 0 Tokens: 20 pts/round each (over ${matchRounds} rounds: ${matchRounds * 20} pts each)`;
+                        predictionExplanation = `Because each token invested in the group pool returns only 0.80 points to the contributor (1.6x multiplier ÷ 2 players), contributing zero is a strictly dominant strategy. This traps both players at 20 pts per round (${matchRounds * 20} pts over ${matchRounds} rounds) instead of the 32 pts per round social optimum (${matchRounds * 32} pts over ${matchRounds} rounds).`;
+                        predictionFrequency = "Equilibrium Benchmark: 100% Free-Riding (0 Tokens Contributed)";
+                        predictionPayoff = `Nash Trap: 20 pts/round each (${matchRounds * 20} pts over ${matchRounds} rounds) · Social Optimum: 32 pts/round each (${matchRounds * 32} pts over ${matchRounds} rounds)`;
 
-                        const myContrib = Number(lastRoundResult.playerAction);
-                        const botContrib = Number(lastRoundResult.botAction);
-                        const totalPool = myContrib + botContrib;
-                        const dividend = Math.round((totalPool * 1.6 / 2) * 10) / 10;
-                        const diffFromNash = Math.round((lastRoundResult.playerPayoff - 20) * 10) / 10;
+                        const contribs = history.map(h => Number(h.playerAction));
+                        const avgContrib = Math.round((contribs.reduce((a, b) => a + b, 0) / matchRounds) * 10) / 10;
+                        const zeroContribs = history.filter(h => Number(h.playerAction) === 0).length;
+                        const contribPct = Math.round((avgContrib / 20) * 100);
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal);
 
-                        actualTitle = `Contributed: ${myContrib}/20 · ${activeBot.name}: ${botContrib}/20`;
-                        actualExplanation = `Total pool reached ${totalPool} tokens (grew to ${(totalPool * 1.6).toFixed(1)} pts), delivering a public dividend of ${dividend.toFixed(1)} pts to each player. You earned ${lastRoundResult.playerPayoff} pts and ${activeBot.name} earned ${lastRoundResult.botPayoff} pts. ${myContrib === 0 && botContrib > 0 ? "You successfully free-rode on the bot's public contribution!" : myContrib > botContrib ? "The bot free-rode on your public contribution." : myContrib === 20 && botContrib === 20 ? "Both fully contributed, maximizing group welfare (+32 pts each)!" : "Partial contributions yielded modest social dividends."}`;
-                        actualPayoff = `Dividend: +${dividend.toFixed(1)} pts · Net Payoff: ${lastRoundResult.playerPayoff} pts (${diffFromNash >= 0 ? `+${diffFromNash}` : `${diffFromNash}`} vs Nash)`;
+                        actualFrequencyTitle = `Your Giving Across ${matchRounds} Round${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `Avg Contribution: ${avgContrib}/20 Tokens (${contribPct}% Giving Rate) · ${zeroContribs}/${matchRounds} Zero-Contribution Rounds`;
+                        if (contribPct <= 15) {
+                          gapInterpretationSentence = playerTotal >= botTotal
+                            ? `Close to equilibrium: ${scoreCmp}. You contributed only ${avgContrib}/20 tokens (${contribPct}%), adhering closely to the free-riding dominant strategy and keeping your private endowment safe while collecting pool dividends.`
+                            : `Close to equilibrium: ${scoreCmp}. You contributed only ${avgContrib}/20 tokens (${contribPct}%), adhering to the dominant free-riding strategy, but mutual low contributions trapped both players at low scores.`;
+                        } else if (contribPct <= 45) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Noticeable deviation: ${scoreCmp}. You contributed an average of ${avgContrib}/20 tokens (${contribPct}%), but ${activeBot.name} free-rode on your public funding. Many people are conditional cooperators who are willing to contribute if others do, but cooperation tends to collapse when free-riders go unpunished.`
+                            : `Noticeable deviation: ${scoreCmp}. You contributed an average of ${avgContrib}/20 tokens (${contribPct}%), balancing prosocial public investment with defensive self-preservation.`;
+                        } else {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You contributed generously (${contribPct}% of endowment), but suffered free-rider exploitation as ${activeBot.name} contributed less. Many people are conditional cooperators who are willing to contribute if others do, but cooperation tends to collapse when free-riders go unpunished.`
+                            : `Productive deviation from theory: ${scoreCmp}. By contributing ${contribPct}% of your endowment (${avgContrib}/20 tokens) rather than the 0-token dominant strategy, you unlocked mutual wealth multiplication through reciprocal collective investment.`;
+                        }
+                        actualPayoff = `Whole Match Score: You: ${playerTotal} pts · ${activeBot.name}: ${botTotal} pts (Surplus: ${totalMatchSurplus} pts)`;
                         realPeopleSentence = "Real participants start by contributing 40–60% of their endowment out of social goodwill, but contributions steadily decay toward zero as conditional cooperators notice free-riders and reduce their own giving.";
+                        keyTakeawaySentence = "When private returns to public investment are below cost, voluntary cooperation inevitably collapses without social norms, reputation, or institutional sanctions.";
 
                       } else if (selectedModuleId === 15) {
-                        conceptBadge = "Anti-Coordination & Evolutionary Stability (ESS)";
-                        predictionLabel = "Anti-Coordination Nash Equilibria";
-                        predictionTitle = "Pure: (Hawk, Dove) & (Dove, Hawk) · Mixed: Randomize";
-                        predictionExplanation = "Anti-coordination equilibria demand taking opposite actions: best response to Dove is Hawk (+6), but best response to Hawk is Dove (0 vs -10 crash). In symmetric play, players randomize Hawk with probability p = 23%.";
-                        predictionPayoff = "Mutual Dove: +3 each · Hawk/Dove: (+6, 0) · Crash: -10 each";
+                        conceptBadge = "Anti-Coordination & Evolutionary ESS";
+                        predictionLabel = "Anti-Coordination Nash & Mixed ESS";
+                        predictionTitle = "Pure: (Hawk, Dove) [6, 0] & (Dove, Hawk) [0, 6] · Mixed ESS: 23% Hawk (2.3 pts/rd)";
+                        predictionExplanation = `In Hawk-Dove, players seek to anti-coordinate: the best response to peaceful Dove (+3 pts/rd each) is aggressive Hawk (+6 pts/rd vs 0), but the best response to Hawk is Dove (0 vs -10 pts/rd collision). The symmetric mixed ESS is playing Hawk 23% of the time (3/13), yielding ~2.3 pts/round each (~${(matchRounds * 2.3).toFixed(1)} pts over ${matchRounds} rounds).`;
+                        predictionFrequency = "Mixed ESS Benchmark: 23% Hawk / 77% Dove (p* = 3/13 ≈ 0.23, EV = ~2.3 pts/round)";
+                        predictionPayoff = `Per round: Peaceful Sharing (Dove, Dove) = +3 pts/rd each · Exploit (Hawk, Dove) = +6 pts/rd vs 0 · Collision (Hawk, Hawk) = -10 pts/rd each [Over ${matchRounds} rounds: Peaceful Sharing = +${matchRounds * 3} pts each · Mutual Collision = -${matchRounds * 10} pts each]`;
 
-                        const bothHawk = lastRoundResult.playerAction === 'Hawk' && lastRoundResult.botAction === 'Hawk';
-                        const bothDove = lastRoundResult.playerAction === 'Dove' && lastRoundResult.botAction === 'Dove';
+                        const hawkCount = history.filter(h => h.playerAction === 'Hawk').length;
+                        const doveCount = matchRounds - hawkCount;
+                        const hawkPct = Math.round((hawkCount / matchRounds) * 100);
+                        const crashes = history.filter(h => h.playerAction === 'Hawk' && h.botAction === 'Hawk').length;
+                        const hawkEssGap = Math.abs(hawkPct - 23);
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal);
 
-                        actualTitle = `You: ${lastRoundResult.playerAction} · ${activeBot.name}: ${lastRoundResult.botAction}`;
-                        actualExplanation = bothHawk
-                          ? "Catastrophic Collision! Both played aggressive Hawk and suffered -10 pts in mutual crash damage."
-                          : bothDove
-                          ? "Peaceful Sharing: Both played Dove, peacefully sharing the resource (+3 pts each)."
-                          : lastRoundResult.playerAction === 'Hawk'
-                          ? `You seized the territory (+6 pts) while ${activeBot.name} yielded as Dove (0 pts).`
-                          : `${activeBot.name} aggressively claimed the territory (+6 pts) while you safely yielded as Dove (0 pts).`;
-                        actualPayoff = `Your Payoff: ${lastRoundResult.playerPayoff >= 0 ? `+${lastRoundResult.playerPayoff}` : `${lastRoundResult.playerPayoff}`} pts · ${activeBot.name}: ${lastRoundResult.botPayoff >= 0 ? `+${lastRoundResult.botPayoff}` : `${lastRoundResult.botPayoff}`} pts`;
+                        actualFrequencyTitle = `Your Choices Across ${matchRounds} Round${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `${hawkCount}/${matchRounds} Hawk (${hawkPct}%) · ${doveCount}/${matchRounds} Dove (${100 - hawkPct}%) · ${crashes} Fight${crashes === 1 ? '' : 's'}`;
+                        if (hawkEssGap <= 8) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Close to equilibrium: ${scoreCmp}. Although your overall mix was near the 23% ESS benchmark (${hawkPct}% Hawk), the ORDER of your choices was predictable, resulting in ${crashes} mutual fight${crashes === 1 ? '' : 's'} (-10 pts each); a true mixed strategy must also be unpredictable round to round to prevent an opponent from anticipating your aggression.`
+                            : `Close to equilibrium: ${scoreCmp}. You chose Hawk in ${hawkPct}% of rounds (within ${hawkEssGap}% of the 23% mixed ESS benchmark), using randomized deterrence effectively to secure resources with no costly Hawk-Hawk fights.`;
+                        } else if (hawkEssGap <= 25) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? hawkPct < 23
+                              ? `Noticeable deviation: ${scoreCmp}. You played Hawk in only ${hawkPct}% of rounds (yielding too frequently compared to the 23% ESS mix); always yielding gets exploited by an aggressive bot, surrendering territory without contesting it despite having ${crashes > 0 ? `${crashes} costly fight${crashes === 1 ? '' : 's'}` : 'no costly Hawk-Hawk fights'}.`
+                              : `Noticeable deviation: ${scoreCmp}. You played Hawk in ${hawkPct}% of rounds (exceeding the 23% ESS mix); aggressive over-escalation triggered ${crashes} costly Hawk-Hawk fight${crashes === 1 ? '' : 's'} (-10 pts each), dragging down your score.`
+                            : `Noticeable deviation: ${scoreCmp}. You played Hawk in ${hawkPct}% of rounds (a ${hawkEssGap}% gap from 23% ESS), staying ahead by timing your aggressive claims when ${activeBot.name} yielded, with no costly Hawk-Hawk fights.`;
+                        } else {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? hawkPct < 23
+                              ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You played Hawk in only ${hawkPct}% of rounds; always yielding gets exploited by an aggressive bot, handing 6 points per round to ${activeBot.name} while earning 0, even with no costly Hawk-Hawk fights.`
+                              : `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You played Hawk in ${hawkPct}% of rounds; stubborn aggression against an unyielding opponent resulted in ${crashes} devastating Hawk-Hawk fight${crashes === 1 ? '' : 's'} (-10 pts each), turning competition into mutual destruction.`
+                            : `Productive deviation from theory: ${scoreCmp}. You played Hawk in ${hawkPct}% of rounds, departing widely from the 23% ESS baseline, yet forced concessions from ${activeBot.name} while avoiding costly Hawk-Hawk fights.`;
+                        }
+                        actualPayoff = `Whole Match Payoff: You: ${playerTotal >= 0 ? `+${playerTotal}` : playerTotal} pts · ${activeBot.name}: ${botTotal >= 0 ? `+${botTotal}` : botTotal} pts`;
                         realPeopleSentence = "Real players often play Hawk too frequently hoping the other will blink, but repeated mutual Hawk collisions quickly teach players to alternate or establish convention-based ownership (bourgeois strategies).";
+                        keyTakeawaySentence = "In brinkmanship conflicts, unyielding aggression risks catastrophic ruin; winning requires convincing the rival you will never blink so that they are forced to yield.";
 
-                      } else if (selectedModuleId === 16) {
-                        conceptBadge = "Subgame Perfection vs. Negative Reciprocity";
-                        predictionLabel = "Subgame Perfect Nash Equilibrium";
-                        predictionTitle = "Minimum Positive Offer: Propose $1.00 (or $0.01)";
-                        predictionExplanation = "Subgame perfection with self-interested agents predicts the Proposer offers the minimum positive amount ($1.00), and a rational Responder accepts since $1.00 is strictly better than $0.00.";
-                        predictionPayoff = "SPNE Split: Proposer keeps $9.00 · Responder gets $1.00";
+                      } else if (selectedModuleId === 16 || selectedModuleId === 9) {
+                        conceptBadge = "Subgame Perfection vs. Inequity Aversion";
+                        predictionLabel = "Subgame Perfect Nash Equilibrium (SPNE)";
+                        predictionTitle = "SPNE Minimal Offer: $1.00/round (Proposer keeps $9.00/round)";
+                        predictionExplanation = `Assuming pure self-interest, a rational responder accepts any positive sum ($1.00 > $0), so backward induction predicts the proposer offers $1.00 and keeps $9.00 per round ($${(matchRounds * 9).toFixed(2)} vs $${(matchRounds * 1).toFixed(2)} over ${matchRounds} rounds).`;
+                        predictionFrequency = "Equilibrium Benchmark: Offer $1.00 (10% Pie Share; Proposer keeps 90%)";
+                        predictionPayoff = `SPNE: Proposer $9.00/round ($${(matchRounds * 9).toFixed(2)} over ${matchRounds} rounds) · Responder $1.00/round ($${(matchRounds * 1).toFixed(2)} over ${matchRounds} rounds)`;
 
-                        const offer = Number(lastRoundResult.playerAction);
-                        const accepted = lastRoundResult.botAction === 'Accept';
+                        const offers = history.map(h => Number(h.playerAction));
+                        const avgOffer = Math.round((offers.reduce((a, b) => a + b, 0) / matchRounds) * 10) / 10;
+                        const acceptedCount = history.filter(h => h.botAction === 'Accept').length;
+                        const offerPct = Math.round((avgOffer / 10) * 100);
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal, true);
 
-                        actualTitle = `Offer: $${offer.toFixed(2)} of $10.00 · Result: ${accepted ? 'ACCEPTED' : 'REJECTED'}`;
-                        actualExplanation = accepted
-                          ? `${activeBot.name} accepted your $${offer.toFixed(2)} offer! You pocketed $${lastRoundResult.playerPayoff.toFixed(2)} and the bot received $${lastRoundResult.botPayoff.toFixed(2)}.`
-                          : `${activeBot.name} rejected your $${offer.toFixed(2)} offer as unfair! The entire $10 pie was destroyed and both received $0.00.`;
-                        actualPayoff = `Your Payoff: $${lastRoundResult.playerPayoff.toFixed(2)} · ${activeBot.name}: $${lastRoundResult.botPayoff.toFixed(2)} (${accepted ? 'Deal Finalized' : 'Both Walk Away Empty-Handed'})`;
+                        actualFrequencyTitle = `Your Offers Across ${matchRounds} Round${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `Avg Offer: $${avgOffer.toFixed(2)} of $10.00 (${offerPct}% Share) · ${acceptedCount}/${matchRounds} Offers Accepted`;
+                        if (avgOffer <= 1.50) {
+                          gapInterpretationSentence = playerTotal < botTotal || acceptedCount < matchRounds
+                            ? `Close to equilibrium: ${scoreCmp}. Your average offer of $${avgOffer.toFixed(2)} adhered strictly to the 10% SPNE prediction ($1.00), but ${activeBot.name} vetoed low-ball offers to $0 to punish perceived greed.`
+                            : `Close to equilibrium: ${scoreCmp}. Your average offer of $${avgOffer.toFixed(2)} adhered closely to the 10% SPNE prediction ($1.00), helped by finding a rational partner who accepted positive crumbs.`;
+                        } else if (avgOffer <= 3.20) {
+                          gapInterpretationSentence = playerTotal < botTotal || acceptedCount < matchRounds
+                            ? `Noticeable deviation: ${scoreCmp}. Your average offer of $${avgOffer.toFixed(2)} (${offerPct}%) fell into the 20–30% danger zone, where rejections destroyed surplus.`
+                            : `Noticeable deviation: ${scoreCmp}. Your average offer of $${avgOffer.toFixed(2)} (${offerPct}%) earned points by probing the boundary of acceptable bargaining concessions.`;
+                        } else {
+                          gapInterpretationSentence = playerTotal >= botTotal * 0.8
+                            ? `Productive deviation from theory: ${scoreCmp}. Your average offer of $${avgOffer.toFixed(2)} (${offerPct}%) departed substantially from the selfish $1 SPNE prediction to satisfy social fairness norms, securing agreement in ${acceptedCount}/${matchRounds} matches and avoiding costly vetoes.`
+                            : `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. Offering $${avgOffer.toFixed(2)} (${offerPct}%) ensured guaranteed agreement, though high generosity conceded the majority of the surplus to your partner.`;
+                        }
+                        actualPayoff = `Whole Match Payoff: You: $${playerTotal.toFixed(2)} · ${activeBot.name}: $${botTotal.toFixed(2)} (Surplus: $${totalMatchSurplus.toFixed(2)})`;
                         realPeopleSentence = "In global experiments, real proposers typically offer 40–50% ($4–$5), and real responders reject offers below 20–30% ($2–$3) because strong negative reciprocity leads people to pay to punish perceived unfairness.";
+                        keyTakeawaySentence = "Economic bargaining is constrained by social fairness norms: attempting to extract maximum theoretical surplus frequently triggers spiteful vetoes that leave both parties with nothing.";
 
                       } else if (selectedModuleId === 17) {
-                        conceptBadge = "Zero-Sum Games & Minimax Mixed Strategy";
-                        predictionLabel = "Minimax Mixed Strategy Nash Equilibrium";
-                        predictionTitle = "50% Heads / 50% Tails (p = 0.50)";
-                        predictionExplanation = "Because this is pure zero-sum conflict, no pure strategy Nash equilibrium exists. The unique minimax strategy requires randomizing 50/50 with zero predictability to avoid being exploited by an adaptive opponent.";
-                        predictionPayoff = "Expected Payoff: +$1.00 (50% win probability) · Total Stake: $2.00";
+                        conceptBadge = "Zero-Sum Games & Minimax Randomization";
+                        predictionLabel = "Mixed-Strategy Nash Equilibrium";
+                        predictionTitle = "Minimax Randomization: 50% Heads / 50% Tails (1.0 pt/round EV)";
+                        predictionExplanation = `In this zero-sum game with no pure equilibrium, the unique minimax mixed strategy is randomizing 50/50, yielding an expected value of 1.0 pt per round (${(matchRounds * 1.0).toFixed(1)} pts expected over ${matchRounds} rounds, a 50% win rate).`;
+                        predictionFrequency = "Equilibrium Benchmark: Exactly 50% Heads / 50% Tails (p = 0.50 Minimax Mix)";
+                        predictionPayoff = `Minimax EV: 1.0 pt/round each (${(matchRounds * 1.0).toFixed(1)} pts over ${matchRounds} rounds) · Stake per round: +2 pts for winner, 0 for loser`;
 
-                        const matched = lastRoundResult.playerAction === lastRoundResult.botAction;
+                        const headsCount = history.filter(h => h.playerAction === 'Heads').length;
+                        const tailsCount = matchRounds - headsCount;
+                        const headsPct = Math.round((headsCount / matchRounds) * 100);
+                        const matchWins = history.filter(h => h.playerAction === h.botAction).length;
+                        const penniesGap = Math.abs(headsPct - 50);
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal);
 
-                        actualTitle = `Your Coin: ${lastRoundResult.playerAction} · ${activeBot.name}: ${lastRoundResult.botAction}`;
-                        actualExplanation = matched
-                          ? `Match! Both played ${lastRoundResult.playerAction}. As the Matcher, you won the +$2.00 stake ($2 for you, $0 for bot).`
-                          : `Mismatch! You played ${lastRoundResult.playerAction} while ${activeBot.name} played ${lastRoundResult.botAction}. The bot won the +$2.00 stake ($0 for you, $2 for bot).`;
-                        actualPayoff = `Your Round Payoff: +${lastRoundResult.playerPayoff} pts · ${activeBot.name}: +${lastRoundResult.botPayoff} pts`;
+                        actualFrequencyTitle = `Your Choices Across ${matchRounds} Round${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `${headsCount}/${matchRounds} Heads (${headsPct}%) · ${tailsCount}/${matchRounds} Tails (${100 - headsPct}%) · Matched ${matchWins}/${matchRounds} (${Math.round((matchWins / matchRounds) * 100)}% Win Rate)`;
+                        if (penniesGap <= 6) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Close to equilibrium: ${scoreCmp}. Although your overall choice mix was near theoretical 50/50 (${headsPct}% Heads / ${100 - headsPct}% Tails), the ORDER of your choices was predictable, allowing ${activeBot.name} to anticipate your sequence; a true mixed strategy must also be unpredictable round to round, not just 50/50 in aggregate.`
+                            : `Close to equilibrium: ${scoreCmp}. Your choice frequency was ${headsPct}% Heads and ${100 - headsPct}% Tails (within ${penniesGap}% of theoretical 50/50), maintaining true round-to-round unpredictability that prevented pattern exploitation and protected your expected payoff.`;
+                        } else if (penniesGap <= 18) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Noticeable deviation: ${scoreCmp}. Your choice frequency was ${headsPct}% Heads and ${100 - headsPct}% Tails (a ${penniesGap}% gap from 50/50), and the ORDER of your choices looked predictable to ${activeBot.name}; a true mixed strategy must also be unpredictable round to round, in addition to maintaining a 50/50 frequency balance.`
+                            : `Noticeable deviation: ${scoreCmp}. Your choice frequency tilted slightly to ${headsPct}% Heads (a ${penniesGap}% gap from 50/50), yet you outscored ${activeBot.name} by timing your coin shifts effectively.`;
+                        } else {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. Your choices tilted heavily to ${headsPct >= 50 ? `${headsPct}% Heads` : `${100 - headsPct}% Tails`} (a large ${penniesGap}% gap from 50/50), and the ORDER of your choices looked predictable, allowing ${activeBot.name} to anticipate your habits; a true mixed strategy must be unpredictable round to round, not anchored to recognizable patterns.`
+                            : `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You heavily favored ${headsPct >= 50 ? 'Heads' : 'Tails'} (${headsPct >= 50 ? headsPct : 100 - headsPct}%), yet stayed ahead because your opponent failed to counter your directional anchor quickly enough.`;
+                        }
+                        actualPayoff = `Whole Match Payoff: You: +${playerTotal} pts · ${activeBot.name}: +${botTotal} pts (Match Stake: ${matchRounds * 2} pts)`;
                         realPeopleSentence = "Real people struggle with true randomness, often falling into negative recency (the gambler's fallacy—switching after a streak) or predictable alternating patterns that adaptive opponents quickly exploit.";
+                        keyTakeawaySentence = "In pure conflict with no win-win outcomes, true mathematical randomness is the only unexploitable shield against strategic opponents.";
 
                       } else if (selectedModuleId === 18) {
                         conceptBadge = "Coordination with Conflicting Preferences";
                         predictionLabel = "Pure & Mixed Nash Equilibria";
-                        predictionTitle = "Pure: (Opera, Opera) & (Football, Football) · Mixed: 1.2 pts";
-                        predictionExplanation = "Two asymmetric pure equilibria exist where both coordinate on one event. Under symmetric mixed strategies without communication, players randomize, causing 48% miscoordination and an expected payoff of only 1.2 pts.";
-                        predictionPayoff = "Coordinated: (+3, +2) or (+2, +3) · Mixed Strategy EV: 1.2 pts";
+                        predictionTitle = "Pure Nash: Opera [3, 2] or Football [2, 3] pts/round";
+                        predictionExplanation = `There are two pure coordination equilibria per round: coordinating on Opera yields (+3 pts for you, +2 pts for bot per round) while coordinating on Football yields (+2 pts for you, +3 pts for bot per round). Miscoordination yields 0 pts per round. Mixed play yields an expected value of only 1.2 pts per round (${(matchRounds * 1.2).toFixed(1)} pts over ${matchRounds} rounds).`;
+                        predictionFrequency = "Equilibrium Benchmark: 100% Coordinated on either Opera [3, 2] or Football [2, 3]";
+                        predictionPayoff = `Coordinated Payoffs: +3 or +2 pts/round (+${matchRounds * 3} or +${matchRounds * 2} pts over ${matchRounds} rounds) · Miscoordination: 0 pts/round (0 pts over ${matchRounds} rounds)`;
 
-                        const bothOpera = lastRoundResult.playerAction === 'Opera' && lastRoundResult.botAction === 'Opera';
-                        const bothFootball = lastRoundResult.playerAction === 'Football' && lastRoundResult.botAction === 'Football';
+                        const operaCount = history.filter(h => h.playerAction === 'Opera').length;
+                        const footballCount = matchRounds - operaCount;
+                        const operaPct = Math.round((operaCount / matchRounds) * 100);
+                        const coordRounds = history.filter(h => (h.playerAction === 'Opera' && h.botAction === 'Opera') || (h.playerAction === 'Football' && h.botAction === 'Football')).length;
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal);
 
-                        actualTitle = `You: ${lastRoundResult.playerAction} · ${activeBot.name}: ${lastRoundResult.botAction}`;
-                        actualExplanation = bothOpera
-                          ? "Coordinated on Opera! You enjoyed your favorite (+3 pts) and the bot got +2 pts."
-                          : bothFootball
-                          ? "Coordinated on Football! You earned +2 pts and the bot enjoyed its favorite (+3 pts)."
-                          : `Miscoordination! You chose ${lastRoundResult.playerAction} while ${activeBot.name} chose ${lastRoundResult.botAction}. Both get 0 pts!`;
-                        actualPayoff = `Your Payoff: +${lastRoundResult.playerPayoff} pts · ${activeBot.name}: +${lastRoundResult.botPayoff} pts`;
+                        actualFrequencyTitle = `Your Choices Across ${matchRounds} Round${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `${operaCount}/${matchRounds} Opera (${operaPct}%) · ${footballCount}/${matchRounds} Football (${100 - operaPct}%) · Coordinated: ${coordRounds}/${matchRounds}`;
+                        if (coordRounds >= Math.round(matchRounds * 0.7) || operaPct === 100 || operaPct === 0) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Close to equilibrium: ${scoreCmp}. Although you coordinated in ${coordRounds}/${matchRounds} rounds, you repeatedly conceded to the bot's preferred venue rather than alternating turns fairly.`
+                            : (40 <= operaPct && operaPct <= 60)
+                            ? `Close to equilibrium: ${scoreCmp}. You coordinated across rounds with an even ${operaPct}% Opera / ${100 - operaPct}% Football split, establishing an egalitarian turn-taking convention that maximized joint welfare.`
+                            : `Close to equilibrium: ${scoreCmp}. You coordinated successfully in ${coordRounds}/${matchRounds} rounds, asserting preference priority to lead scoring.`;
+                        } else if (coordRounds >= Math.round(matchRounds * 0.4)) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Noticeable deviation: ${scoreCmp}. You coordinated in ${coordRounds}/${matchRounds} rounds, but miscoordination clashes reduced your score as neither player established a clear convention.`
+                            : `Noticeable deviation: ${scoreCmp}. You coordinated in ${coordRounds}/${matchRounds} rounds, capturing surplus by asserting your preferred venue whenever coordination succeeded.`;
+                        } else {
+                          gapInterpretationSentence = `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. Miscoordination destroyed surplus in ${matchRounds - coordRounds}/${matchRounds} rounds because both players stubbornly insisted on their own favorite event, collapsing payoffs to zero.`;
+                        }
+                        actualPayoff = `Whole Match Payoff: You: +${playerTotal} pts · ${activeBot.name}: +${botTotal} pts (Surplus: ${totalMatchSurplus} pts)`;
                         realPeopleSentence = "In repeated play, real human pairs quickly converge on alternating between Opera and Football across rounds, achieving perfect 50/50 fairness and avoiding costly miscoordination.";
+                        keyTakeawaySentence = "When parties share a common goal but disagree on details, establishing clear communication or alternating conventions is essential to avoid mutual deadlock.";
 
                       } else if (selectedModuleId === 19) {
                         conceptBadge = "Sequential Trust & Backward Induction";
                         predictionLabel = "Subgame Perfect Nash Equilibrium (SPNE)";
-                        predictionTitle = "Zero Trust: Send $0.00 (Keep All 10 Pts)";
-                        predictionExplanation = "By backward induction, a purely self-interested trustee will return $0. Anticipating this, a rational investor sends $0, leaving both players with only their starting endowments (10 pts total wealth).";
-                        predictionPayoff = "SPNE: Investor keeps 10 pts · Trustee gets 0 pts";
+                        predictionTitle = "Zero Trust: Send 0 pts (Investor keeps 10 pts/round, Trustee gets 0 pts/round)";
+                        predictionExplanation = `By backward induction, a selfish trustee returns 0 pts in the final stage, so an anticipating investor sends 0 pts, keeping 10 pts per round (${matchRounds * 10} pts over ${matchRounds} rounds) while trustee gets 0 pts.`;
+                        predictionFrequency = "Equilibrium Benchmark: Investor sends 0 pts (0% Trust Rate; Selfish Trustee returns 0 under SPNE)";
+                        predictionPayoff = `SPNE: Investor keeps 10 pts/round, Trustee gets 0 (${matchRounds * 10} vs 0 over ${matchRounds} rounds) · Social Maximum: 15 pts each/round for fair 50/50 return (${matchRounds * 15} pts each over ${matchRounds} rounds; 30 pts/round joint total)`;
 
-                        const investment = Number(lastRoundResult.playerAction);
-                        const returned = typeof lastRoundResult.botAction === 'number' ? lastRoundResult.botAction : 0;
-                        const diffFromNash = Math.round((lastRoundResult.playerPayoff - 10) * 10) / 10;
-                        const totalWealth = Math.round((lastRoundResult.playerPayoff + lastRoundResult.botPayoff) * 10) / 10;
+                        const investments = history.map(h => Number(h.playerAction));
+                        const avgInv = Math.round((investments.reduce((a, b) => a + b, 0) / matchRounds) * 10) / 10;
+                        const trustRate = Math.round((avgInv / 10) * 100);
+                        const returns = history.map(h => typeof h.botAction === 'number' ? h.botAction : 0);
+                        const avgRet = Math.round((returns.reduce((a, b) => a + b, 0) / matchRounds) * 10) / 10;
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal);
 
-                        actualTitle = `Sent: ${investment} pts (Tripled to ${investment * 3}) · Returned: ${returned} pts`;
-                        actualExplanation = `You invested ${investment} pts, which multiplied to ${investment * 3} pts. ${activeBot.name} returned ${returned} pts. You finished with ${lastRoundResult.playerPayoff} pts (${diffFromNash >= 0 ? `+${diffFromNash} profit` : `${diffFromNash} loss`} vs keeping all 10) and ${activeBot.name} retained ${lastRoundResult.botPayoff} pts.`;
-                        actualPayoff = `Your Capital: ${lastRoundResult.playerPayoff} pts · Trustee Capital: ${lastRoundResult.botPayoff} pts (Created ${totalWealth} pts of wealth)`;
-                        realPeopleSentence = "Real investors routinely send about 50% ($5) of their endowment, and trustees reciprocate by returning slightly more than the initial transfer, demonstrating that social trust and warm-glow reciprocity drive real markets.";
+                        actualFrequencyTitle = `Your Transfers Across ${matchRounds} Round${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `Avg Transfer: ${avgInv}/10 pts (${trustRate}% Trust Rate) · Avg Return: ${avgRet} pts (Tripled to ${(avgInv * 3).toFixed(1)} pts/rd)`;
+                        if (trustRate <= 15) {
+                          gapInterpretationSentence = playerTotal >= botTotal
+                            ? `Close to equilibrium: ${scoreCmp}. You transferred only ${avgInv}/10 pts (${trustRate}% trust rate), strictly adhering to the 0-point SPNE baseline and protecting your endowment from trustee moral hazard.`
+                            : `Close to equilibrium: ${scoreCmp}. You transferred only ${avgInv}/10 pts (${trustRate}% trust rate), adhering to SPNE backward induction; you kept your capital safe, but missed out on the 3x surplus growth available through mutual trust.`;
+                        } else if (trustRate <= 45) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Noticeable deviation: ${scoreCmp}. You entrusted an average of ${avgInv}/10 pts (${trustRate}%), but earned less because the trustee returned too little surplus.`
+                            : `Noticeable deviation: ${scoreCmp}. You entrusted an average of ${avgInv}/10 pts (${trustRate}%), earning points by prudently probing ${activeBot.name}'s trustworthiness.`;
+                        } else {
+                          gapInterpretationSentence = playerTotal < botTotal && playerTotal <= matchRounds * 10
+                            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You placed high trust in ${activeBot.name} by transferring ${trustRate}% of your endowment, but suffered losses because your partner exploited your vulnerability and kept the tripled wealth.`
+                            : `Productive deviation from theory: ${scoreCmp}. By entrusting ${trustRate}% of your capital (${avgInv}/10 pts) instead of the 0-point SPNE prediction, you unlocked reciprocal wealth multiplication to generate high mutual returns with ${activeBot.name}.`;
+                        }
+                        actualPayoff = `Whole Match Capital: You: ${playerTotal} pts · ${activeBot.name}: ${botTotal} pts (Wealth: ${totalMatchSurplus} pts)`;
+                        realPeopleSentence = "Real investors routinely send about 50% (5 pts) of their endowment, and trustees reciprocate by returning slightly more than the initial transfer, demonstrating that social trust and warm-glow reciprocity drive real markets.";
+                        keyTakeawaySentence = "Economic growth relies on vulnerability and trust: by trusting others with capital, parties expand the economic pie and generate mutual prosperity through reciprocal goodwill.";
 
                       } else if (selectedModuleId === 20) {
-                        conceptBadge = "Node 1–6 Extensive Chain";
-                        predictionLabel = "Backward Induction (SPNE)";
-                        predictionTitle = "Take at Node 1 (2, 0)";
-                        predictionExplanation = "Game theory predicts taking immediately at the very first node because rational fear of defection unspools backward from Node 6.";
-                        predictionPayoff = "Total Surplus: 2 pts (You: 2 · Bot: 0)";
+                        conceptBadge = "Backward Induction & Rosenthal's Paradox";
+                        predictionLabel = "Subgame Perfect Nash Equilibrium (SPNE)";
+                        predictionTitle = "SPNE Immediate Take at Node 1: (+2, 0) pts per chain";
+                        predictionExplanation = `Backward induction from Node 6 backward predicts that fear of partner defection compels Player 1 to defect immediately at Node 1, securing +2 pts while giving the bot 0 pts per chain (${matchRounds * 2} vs 0 over ${matchRounds} chains) instead of reaching the +8 pts each cooperative optimum (${matchRounds * 8} pts each over ${matchRounds} chains).`;
+                        predictionFrequency = "Equilibrium Benchmark: 100% Immediate Take at Node 1 (SPNE Path)";
+                        predictionPayoff = `SPNE Defection: +2 pts/chain for you, 0 for bot (${matchRounds * 2} vs 0 over ${matchRounds} chains) · Social Optimum: +8 pts each/chain (${matchRounds * 8} pts each over ${matchRounds} chains)`;
 
-                        const spneSurplus = 2;
-                        const surplusMultiplier = (totalSurplus / spneSurplus).toFixed(1);
-                        const diffFromSpne = lastRoundResult.playerPayoff - 2;
+                        const n1Takes = history.filter(h => String(h.playerAction).includes('Node 1')).length;
+                        const passedN1Count = matchRounds - n1Takes;
+                        const passedN1Pct = Math.round((passedN1Count / matchRounds) * 100);
+                        const scoreCmp = getScoreCmp(playerTotal, botTotal);
 
-                        actualTitle = centipedeExitNode && centipedeExitNode <= 6
-                          ? `Ended at Node ${centipedeExitNode} (${centipedeExitAction || 'Take'})`
-                          : 'Terminal Mutual Pass (+8, +8)';
-                        actualExplanation = `You earned +${lastRoundResult.playerPayoff} pts (${diffFromSpne >= 0 ? `+${diffFromSpne} pts vs SPNE` : `${diffFromSpne} pts vs SPNE`}) and ${activeBot.name} earned +${lastRoundResult.botPayoff} pts.`;
-                        actualPayoff = `Total Surplus: ${totalSurplus} pts (${Number(surplusMultiplier) > 1 ? `${surplusMultiplier}x SPNE surplus` : 'Matched SPNE'})`;
+                        actualFrequencyTitle = `Your Decisions Across ${matchRounds} Centipede Chain${matchRounds > 1 ? 's' : ''}`;
+                        actualFrequencyBreakdown = `${n1Takes}/${matchRounds} Node 1 Immediate Takes · ${passedN1Count}/${matchRounds} Chains Passed Beyond Node 1 (${passedN1Pct}% Trust Rate)`;
+                        if (passedN1Pct <= 15) {
+                          gapInterpretationSentence = playerTotal >= botTotal
+                            ? `Close to equilibrium: ${scoreCmp}. You took at Node 1 in ${n1Takes}/${matchRounds} chains (${100 - passedN1Pct}% immediate defection), adhering to SPNE backward induction and securing +2 pts while giving the bot 0.`
+                            : `Close to equilibrium: ${scoreCmp}. You followed backward induction by taking at Node 1, guaranteeing +2 pts per chain but leaving the 16-point cooperative jackpot unclaimed.`;
+                        } else if (passedN1Pct <= 50) {
+                          gapInterpretationSentence = playerTotal < botTotal
+                            ? `Noticeable deviation: ${scoreCmp}. You passed beyond Node 1 in ${passedN1Pct}% of chains, but ${activeBot.name} took early at intermediate nodes, leaving you with lower payoffs.`
+                            : `Noticeable deviation: ${scoreCmp}. You passed beyond Node 1 in ${passedN1Pct}% of chains, timing your exits to claim larger shares before the bot could defect.`;
+                        } else {
+                          gapInterpretationSentence = playerTotal < botTotal && playerTotal <= matchRounds * 2
+                            ? `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. You consistently passed to grow the collective pot (${passedN1Pct}% passing rate), but earned less because the bot defected ahead of you at advanced nodes.`
+                            : `Productive deviation from theory: ${scoreCmp}. You passed beyond Node 1 in ${passedN1Pct}% of chains, directly defying the cold backward induction prediction to build sequential reciprocal wealth with ${activeBot.name}.`;
+                        }
+                        actualPayoff = `Cumulative Match Score: You: +${playerTotal} pts · ${activeBot.name}: +${botTotal} pts (Wealth: ${totalMatchSurplus} pts)`;
                         realPeopleSentence = "In laboratory experiments, real people routinely pass because reciprocal trust and altruism offer massive mutual gains, and players only risk losing a single point to give their partner the chance to double the pot.";
+                        keyTakeawaySentence = "Sequential trust can unlock enormous mutual wealth, but it requires both players to resist the constant temptation of backward induction defection.";
                       }
 
                       return (
                         <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-4 border border-blue-800/60 shadow-xl space-y-3 sm:space-y-3.5 text-xs max-w-full overflow-hidden">
+                          {/* Card Header with Concept Badge */}
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 border-b border-slate-800/80 pb-2">
                             <span className="font-extrabold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                              <span>⚖️ Match Debrief: Theory vs. Actual Play</span>
+                              <span>⚖️ Whole Match Debrief: Theory vs. Actual Play</span>
+                              <span className="text-[10px] text-slate-400 font-mono font-normal">
+                                ({matchRounds} Round{matchRounds > 1 ? 's' : ''} Summarized)
+                              </span>
                             </span>
                             <span className="text-[11px] font-mono text-blue-400 font-bold uppercase tracking-wide self-start sm:self-auto">
-                              {conceptBadge}
+                              <AnnotateGlossaryText text={conceptBadge} />
                             </span>
+                          </div>
+
+                          {/* Match Totals Banner: Student vs Bot over ALL rounds */}
+                          <div className="bg-slate-900/90 rounded-xl p-3 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="text-xl shrink-0">🏆</span>
+                              <div className="min-w-0">
+                                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider truncate">
+                                  Cumulative Match Standings ({matchRounds} Round{matchRounds > 1 ? 's' : ''})
+                                </div>
+                                <div className="text-xs sm:text-sm font-black text-white font-mono flex flex-wrap items-center gap-1.5 sm:gap-2 mt-0.5">
+                                  <span className="text-emerald-400 shrink-0">You: {playerTotal} pts</span>
+                                  <span className="text-slate-500 font-normal shrink-0">vs</span>
+                                  <span className={`${activeBot.color} break-words`}>{activeBot.name}: {botTotal} pts</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 self-start sm:self-auto shrink-0">
+                              <span className="text-xs font-mono font-semibold text-slate-300 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
+                                Total Surplus: <strong className="text-sky-400 font-bold">{totalMatchSurplus} pts</strong>
+                              </span>
+                              <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${playerTotal >= botTotal ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/80' : 'bg-slate-950 text-slate-300 border-slate-800'}`}>
+                                {playerTotal >= botTotal ? '✓ Outperformed Bot' : 'Bot Captured Surplus'}
+                              </span>
+                            </div>
                           </div>
 
                           {/* Side-by-Side Comparison Grid */}
@@ -2074,31 +2350,48 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                             {/* Theoretical Prediction */}
                             <div className="bg-slate-900/90 p-3 sm:p-3.5 rounded-xl border border-rose-900/50 space-y-2">
                               <div className="text-[11px] font-bold text-rose-400 uppercase tracking-wider flex items-center justify-between">
-                                <span>{predictionLabel}</span>
+                                <span><AnnotateGlossaryText text={predictionLabel} /></span>
                                 <span className="font-mono text-rose-300">Theory</span>
                               </div>
                               <div className="text-xs sm:text-sm font-black text-white font-mono break-words">
-                                {predictionTitle}
+                                <AnnotateGlossaryText text={predictionTitle} />
                               </div>
                               <p className="text-xs text-slate-300 leading-relaxed">
-                                {predictionExplanation}
+                                <AnnotateGlossaryText text={predictionExplanation} />
                               </p>
+                              <div className="p-2 rounded-lg bg-slate-950/80 border border-slate-800/90 space-y-1">
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                  <GlossaryTerm term="nash-equilibrium">Equilibrium Frequency Benchmark</GlossaryTerm>
+                                </div>
+                                <div className="text-xs font-mono font-bold text-rose-300">
+                                  <AnnotateGlossaryText text={predictionFrequency} />
+                                </div>
+                              </div>
                               <div className="text-[11px] font-mono font-bold text-rose-300/90 pt-1.5 border-t border-slate-800 break-words">
-                                {predictionPayoff}
+                                <AnnotateGlossaryText text={predictionPayoff} />
                               </div>
                             </div>
 
-                            {/* What Actually Happened */}
+                            {/* What Actually Happened across the Whole Match */}
                             <div className="bg-slate-900/90 p-3 sm:p-3.5 rounded-xl border border-emerald-900/50 space-y-2">
                               <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
-                                <span>Actual Match Result</span>
-                                <span className="font-mono text-emerald-300">Played</span>
+                                <span>Actual Whole Match Performance</span>
+                                <span className="font-mono text-emerald-300">{matchRounds} Rds Played</span>
                               </div>
                               <div className="text-xs sm:text-sm font-black text-white font-mono break-words">
-                                {actualTitle}
+                                {actualFrequencyTitle}
+                              </div>
+                              <div className="p-2 rounded-lg bg-slate-950/80 border border-slate-800/90 space-y-1">
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                  Student Choice Frequencies
+                                </div>
+                                <div className="text-xs font-mono font-bold text-emerald-300">
+                                  {actualFrequencyBreakdown}
+                                </div>
                               </div>
                               <p className="text-xs text-slate-300 leading-relaxed">
-                                {actualExplanation}
+                                <strong className="text-sky-300 font-semibold">Gap vs. Equilibrium: </strong>
+                                <span><AnnotateGlossaryText text={gapInterpretationSentence} /></span>
                               </p>
                               <div className="text-[11px] font-mono font-bold text-emerald-300/90 pt-1.5 border-t border-slate-800 break-words">
                                 {actualPayoff}
@@ -2109,7 +2402,16 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           {/* What Real People Tend to Do & Why */}
                           <div className="p-3 sm:p-3.5 rounded-xl bg-blue-950/60 border border-blue-700/60 text-slate-200 text-xs sm:text-sm leading-relaxed">
                             <strong className="text-amber-300 font-bold block sm:inline mb-1 sm:mb-0">What Real People Tend to Do & Why: </strong>
-                            <span>{realPeopleSentence}</span>
+                            <span><AnnotateGlossaryText text={realPeopleSentence} /></span>
+                          </div>
+
+                          {/* One-Line Key Takeaway */}
+                          <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border border-slate-700/80 text-xs sm:text-sm text-slate-200 flex items-start gap-2.5">
+                            <span className="text-amber-400 font-black text-sm shrink-0">💡</span>
+                            <div>
+                              <span className="font-bold text-amber-300">Key Takeaway: </span>
+                              <span className="text-slate-100 font-medium"><AnnotateGlossaryText text={keyTakeawaySentence} /></span>
+                            </div>
                           </div>
                         </div>
                       );

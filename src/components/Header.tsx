@@ -56,14 +56,24 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1.5">
               <span>Room: <strong className="font-mono text-blue-300 font-bold">{authSession.roomCode || 'DOTE-3090'}</strong></span>
-              {currentWeek && currentMode === 'live' && (
+              {currentMode === 'solo' ? (
                 <>
                   <span>·</span>
-                  <span className="text-amber-300 font-semibold truncate max-w-[110px] sm:max-w-none">
-                    {currentWeek.icon} {currentWeek.shortTitle || currentWeek.title}
+                  <span className="text-sky-300 font-semibold truncate max-w-[130px] sm:max-w-none">
+                    Game {soloGameIndex || 1} of {totalSoloGames || 12}
+                    {soloModuleId === 20 ? ' · 6-Node Chain' : ''}
                   </span>
                 </>
-              )}
+              ) : currentWeek && currentMode === 'live' ? (
+                <>
+                  <span>·</span>
+                  <span className="text-amber-300 font-semibold truncate max-w-[130px] sm:max-w-none">
+                    {currentWeek.id === 20
+                      ? 'Game 12 of 12 · 6-Node Chain'
+                      : `${currentWeek.icon} ${currentWeek.shortTitle || currentWeek.title}`}
+                  </span>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
@@ -231,8 +241,18 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               ) : currentMode === 'sandbox' ? (
                 <span className="text-amber-300 font-semibold">What-If Curves Sandbox</span>
+              ) : currentWeek?.id === 20 ? (
+                <span className="text-sky-300 font-semibold flex items-center gap-1.5">
+                  <span>Game 12 of 12</span>
+                  <span className="text-slate-500">·</span>
+                  <span className="text-amber-300 font-normal">6-Node Chain (Player: 1, 3, 5 · Bot: 2, 4, 6)</span>
+                </span>
               ) : (
-                `${completedRoundsCount}/${totalRounds} Rds`
+                <span className="text-sky-300 font-semibold flex items-center gap-1.5">
+                  <span>Game {allWeeks.findIndex(w => w.id === currentWeek?.id) + 1 || 1} of {allWeeks.length || 12}</span>
+                  <span className="text-slate-500">·</span>
+                  <span className="text-slate-300 font-normal">{completedRoundsCount}/{totalRounds} Rds</span>
+                </span>
               )}
             </span>
           )}

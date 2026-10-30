@@ -1092,6 +1092,7 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
     const tripled = sent * 3;
     const fairReturn = Math.round(sent * 1.5 * 10) / 10;
     const fairInvestorTotal = kept + fairReturn;
+    const fairTrusteeTotal = tripled - fairReturn;
 
     return (
       <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-4 border border-slate-800 space-y-3 font-sans text-xs max-w-full overflow-hidden">
@@ -1100,7 +1101,7 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
             <span>🏦 Trust & Investment Tripling Visualizer</span>
           </div>
           <span className="text-[10px] sm:text-[11px] font-mono text-emerald-400 font-bold self-start sm:self-auto">
-            Tripled Value: ${tripled}.00
+            Tripled Pot: {tripled} pts
           </span>
         </div>
 
@@ -1110,13 +1111,13 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
             className="bg-slate-800 text-slate-300 flex items-center justify-center transition-all duration-300"
             style={{ width: `${(kept / 10) * 100}%` }}
           >
-            {kept > 1 && `Safe Vault: $${kept}`}
+            {kept > 1 && `Safe Vault: ${kept} pts`}
           </div>
           <div
             className="bg-emerald-600 text-white flex items-center justify-center transition-all duration-300"
             style={{ width: `${(sent / 10) * 100}%` }}
           >
-            {sent > 1 && `Invested: $${sent} (x3 = $${tripled})`}
+            {sent > 1 && `Invested: ${sent} pts (x3 = ${tripled} pts)`}
           </div>
         </div>
 
@@ -1124,15 +1125,16 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
         <div className="grid grid-cols-3 gap-2 font-mono text-center">
           <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
             <span className="text-slate-400 text-[9px] uppercase block">Safe Vault Kept</span>
-            <span className="text-white font-bold text-sm">${kept}.00</span>
+            <span className="text-white font-bold text-sm">{kept} pts</span>
           </div>
           <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
             <span className="text-emerald-400 text-[9px] uppercase block">Tripled Trustee Fund</span>
-            <span className="text-emerald-300 font-bold text-sm">${tripled}.00</span>
+            <span className="text-emerald-300 font-bold text-sm">{tripled} pts</span>
           </div>
           <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
             <span className="text-blue-400 text-[9px] uppercase block">If 50/50 Fair Split</span>
-            <span className="text-blue-300 font-bold text-sm">${fairInvestorTotal.toFixed(1)} pts</span>
+            <span className="text-blue-300 font-bold text-sm">{fairInvestorTotal % 1 === 0 ? fairInvestorTotal : fairInvestorTotal.toFixed(1)} pts</span>
+            <span className="text-slate-400 text-[9px] block font-sans mt-0.5">You: {fairInvestorTotal % 1 === 0 ? fairInvestorTotal : fairInvestorTotal.toFixed(1)} · Bot: {fairTrusteeTotal % 1 === 0 ? fairTrusteeTotal : fairTrusteeTotal.toFixed(1)}</span>
           </div>
         </div>
       </div>

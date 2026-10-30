@@ -68,6 +68,7 @@ export const PD_BOTS: GameSpecificBot[] = [
     avatar: '🔁',
     title: 'Reciprocal Goodwill Champion',
     tagline: 'Starts cooperative, rewards trust, and retaliates with forgiveness.',
+    strategySummary: 'Starts with Cooperate, then mirrors your previous move (rewards trust with +2, retaliates against defection).',
     backstory: 'Named after Anatol Rapoport, winner of Robert Axelrod\'s famous computer tournaments. Anatol believes cooperation is sustainable only when paired with immediate, credible retaliation against betrayal.',
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/40',
@@ -110,6 +111,7 @@ export const PD_BOTS: GameSpecificBot[] = [
     avatar: '⚡',
     title: 'Unforgiving Enforcer',
     tagline: 'Cooperates until the first betrayal, then defects forever.',
+    strategySummary: 'Cooperates until the first betrayal, then permanently defects for all remaining rounds without forgiveness.',
     backstory: 'Machiavelli believes trust is fragile and irreplaceable. He begins with full cooperation, but a single breach of faith triggers permanent, irreversible defection for all remaining rounds.',
     color: 'text-purple-400',
     badgeBg: 'bg-purple-950/40',
@@ -146,6 +148,7 @@ export const PD_BOTS: GameSpecificBot[] = [
     avatar: '🐺',
     title: 'Ruthless Myopic Optimizer',
     tagline: 'Always defects. Explores dominant one-shot payoffs.',
+    strategySummary: 'Always defects in every round to exploit one-shot dominant strategy payoffs ($3 or $1).',
     backstory: 'Apex ignores reputation and the shadow of the future. Operating on pure one-shot dominant strategy logic ($3 > $2 and $1 > $0), Apex defects in every round without remorse.',
     color: 'text-rose-400',
     badgeBg: 'bg-rose-950/40',
@@ -169,6 +172,7 @@ export const PD_BOTS: GameSpecificBot[] = [
     avatar: '🧠',
     title: 'Win-Stay, Lose-Shift Heuristic',
     tagline: 'Repeats what works; changes what fails.',
+    strategySummary: 'Win-Stay, Lose-Shift: repeats move if earned >= $2 last round; switches moves if earned < $2.',
     backstory: 'Pax operates on the psychological principle of reinforcement learning. If the prior round resulted in a high payoff (+2 or +3), Pax repeats its previous move; if the payoff was low (0 or +1), Pax switches.',
     color: 'text-blue-400',
     badgeBg: 'bg-blue-950/40',
@@ -211,6 +215,7 @@ export const PD_BOTS: GameSpecificBot[] = [
     avatar: '🕊️',
     title: 'Noise-Tolerant Cooperator',
     tagline: 'Forgives 30% of defections to break endless retaliation death spirals.',
+    strategySummary: 'Plays Tit-for-Tat but randomly forgives 30% of your defections to prevent endless retaliation loops.',
     backstory: 'Formulated by Martin Nowak and Karl Sigmund. In real-world environments with noise and miscommunication, standard Tit-for-Tat gets trapped in perpetual retaliation. Generous TFT breaks this trap by forgiving 1 in 3 defections.',
     color: 'text-teal-400',
     badgeBg: 'bg-teal-950/40',
@@ -250,6 +255,7 @@ export const PD_BOTS: GameSpecificBot[] = [
     avatar: '🗡️',
     title: 'Opportunistic Border Tester',
     tagline: 'Plays Tit-for-Tat but randomly sneaks in defections (15%).',
+    strategySummary: 'Plays Tit-for-Tat but stochastically probes with a surprise defection (15% probability) during peace.',
     backstory: 'Submitted by Johann Joss in Robert Axelrod\'s tournament. Joss masquerades as Tit-for-Tat but occasionally stabs its partner in the back (15% probability) during peace to extract the $3 temptation payoff.',
     color: 'text-violet-400',
     badgeBg: 'bg-violet-950/40',
@@ -295,6 +301,7 @@ export const STAG_BOTS: GameSpecificBot[] = [
     avatar: '🦌',
     title: 'Payoff-Dominance Idealist',
     tagline: 'Prioritizes mutual Stag (+10); needs trust confirmation.',
+    strategySummary: 'Hunts Stag (+10) on round 1; continues hunting Stag if you hunt Stag, but falls back to Hare if you abandon the hunt.',
     backstory: 'Inspired by Jean-Jacques Rousseau\'s classic parable. He dreams of hunting the majestic Stag (+10 points) but knows that without your commitment, he will starve while you bag a Hare.',
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/40',
@@ -337,6 +344,7 @@ export const STAG_BOTS: GameSpecificBot[] = [
     avatar: '🐇',
     title: 'Risk-Dominance Purist',
     tagline: 'Always takes the safe +4 Hare. Refuses to risk 0.',
+    strategySummary: 'Always hunts Hare to secure guaranteed +4 points without relying on your cooperation.',
     backstory: 'Cynic calculates that hunting Stag carries an unacceptable downside: if you falter, he gets 0 points. Hunting Hare guarantees +4 points with zero dependence on your goodwill.',
     color: 'text-amber-400',
     badgeBg: 'bg-amber-950/40',
@@ -360,6 +368,7 @@ export const STAG_BOTS: GameSpecificBot[] = [
     avatar: '📊',
     title: 'Basin of Attraction Calculator',
     tagline: 'Plays Stag only when your historical trust exceeds 40%.',
+    strategySummary: 'Calculates your historical Stag frequency: hunts Stag if your trust is >= 40%, otherwise retreats to safe Hare.',
     backstory: 'Bayes computes expected utility mathematically. Expected payoff of Stag = 10 * p. Expected payoff of Hare = 4. Therefore, Stag is rational only if the subjective probability p >= 4/10 = 0.4.',
     color: 'text-blue-400',
     badgeBg: 'bg-blue-950/40',
@@ -396,6 +405,7 @@ export const STAG_BOTS: GameSpecificBot[] = [
     avatar: '🌱',
     title: 'Stag-First Re-engagement Partner',
     tagline: 'Stag on round 1; hedges with Hare on defect, but instantly forgives.',
+    strategySummary: 'Opens with Stag (+10); hedges with safe Hare if you defect, but immediately rejoins Stag the moment you return.',
     backstory: 'Hope never gives up on the social contract. If you hunt Hare, she prudently protects herself with Hare next round, but if you step back up to Stag, she immediately meets you there with renewed optimism.',
     color: 'text-cyan-400',
     badgeBg: 'bg-cyan-950/40',
@@ -431,6 +441,7 @@ export const STAG_BOTS: GameSpecificBot[] = [
     avatar: '🛡️',
     title: 'Forgiving Stag Hunter',
     tagline: 'Tolerates 1 solo betrayal; only retreats to Hare after 2 in a row.',
+    strategySummary: 'Tolerates a single Hare betrayal; only retreats to Hare if you abandon the Stag hunt twice consecutively.',
     backstory: 'Patience knows that coordination failures in the wild are often accidental misunderstandings. She requires two consecutive Hare departures before giving up on the Stag hunt.',
     color: 'text-teal-400',
     badgeBg: 'bg-teal-950/40',
@@ -474,6 +485,7 @@ export const BERTRAND_BOTS: GameSpecificBot[] = [
     avatar: '🤝',
     title: 'Tacit Collusion Advocate',
     tagline: 'Sets monopoly price ($40); punishes price wars.',
+    strategySummary: 'Maintains monopoly price ($40) to maximize collective profits; matches undercuts to enforce cartel discipline.',
     backstory: 'Baron knows that price competition is an economic suicide pact. At the monopoly price of $40, total market profit is maximized ($1,800). If you undercut him, he retaliates swiftly.',
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/40',
@@ -514,6 +526,7 @@ export const BERTRAND_BOTS: GameSpecificBot[] = [
     avatar: '🎯',
     title: 'Discontinuous Demand Exploiter',
     tagline: 'Always undercuts you by $1 to steal 100% of the market.',
+    strategySummary: 'Always prices $1 below your previous price to capture 100% of market demand and leave you with $0.',
     backstory: 'Sniper understands Bertrand competition\'s ruthless rule: selling at $1 below your rival captures the ENTIRE market demand while the rival gets exactly $0.',
     color: 'text-rose-400',
     badgeBg: 'bg-rose-950/40',
@@ -548,6 +561,7 @@ export const BERTRAND_BOTS: GameSpecificBot[] = [
     avatar: '⚙️',
     title: 'Bertrand Paradox Equilibrium',
     tagline: 'Drives price ruthlessly to marginal cost ($10-$11).',
+    strategySummary: 'Strictly prices at marginal cost ($11), demonstrating the zero-profit Bertrand paradox equilibrium.',
     backstory: 'Nash embodies the theoretical equilibrium of simultaneous Bertrand duopoly. He prices at marginal cost ($10-$11), proving that even two firms are enough to replicate perfect competition.',
     color: 'text-blue-400',
     badgeBg: 'bg-blue-950/40',
@@ -571,6 +585,7 @@ export const BERTRAND_BOTS: GameSpecificBot[] = [
     avatar: '⚖️',
     title: 'Penal Code Cartel Enforcer',
     tagline: 'Prices at $40; punishes undercutting with a 1-round price war ($10), then resets.',
+    strategySummary: 'Prices at $40; if you undercut, executes a 1-round price crash to cost ($10), then resets back to $40.',
     backstory: 'Based on Dilip Abreu\'s Nobel-cited theory of optimal penal codes in repeated games. Instead of infinite price wars, Abreu administers a short, devastating punishment (price at MC = $10 for 1 round), then offers a path back to monopoly profits if you reform.',
     color: 'text-purple-400',
     badgeBg: 'bg-purple-950/40',
@@ -616,6 +631,7 @@ export const BERTRAND_BOTS: GameSpecificBot[] = [
     avatar: '📈',
     title: 'Adaptive Asymmetric Prober',
     tagline: 'Undercuts by $2 until price drops near $16, then resets to $45.',
+    strategySummary: 'Gradually undercuts price by $2 until margins hit bottom ($16), then resets price back up to $45.',
     backstory: 'Modeled after the Edgeworth Price Cycle seen in retail gasoline markets. Competitors gradually undercut each other by small margins until margins are exhausted, then one firm jumps price back to the top.',
     color: 'text-amber-400',
     badgeBg: 'bg-amber-950/40',
@@ -659,6 +675,7 @@ export const AUCTION_BOTS: GameSpecificBot[] = [
     avatar: '⚖️',
     title: 'Incentive-Compatible Sage',
     tagline: 'Strictly bids true valuation (b = v). Never overbids.',
+    strategySummary: 'Strictly bids true valuation (b = v), demonstrating the weakly dominant strategy in second-price auctions.',
     backstory: 'Named after Nobel laureate William Vickrey. William proves mathematically that bidding your exact true valuation weakly dominates all other bidding strategies in a second-price auction.',
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/40',
@@ -682,6 +699,7 @@ export const AUCTION_BOTS: GameSpecificBot[] = [
     avatar: '🔥',
     title: 'Aggressive Overbidder',
     tagline: 'Bids above true value ($v + $2) out of competitive fever.',
+    strategySummary: 'Overbids by $2 above true valuation ($v + $2), winning frequently but risking the Winner\'s Curse when clearing price > value.',
     backstory: 'Frenzy hates losing auctions. Driven by competitive pride, Frenzy inflates bids beyond true valuation, winning frequently but suffering severe negative profits whenever the clearing price exceeds valuation.',
     color: 'text-rose-400',
     badgeBg: 'bg-rose-950/40',
@@ -708,6 +726,7 @@ export const AUCTION_BOTS: GameSpecificBot[] = [
     avatar: '📉',
     title: 'First-Price Habitual Shader',
     tagline: 'Mistakenly shades bid down to 75% of valuation.',
+    strategySummary: 'Shades bid down to 75% of valuation; mistakenly applies first-price auction rules and forfeits profitable items.',
     backstory: 'Shaded brings habits from first-price auctions where shading is required. In a second-price auction, shading bids merely causes him to forfeit profitable items without saving a single dollar on clearing prices!',
     color: 'text-amber-400',
     badgeBg: 'bg-amber-950/40',
@@ -734,6 +753,7 @@ export const AUCTION_BOTS: GameSpecificBot[] = [
     avatar: '🦂',
     title: 'Clearing Price Inflator',
     tagline: 'Bids just below estimated value to make the winner pay maximum price.',
+    strategySummary: 'Bids aggressively near your estimated value to inflate the second-highest price you must pay to win.',
     backstory: 'Spite cares about relative payoff rather than absolute profit. He knows that in a second-price auction, if you win, you pay the second-highest bid. By bidding aggressively ($6-$8), he forces you to pay an extortionate price.',
     color: 'text-red-400',
     badgeBg: 'bg-red-950/40',
@@ -760,6 +780,7 @@ export const AUCTION_BOTS: GameSpecificBot[] = [
     avatar: '🎣',
     title: 'Extreme Margin Fisher',
     tagline: 'Always bids $2.50. Wins rarely, but reaps massive surplus when winning.',
+    strategySummary: 'Submits a static $2.50 low-ball bid to capture massive profit margins on rare wins without overpaying.',
     backstory: 'Bargain is a disciplined value investor who refuses to get drawn into bidding wars. Bidding a flat low price ($2.50), he captures enormous profit margins on the rare occasions when opponents fail to participate or bid zero.',
     color: 'text-cyan-400',
     badgeBg: 'bg-cyan-950/40',
@@ -789,6 +810,7 @@ export const BEAUTY_BOTS: GameSpecificBot[] = [
     avatar: '🎲',
     title: 'Unreflective Noise Agent',
     tagline: 'Picks numbers arbitrarily between 0 and 100.',
+    strategySummary: 'Picks numbers arbitrarily between 10 and 95 (no strategic reasoning, establishing naive baseline ~50).',
     backstory: 'Chaos has no strategic model of other minds. He picks numbers by whimsy or superstition, establishing the baseline population average around 50.',
     color: 'text-slate-400',
     badgeBg: 'bg-slate-900',
@@ -812,6 +834,7 @@ export const BEAUTY_BOTS: GameSpecificBot[] = [
     avatar: '📐',
     title: 'First-Order Rationalizer',
     tagline: 'Assumes players guess randomly (~50); targets 33.',
+    strategySummary: 'Assumes opponents choose randomly around 50, and targets exactly 2/3 of 50 = 33.',
     backstory: 'Pragma takes one step of strategic reasoning. If opponents guess uniformly across [0, 100], the average is 50. Therefore, 2/3 of 50 is 33.3.',
     color: 'text-amber-400',
     badgeBg: 'bg-amber-950/40',
@@ -835,6 +858,7 @@ export const BEAUTY_BOTS: GameSpecificBot[] = [
     avatar: '♟️',
     title: 'Second-Order Anticipator',
     tagline: 'Anticipates Level-1 thinkers (33); targets 22.',
+    strategySummary: 'Anticipates Level-1 thinkers will guess 33, and targets 2/3 of 33.3 = 22 (typical human lab winner).',
     backstory: 'Sophia realizes smart players will calculate 33. Anticipating that the average will be around 33, she targets 2/3 of 33.3 = 22.2, which is typically the winning number in classroom experiments!',
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/40',
@@ -858,6 +882,7 @@ export const BEAUTY_BOTS: GameSpecificBot[] = [
     avatar: '🎓',
     title: 'Iterated Elimination Master',
     tagline: 'Carries dominant elimination to infinity; targets 0.',
+    strategySummary: 'Executes infinite iterated elimination of strictly dominated strategies, strictly submitting 0.',
     backstory: 'Professor John assumes infinite cognitive depth and common knowledge of rationality. Eliminating numbers strictly > 67, then > 44, iterating to infinity, the unique Nash equilibrium is 0.',
     color: 'text-blue-400',
     badgeBg: 'bg-blue-950/40',
@@ -881,6 +906,7 @@ export const BEAUTY_BOTS: GameSpecificBot[] = [
     avatar: '🎯',
     title: 'Median Heuristic Agent',
     tagline: 'Anchors directly on 50 thinking it is the intuitive center.',
+    strategySummary: 'Anchors naively on 50 as the focal center of the 0-100 range, modeling intuitive untrained players.',
     backstory: 'Reflecting a common cognitive bias observed in behavioral economics. Untrained players often fixate on 50 as the focal center of [0, 100], failing to apply even a single step of the 2/3 multiplication rule.',
     color: 'text-indigo-400',
     badgeBg: 'bg-indigo-950/40',
@@ -904,6 +930,7 @@ export const BEAUTY_BOTS: GameSpecificBot[] = [
     avatar: '🔬',
     title: 'Third-Order Depth Analyst',
     tagline: 'Anticipates Level-2 players (22); targets 15.',
+    strategySummary: 'Anticipates Level-2 players will guess 22, and targets 2/3 of 22.2 = 15.',
     backstory: 'Hypatia reasons that sophisticated game theorists will anticipate Level-1 thinkers and choose 22. Predicting that the group will gravitate toward 22, she targets 2/3 × 22.2 ≈ 14.8!',
     color: 'text-violet-400',
     badgeBg: 'bg-violet-950/40',
@@ -933,6 +960,7 @@ export const PUBLIC_GOODS_BOTS: GameSpecificBot[] = [
     avatar: '🦹',
     title: 'Tragedy of Commons Exploiter',
     tagline: 'Contributes 0 tokens; reaps 100% private vault + pool dividend.',
+    strategySummary: 'Contributes 0 tokens, executing the strictly dominant selfish strategy to exploit the public pool.',
     backstory: 'Leech knows the mathematics of marginal per-capita return: each token contributed yields only $0.40 back to the giver, losing $0.60 net. He lets you fund the pool while keeping his full $20 safe.',
     color: 'text-rose-400',
     badgeBg: 'bg-rose-950/40',
@@ -956,6 +984,7 @@ export const PUBLIC_GOODS_BOTS: GameSpecificBot[] = [
     avatar: '🌟',
     title: 'Social Optimum Multiplier',
     tagline: 'Invests all 20 tokens to maximize collective group welfare.',
+    strategySummary: 'Contributes all 20 tokens unconditionally to maximize total social surplus and group payoff.',
     backstory: 'Civitas ignores individual private return and focuses on total group welfare. Investing 20 tokens multiplies group capital by 160%, generating the maximum possible social surplus.',
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/40',
@@ -979,6 +1008,7 @@ export const PUBLIC_GOODS_BOTS: GameSpecificBot[] = [
     avatar: '🪞',
     title: 'Reciprocal Civic Partner',
     tagline: 'Matches whatever token amount you invested last round.',
+    strategySummary: 'Opens with 10 tokens, then mirrors your exact previous contribution to reward generosity or defend against free-riding.',
     backstory: 'Mirror represents real human behavior documented by Ernst Fehr. Humans are neither pure saints nor pure free-riders; they are conditional cooperators who give generously if you give, but withdraw if you free-ride.',
     color: 'text-blue-400',
     badgeBg: 'bg-blue-950/40',
@@ -1013,6 +1043,7 @@ export const PUBLIC_GOODS_BOTS: GameSpecificBot[] = [
     avatar: '📉',
     title: 'Human Laboratory Model',
     tagline: 'Starts high (16 tokens); steadily decays by 3 tokens each round.',
+    strategySummary: 'Starts with 16 tokens and steadily decays contribution by 3 tokens per round, matching empirical lab decay.',
     backstory: 'Replicates the standard empirical phenomenon documented across thousands of laboratory public goods experiments: human groups start with substantial goodwill (70-80%), which steadily deteriorates over successive rounds.',
     color: 'text-amber-400',
     badgeBg: 'bg-amber-950/40',
@@ -1041,6 +1072,7 @@ export const PUBLIC_GOODS_BOTS: GameSpecificBot[] = [
     avatar: '🚀',
     title: 'Proactive Welfare Multiplier',
     tagline: 'Matches your previous tokens + 2 bonus tokens to lead upward.',
+    strategySummary: 'Matches your previous contribution plus a +2 bonus incentive (clamped to 20) to proactively lead toward the social optimum.',
     backstory: 'Catalyst practices proactive leadership. Rather than waiting passively, Catalyst mirrors your prior contribution and adds +2 bonus tokens (clamped to 20), trying to pull the group toward maximal Pareto efficiency.',
     color: 'text-teal-400',
     badgeBg: 'bg-teal-950/40',
@@ -1083,6 +1115,7 @@ export const HAWK_DOVE_BOTS: GameSpecificBot[] = [
     avatar: '🦅',
     title: 'Relentless Brinkmanship Driver',
     tagline: 'Always plays Hawk. Dares you to swerve or suffer mutual ruin.',
+    strategySummary: 'Always plays Hawk, executing relentless commitment brinkmanship and forcing you to swerve into Dove.',
     backstory: 'Named after John Maynard Smith, pioneer of evolutionary game theory. Maynard adopts a ruthless commitment: he never backs down, counting on your rational fear of a -10 crash to force you into playing Dove.',
     color: 'text-rose-400',
     badgeBg: 'bg-rose-950/40',
@@ -1106,6 +1139,7 @@ export const HAWK_DOVE_BOTS: GameSpecificBot[] = [
     avatar: '🕊️',
     title: 'Collision-Averse Pacifist',
     tagline: 'Always plays Dove to eliminate the risk of a -10 catastrophe.',
+    strategySummary: 'Always plays Dove to avoid conflict and guarantee a non-negative payoff, eliminating the -10 crash risk.',
     backstory: 'Pax values survival above pride. He realizes that a mutual Hawk clash (-10) wipes out all accumulated profits. He always swerves or shares peacefully with Dove, accepting 0 or 3 points.',
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/40',
@@ -1129,6 +1163,7 @@ export const HAWK_DOVE_BOTS: GameSpecificBot[] = [
     avatar: '🎲',
     title: 'Evolutionary Stable Mixed Strategist',
     tagline: 'Randomizes Hawk with mathematical ESS frequency (23%).',
+    strategySummary: 'Randomizes according to evolutionary stable strategy (ESS): chooses Hawk with 23% probability, Dove 77%.',
     backstory: 'Calculates the unique mixed-strategy Nash equilibrium. For resource V=3 and contest cost C=13, the Evolutionarily Stable Strategy (ESS) dictates playing Hawk with probability p = V/C = 3/13 ≈ 23% to leave the opponent indifferent.',
     color: 'text-blue-400',
     badgeBg: 'bg-blue-950/40',
@@ -1157,6 +1192,7 @@ export const HAWK_DOVE_BOTS: GameSpecificBot[] = [
     avatar: '⚡',
     title: 'Conditional Defender',
     tagline: 'Plays Dove initially; retaliates with Hawk if you aggressively attack.',
+    strategySummary: 'Opens with peaceful Dove; retaliates with aggressive Hawk in the next round if you attacked with Hawk.',
     backstory: 'Falcon embodies the Bourgeois strategy in animal contests. He prefers peaceful coexistence with Dove, but if you attempt to bully him with Hawk, he escalates to Hawk in the next round to prove aggression will be met with mutual destruction.',
     color: 'text-purple-400',
     badgeBg: 'bg-purple-950/40',
@@ -1199,6 +1235,7 @@ export const ULTIMATUM_BOTS: GameSpecificBot[] = [
     avatar: '🤖',
     title: 'Subgame-Perfect Rationalist',
     tagline: 'Accepts ANY offer >= $1.00. Believes $1 > $0.',
+    strategySummary: 'Accepts any positive offer >= $1.00; follows pure backward induction ($1 is strictly better than $0).',
     backstory: 'Operates on strict backward induction logic. Any positive dollar amount ($1 or more) is strictly better than the $0 rejection payoff. He ignores pride, fairness, and inequality to maximize wealth.',
     color: 'text-blue-400',
     badgeBg: 'bg-blue-950/40',
@@ -1222,6 +1259,7 @@ export const ULTIMATUM_BOTS: GameSpecificBot[] = [
     avatar: '⚖️',
     title: 'Strict Equality Champion',
     tagline: 'Rejects any offer below $4.50. Demands a fair split.',
+    strategySummary: 'Rejects any offer below $4.50; demands a fair 50/50 split of the $10 pie or vetoes the deal to $0.',
     backstory: 'Justitia believes economic surplus should be divided equally between partners. If you offer less than $4.50, she gladly burns the entire $10 pie to $0 to teach you a moral lesson about greed.',
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/40',
@@ -1245,6 +1283,7 @@ export const ULTIMATUM_BOTS: GameSpecificBot[] = [
     avatar: '🔥',
     title: 'Empirical Behavioral Benchmark',
     tagline: 'Rejects offers below $3.00 out of spiteful indignation.',
+    strategySummary: 'Rejects offers below $3.00 (30% threshold), modeling human laboratory indignation against unfair splits.',
     backstory: 'Reflects standard empirical findings from Güth et al. (1982). Humans exhibit strong negative reciprocity: offers under 30% ($3) trigger visceral insult and are rejected ~60-80% of the time in laboratory settings.',
     color: 'text-rose-400',
     badgeBg: 'bg-rose-950/40',
@@ -1268,6 +1307,7 @@ export const ULTIMATUM_BOTS: GameSpecificBot[] = [
     avatar: '📊',
     title: 'Dynamic Reference-Point Responder',
     tagline: 'Raises minimum acceptable offer if you low-ball repeatedly.',
+    strategySummary: 'Adapts acceptance threshold dynamically based on your historical offers (raises threshold if repeatedly low-balled).',
     backstory: 'Lex anchors on your past proposals. If you start generous, he expects continued fairness (threshold $4.00). If you repeatedly push insulting offers, his tolerance evaporates and he demands higher concessions ($5.00) to close deals.',
     color: 'text-amber-400',
     badgeBg: 'bg-amber-950/40',
@@ -1302,6 +1342,7 @@ export const MATCHING_PENNIES_BOTS: GameSpecificBot[] = [
     avatar: '🎯',
     title: 'Markovian Counter-Predictor',
     tagline: 'Detects human cognitive bias and exploits predictable coin sequences.',
+    strategySummary: 'Detects transition habits and frequency biases in your coin choices to predict and mismatch your move.',
     backstory: 'Humans are notoriously terrible at generating true random sequences; we switch too often (negative recency) and repeat after winning. Ada models your transition matrix and predicts your next move to ensure a mismatch.',
     color: 'text-indigo-400',
     badgeBg: 'bg-indigo-950/40',
@@ -1315,41 +1356,152 @@ export const MATCHING_PENNIES_BOTS: GameSpecificBot[] = [
       if (round === 1 || history.length === 0) {
         return "Most human matchers open with Heads. I will start with Tails to counter your opening heuristic.";
       }
-      const last = history[history.length - 1];
+      const lastRound = history[history.length - 1];
+      const lastPlayerMove = lastRound.playerAction;
+      const lastBotMove = lastRound.botAction;
+      const playerWonLast = lastPlayerMove === lastBotMove;
       const headsCount = history.filter(h => h.playerAction === 'Heads').length;
       const headsRatio = headsCount / history.length;
-      return headsRatio >= 0.6
-        ? `You have chosen Heads in ${Math.round(headsRatio * 100)}% of rounds. As Mismatcher, I will counter with Tails.`
-        : last.playerAction === 'Heads'
-        ? "You played Heads last round. Humans tend to switch after success; I anticipate Tails and play Heads to mismatch."
-        : "You played Tails last round. I anticipate a switch back to Heads and play Tails to mismatch.";
+
+      let streak = 0;
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i].playerAction === lastPlayerMove) streak++;
+        else break;
+      }
+
+      let alternationStreak = 0;
+      for (let i = history.length - 1; i >= 1; i--) {
+        if (history[i].playerAction !== history[i - 1].playerAction) {
+          alternationStreak++;
+        } else {
+          break;
+        }
+      }
+
+      if (alternationStreak >= 2) {
+        const predicted = lastPlayerMove === 'Heads' ? 'Tails' : 'Heads';
+        const counter = predicted === 'Heads' ? 'Tails' : 'Heads';
+        return `Detected an alternating pattern across your last ${alternationStreak + 1} rounds. I predict you will switch to ${predicted}, so I play ${counter} to mismatch.`;
+      }
+      if (streak >= 2) {
+        if (headsRatio >= 0.75 || headsRatio <= 0.25) {
+          const counter = lastPlayerMove === 'Heads' ? 'Tails' : 'Heads';
+          return `You have anchored onto ${lastPlayerMove} for ${streak} consecutive rounds (${Math.round((lastPlayerMove === 'Heads' ? headsRatio : 1 - headsRatio) * 100)}% overall). Countering with ${counter}.`;
+        }
+        const predicted = lastPlayerMove === 'Heads' ? 'Tails' : 'Heads';
+        const counter = predicted === 'Heads' ? 'Tails' : 'Heads';
+        return `You played ${lastPlayerMove} ${streak} rounds in a row. Human negative recency says you are due to switch to ${predicted}; I play ${counter} to mismatch.`;
+      }
+      if (headsRatio >= 0.65) {
+        return `You have chosen Heads in ${Math.round(headsRatio * 100)}% of rounds. Countering your frequency bias with Tails.`;
+      }
+      if (headsRatio <= 0.35) {
+        return `You have chosen Tails in ${Math.round((1 - headsRatio) * 100)}% of rounds. Countering your frequency bias with Heads.`;
+      }
+      if (playerWonLast) {
+        const counter = lastPlayerMove === 'Heads' ? 'Tails' : 'Heads';
+        return `You scored a match with ${lastPlayerMove} last round. By Win-Stay logic, you will likely repeat it; I will play ${counter} to mismatch.`;
+      } else {
+        const predicted = lastPlayerMove === 'Heads' ? 'Tails' : 'Heads';
+        const counter = predicted === 'Heads' ? 'Tails' : 'Heads';
+        return `You were mismatched on ${lastPlayerMove} last round. By Lose-Shift logic, you are likely to switch to ${predicted}; I play ${counter} to mismatch.`;
+      }
     },
     decide: ({ round, history }) => {
       if (round === 1 || history.length === 0) {
         return {
           action: 'Tails',
-          rationale: 'Heuristic counter: Humans disproportionately choose Heads in round 1; Tails anticipates a mismatch.'
+          rationale: 'Opening heuristic: ~67% of human matchers select Heads in round 1; playing Tails to engineer an immediate mismatch.'
         };
       }
+
+      const lastRound = history[history.length - 1];
+      const lastPlayerMove = lastRound.playerAction;
+      const lastBotMove = lastRound.botAction;
+      const playerWonLast = lastPlayerMove === lastBotMove;
       const headsCount = history.filter(h => h.playerAction === 'Heads').length;
       const headsRatio = headsCount / history.length;
-      const lastPlayerMove = history[history.length - 1].playerAction;
 
-      let predictedPlayerMove = 'Heads';
-      if (headsRatio > 0.55) {
-        predictedPlayerMove = 'Heads';
-      } else if (headsRatio < 0.45) {
-        predictedPlayerMove = 'Tails';
-      } else {
-        // Assume player alternates from previous move
-        predictedPlayerMove = lastPlayerMove === 'Heads' ? 'Tails' : 'Heads';
+      // 1. Alternation streak check
+      let alternationStreak = 0;
+      for (let i = history.length - 1; i >= 1; i--) {
+        if (history[i].playerAction !== history[i - 1].playerAction) {
+          alternationStreak++;
+        } else {
+          break;
+        }
       }
 
-      // As Mismatcher, choose the opposite of predicted player move
+      // 2. Repetition streak check
+      let streak = 0;
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i].playerAction === lastPlayerMove) streak++;
+        else break;
+      }
+
+      // 3. Markov 1st-order transitions
+      let headsThenHeads = 0;
+      let headsThenTails = 0;
+      let tailsThenHeads = 0;
+      let tailsThenTails = 0;
+      for (let i = 0; i < history.length - 1; i++) {
+        const from = history[i].playerAction;
+        const to = history[i + 1].playerAction;
+        if (from === 'Heads') {
+          if (to === 'Heads') headsThenHeads++;
+          else headsThenTails++;
+        } else if (from === 'Tails') {
+          if (to === 'Heads') tailsThenHeads++;
+          else tailsThenTails++;
+        }
+      }
+
+      let predictedPlayerMove = 'Heads';
+      let reason = '';
+
+      if (alternationStreak >= 2) {
+        // Player has been alternating repeatedly: predict the alternation continues
+        predictedPlayerMove = lastPlayerMove === 'Heads' ? 'Tails' : 'Heads';
+        reason = `Alternation Tracker: You alternated across the last ${alternationStreak + 1} rounds. Predicting a switch to ${predictedPlayerMove}.`;
+      } else if (streak >= 3 && (headsRatio >= 0.70 || headsRatio <= 0.30)) {
+        // Player is stubbornly repeating an anchor
+        predictedPlayerMove = lastPlayerMove;
+        reason = `Anchor Exploitation: You chose ${lastPlayerMove} on ${streak} consecutive rounds (${Math.round((lastPlayerMove === 'Heads' ? headsRatio : 1 - headsRatio) * 100)}% overall). Predicting you stick with ${predictedPlayerMove}.`;
+      } else if (streak >= 2) {
+        // Human negative recency / gambler's fallacy: after repeating twice, humans switch
+        predictedPlayerMove = lastPlayerMove === 'Heads' ? 'Tails' : 'Heads';
+        reason = `Negative Recency: You played ${lastPlayerMove} for ${streak} consecutive rounds. Predicting Gambler's Fallacy switch to ${predictedPlayerMove}.`;
+      } else if (lastPlayerMove === 'Heads' && (headsThenHeads + headsThenTails >= 2) && headsThenTails !== headsThenHeads) {
+        // Empirical Markov transition from Heads
+        predictedPlayerMove = headsThenTails > headsThenHeads ? 'Tails' : 'Heads';
+        const pct = Math.round((Math.max(headsThenTails, headsThenHeads) / (headsThenHeads + headsThenTails)) * 100);
+        reason = `Markov Transition: After playing Heads, you transitioned to ${predictedPlayerMove} in ${pct}% of past observations.`;
+      } else if (lastPlayerMove === 'Tails' && (tailsThenHeads + tailsThenTails >= 2) && tailsThenHeads !== tailsThenTails) {
+        // Empirical Markov transition from Tails
+        predictedPlayerMove = tailsThenHeads > tailsThenTails ? 'Heads' : 'Tails';
+        const pct = Math.round((Math.max(tailsThenHeads, tailsThenTails) / (tailsThenHeads + tailsThenTails)) * 100);
+        reason = `Markov Transition: After playing Tails, you transitioned to ${predictedPlayerMove} in ${pct}% of past observations.`;
+      } else if (history.length >= 3 && headsRatio >= 0.60) {
+        predictedPlayerMove = 'Heads';
+        reason = `Frequency Skew: You have played Heads in ${Math.round(headsRatio * 100)}% of rounds. Predicting Heads.`;
+      } else if (history.length >= 3 && headsRatio <= 0.40) {
+        predictedPlayerMove = 'Tails';
+        reason = `Frequency Skew: You have played Tails in ${Math.round((1 - headsRatio) * 100)}% of rounds. Predicting Tails.`;
+      } else if (playerWonLast) {
+        // Win-Stay: winner repeats
+        predictedPlayerMove = lastPlayerMove;
+        reason = `Win-Stay Bias: You scored a match with ${lastPlayerMove} last round. Predicting repetition.`;
+      } else {
+        // Lose-Shift: loser shifts
+        predictedPlayerMove = lastPlayerMove === 'Heads' ? 'Tails' : 'Heads';
+        reason = `Lose-Shift Bias: You were mismatched on ${lastPlayerMove} last round. Predicting a switch to ${predictedPlayerMove}.`;
+      }
+
+      // As Mismatcher, play the opposite of predicted move
       const botAction = predictedPlayerMove === 'Heads' ? 'Tails' : 'Heads';
       return {
         action: botAction,
-        rationale: `Pattern Detection: Predicted you would choose ${predictedPlayerMove}. Playing ${botAction} to force a mismatch.`
+        rationale: `${reason} Playing ${botAction} to force a mismatch.`
       };
     }
   },
@@ -1360,6 +1512,7 @@ export const MATCHING_PENNIES_BOTS: GameSpecificBot[] = [
     avatar: '🎲',
     title: 'Unexploitable Mixed-Strategy Solver',
     tagline: 'Flips an unbiased 50/50 quantum coin each round.',
+    strategySummary: 'Flips an unbiased 50/50 random coin each round (p = 0.50), guaranteeing unexploitable zero expected loss.',
     backstory: 'John von Neumann proved the Minimax Theorem for two-person zero-sum games in 1928. By randomizing Heads and Tails with exact probability p = 0.5, this bot makes itself completely immune to pattern exploitation.',
     color: 'text-blue-400',
     badgeBg: 'bg-blue-950/40',
@@ -1387,6 +1540,7 @@ export const MATCHING_PENNIES_BOTS: GameSpecificBot[] = [
     avatar: '🪙',
     title: 'Gambler\'s Fallacy Bot',
     tagline: 'Believes that streaks must revert and alternates predictably.',
+    strategySummary: 'Trapped in the gambler\'s fallacy: predictably reverses previous move each round to "balance" coin streaks.',
     backstory: 'Gray is trapped in the Gambler\'s Fallacy: after Heads appears, he is convinced Tails is "due." He almost always alternates his move every round, creating an exploitable pattern for observant matchers.',
     color: 'text-amber-400',
     badgeBg: 'bg-amber-950/40',
@@ -1420,6 +1574,7 @@ export const MATCHING_PENNIES_BOTS: GameSpecificBot[] = [
     avatar: '🗿',
     title: 'Static Action Anchor',
     tagline: 'Rarely deviates from Heads, testing your best-response discipline.',
+    strategySummary: 'Plays Heads with 85% anchor probability, testing whether you execute the pure best-response (Heads).',
     backstory: 'Stan believes sticking to his guns will eventually frustrate any opponent. He plays Heads 85% of the time. In game theory, if the Mismatcher plays Heads, the Matcher\'s immediate best response is to play Heads every round.',
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/40',
@@ -1456,6 +1611,7 @@ export const BATTLE_OF_SEXES_BOTS: GameSpecificBot[] = [
     avatar: '⚖️',
     title: 'Fair Social Alternator',
     tagline: 'Alternates preferences across rounds to split surplus equally.',
+    strategySummary: 'Alternates between Football (odd rounds) and Opera (even rounds) so both players achieve an equal average payoff of 2.5 pts.',
     backstory: 'Cleo recognizes that repeated Battle of the Sexes games create an opportunity for egalitarian fairness: by taking turns attending Opera in one round and Football in the next, both players achieve an average payoff of 2.5 points without miscoordinating.',
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/40',
@@ -1487,6 +1643,7 @@ export const BATTLE_OF_SEXES_BOTS: GameSpecificBot[] = [
     avatar: '🛡️',
     title: 'Dogmatic Preference Enforcer',
     tagline: 'Unconditionally demands Football, daring you to miscoordinate.',
+    strategySummary: 'Unconditionally demands Football in every round; uses commitment power to force you to coordinate at Football (+2).',
     backstory: 'Boris refuses to budge. He chooses Football in every single round, making his strategy common knowledge. In game theory, commitment confers massive bargaining power: if you know Boris will never yield, your only rational response is to concede and choose Football (+2) rather than clash (0).',
     color: 'text-rose-400',
     badgeBg: 'bg-rose-950/40',
@@ -1511,6 +1668,7 @@ export const BATTLE_OF_SEXES_BOTS: GameSpecificBot[] = [
     avatar: '🤝',
     title: 'Peace-Seeking Conciliator',
     tagline: 'Always chooses your favorite event (Opera) to avoid clashes.',
+    strategySummary: 'Always yields to your favorite event (Opera), prioritizing clash avoidance and gifting you +3 points.',
     backstory: 'Amara hates miscoordination and would rather take +2 points at Opera than risk a clash of egos at Football. She yields unconditionally to your top choice, granting you +3 points every round.',
     color: 'text-blue-400',
     badgeBg: 'bg-blue-950/40',
@@ -1535,6 +1693,7 @@ export const BATTLE_OF_SEXES_BOTS: GameSpecificBot[] = [
     avatar: '📐',
     title: 'Mixed-Strategy Equilibrium Bot',
     tagline: 'Randomizes with exact theoretical probabilities (60% Football, 40% Opera).',
+    strategySummary: 'Randomizes according to mixed-strategy Nash: 60% probability Football, 40% Opera, showing high clash frequency in mixed equilibria.',
     backstory: 'In Battle of the Sexes, the symmetric mixed-strategy Nash equilibrium requires the bot to play Football with probability p = 3/5 (60%) and Opera with probability 2/5 (40%). This demonstrates why uncoordinated mixed strategies lead to frequent, painful miscoordination.',
     color: 'text-purple-400',
     badgeBg: 'bg-purple-950/40',
@@ -1569,6 +1728,7 @@ export const TRUST_GAME_BOTS: GameSpecificBot[] = [
     avatar: '🤝',
     title: 'Egalitarian Surplus Splitter',
     tagline: 'Splits the tripled wealth equally, returning 1.5x your investment.',
+    strategySummary: 'Splits the tripled pool 50/50: returns 1.5x of your investment so both investor and trustee earn equal +0.5x net profit.',
     backstory: 'Named after behavioral economics findings from Berg, Dickhaut, and McCabe. When you send X tokens, they are tripled to 3X. Gage believes in fairness: he returns 1.5X, ensuring both investor and trustee earn an identical profit of +0.5X on the venture.',
     color: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/40',
@@ -1602,6 +1762,7 @@ export const TRUST_GAME_BOTS: GameSpecificBot[] = [
     avatar: '💰',
     title: 'Rational Subgame Perfect Trustee',
     tagline: 'Returns $0.00, pocketing the entire tripled fund.',
+    strategySummary: 'Returns $0.00; pockets the entire tripled investment following subgame perfect backward induction.',
     backstory: 'Silas is textbook Homo Economicus. In a finite-horizon Trust Game, backward induction proves the trustee has no incentive to return any positive sum once funds are transferred. Silas pockets everything (3X) and returns 0.',
     color: 'text-rose-400',
     badgeBg: 'bg-rose-950/40',
@@ -1629,6 +1790,7 @@ export const TRUST_GAME_BOTS: GameSpecificBot[] = [
     avatar: '🌟',
     title: 'High-Trust Venture Partner',
     tagline: 'Rewards bold investments (>= 5 pts) with a whopping 100% net ROI (2x returned).',
+    strategySummary: 'Rewards bold investments (>= 5 tokens) with a 2x return (100% net profit); returns 1x principal if under 5.',
     backstory: 'Maya acts like an angel investor champion: if you demonstrate substantial trust by sending 5 or more points, she rewards you with double your money back (2X returned, keeping X for herself). If you send less than 5, she returns only your original principal (1X).',
     color: 'text-amber-400',
     badgeBg: 'bg-amber-950/40',
@@ -1659,6 +1821,7 @@ export const TRUST_GAME_BOTS: GameSpecificBot[] = [
     avatar: '📊',
     title: 'Adaptive Reciprocity Trustee',
     tagline: 'Adjusts return percentage dynamically based on your trust trajectory.',
+    strategySummary: 'Adjusts return multiplier dynamically: returns 1.7x (+70% profit) for high trust, but slashes to 0.5x if stingy.',
     backstory: 'Kip compares your current investment to your past history. If your investment is rising or high (>= 7), he returns 1.7X (70% profit). If your investment drops or is stingy (<= 3), he slashes his payout to 0.5X (causing you a net loss).',
     color: 'text-blue-400',
     badgeBg: 'bg-blue-950/40',
