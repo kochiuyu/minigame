@@ -1,7 +1,7 @@
 import React from 'react';
 import { BotArchetype, BOT_PROFILES, GameSpecificBot } from '../services/botEngine';
 import { MathFormula, FormattedMathText } from './MathFormula';
-import { GlossaryTerm, AnnotateGlossaryText } from './GlossaryTerm';
+import { GlossaryTerm, AnnotateGlossaryText, formatUnit, pluralWord } from './GlossaryTerm';
 
 export interface DebriefData {
   gameTitle: string;
@@ -59,6 +59,18 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
   const getGameTheoryInsights = () => {
     switch (data.gameId) {
       case 1:
+        return {
+          concept: "Dominant Strategies & The Prisoner's Dilemma Trap",
+          formula: "U_i(\\text{Defect} \\mid s_{-i}) > U_i(\\text{Cooperate} \\mid s_{-i}) \\quad \\forall s_{-i}",
+          keyFinding:
+            "Because Defect strictly dominates Cooperate (yielding 3 > 2 against Cooperate and 1 > 0 against Defect), rational self-interest drives both players to defect, even though mutual cooperation (+2 each) Pareto-dominates mutual defection (+1 each).",
+          caseStudy: "The Cold War Arms Race: The US and Soviet Union both spent vast resources stockpiling warheads; unilateral disarmament carried lethal risk (0 pts), but mutual armament left both sides impoverished and less secure (1 pt each).",
+          rulesSummary: [
+            "Strict Dominance: Defecting yields a strictly higher payoff regardless of whether the opponent cooperates or defects.",
+            "Nash Equilibrium: (Defect, Defect) is the unique Nash equilibrium yielding ($1, $1).",
+            "Pareto Inefficiency: The equilibrium outcome is socially inefficient; both players strictly prefer ($2, $2), but defection remains the dominant temptation."
+          ]
+        };
       case 6:
         return {
           concept: "The Folk Theorem & The Power of Reciprocity",
@@ -298,7 +310,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const defect = count - coop;
         const pct = Math.round((coop / count) * 100);
         const scoreCmp = getScoreCmp(pScore, bScore, true);
-        equilibriumBenchmark = `100% Defection / 0% Cooperate · SPNE Defection: $1.00/round each ($${(count * 1).toFixed(2)} each over ${count} rounds) vs Pareto Optimum: $2.00/round each ($${(count * 2).toFixed(2)} each over ${count} rounds)`;
+        equilibriumBenchmark = `100% Defection / 0% Cooperate · SPNE Defection: $1.00/round each ($${(count * 1).toFixed(2)} each over ${formatUnit(count, 'round')}) vs Pareto Optimum: $2.00/round each ($${(count * 2).toFixed(2)} each over ${formatUnit(count, 'round')})`;
         studentFrequencies = `${coop}/${count} Cooperate (${pct}%) · ${defect}/${count} Defect (${100 - pct}%)`;
         if (pct <= 15) {
           gapSentence = pScore <= bScore
@@ -320,7 +332,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const hare = count - stag;
         const pct = Math.round((stag / count) * 100);
         const scoreCmp = getScoreCmp(pScore, bScore);
-        equilibriumBenchmark = `Payoff-Dominant Nash: +10 pts/round each (${count * 10} pts over ${count} rounds) · Risk-Dominant Nash: +4 pts/round each (${count * 4} pts over ${count} rounds)`;
+        equilibriumBenchmark = `Payoff-Dominant Nash: +10 pts/round each (${count * 10} pts over ${formatUnit(count, 'round')}) · Risk-Dominant Nash: +4 pts/round each (${count * 4} pts over ${formatUnit(count, 'round')})`;
         studentFrequencies = `${stag}/${count} Stag (${pct}%) · ${hare}/${count} Hare (${100 - pct}%)`;
         if (pct >= 80) {
           gapSentence = pScore < bScore
@@ -344,7 +356,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const avg = Math.round(prices.reduce((a, b) => a + b, 0) / count);
         const undercut = rounds.filter(r => Number(r.playerAction) < Number(r.botAction)).length;
         const scoreCmp = getScoreCmp(pScore, bScore, true);
-        equilibriumBenchmark = `Bertrand Nash: $0 profit/round ($0 over ${count} rounds at P = MC = $10.00) · Monopoly Collusion ($40): $450 profit/round each ($${count * 450} each over ${count} rounds)`;
+        equilibriumBenchmark = `Bertrand Nash: $0 profit/round ($0 over ${formatUnit(count, 'round')} at P = MC = $10.00) · Monopoly Collusion ($40): $450 profit/round each ($${count * 450} each over ${formatUnit(count, 'round')})`;
         studentFrequencies = `Average Price: $${avg}.00 · ${undercut}/${count} Undercut Wins`;
         if (avg <= 13) {
           gapSentence = pScore < bScore
@@ -367,7 +379,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const underbid = rounds.filter(r => Number(r.playerAction) < (r.playerValuation || 0) - 0.01).length;
         const pct = Math.round((truthful / count) * 100);
         const scoreCmp = getScoreCmp(pScore, bScore, true);
-        equilibriumBenchmark = `Weakly Dominant Strategy: 100% Truthful Bidding (Bid = Exact Valuation b = v across all ${count} auctions)`;
+        equilibriumBenchmark = `Weakly Dominant Strategy: 100% Truthful Bidding (Bid = Exact Valuation b = v across all ${formatUnit(count, 'auction')})`;
         studentFrequencies = `${truthful}/${count} Truthful Bids (${pct}%) · ${overbid} Overbids · ${underbid} Underbids`;
         if (pct >= 85) {
           gapSentence = pScore >= bScore
@@ -388,7 +400,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const guesses = rounds.map(r => Number(r.playerAction) || 0);
         const avg = Math.round(guesses.reduce((a, b) => a + b, 0) / count);
         const scoreCmp = getScoreCmp(pScore, bScore);
-        equilibriumBenchmark = `Guess = 0 (Unique Nash: 5 pts/round each on tie, ${count * 5} pts over ${count} rounds; L0 ~50, L1 ~33, L2 ~22)`;
+        equilibriumBenchmark = `Guess = 0 (Unique Nash: 5 pts/round each on tie, ${count * 5} pts over ${formatUnit(count, 'round')}; L0 ~50, L1 ~33, L2 ~22)`;
         studentFrequencies = `Average Guess: ${avg} (Iterated Benchmarks: L0 ~50, L1 ~33, L2 ~22, Nash: 0)`;
         if (avg <= 10) {
           gapSentence = pScore < bScore
@@ -410,7 +422,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const avg = Math.round((contribs.reduce((a, b) => a + b, 0) / count) * 10) / 10;
         const pct = Math.round((avg / 20) * 100);
         const scoreCmp = getScoreCmp(pScore, bScore);
-        equilibriumBenchmark = `Nash Trap: 20 pts/round each (${count * 20} pts over ${count} rounds) · Social Optimum: 32 pts/round each (${count * 32} pts over ${count} rounds)`;
+        equilibriumBenchmark = `Nash Trap: 20 pts/round each (${count * 20} pts over ${formatUnit(count, 'round')}) · Social Optimum: 32 pts/round each (${count * 32} pts over ${formatUnit(count, 'round')})`;
         studentFrequencies = `Average Contribution: ${avg}/20 Tokens (${pct}% Giving Rate)`;
         if (pct <= 15) {
           gapSentence = pScore >= bScore
@@ -434,7 +446,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const crashes = rounds.filter(r => r.playerAction === 'Hawk' && r.botAction === 'Hawk').length;
         const hawkEssGap = Math.abs(pct - 23);
         const scoreCmp = getScoreCmp(pScore, bScore);
-        equilibriumBenchmark = `Per round: Peaceful Sharing (Dove, Dove) = +3 pts/rd each · Exploit (Hawk, Dove) = +6 pts/rd vs 0 · Collision = -10 pts/rd each [Over ${count} rounds: Dove/Dove = +${count * 3} each · Mixed ESS = ~${(count * 2.3).toFixed(1)} each]`;
+        equilibriumBenchmark = `Per round: Peaceful Sharing (Dove, Dove) = +3 pts/rd each · Exploit (Hawk, Dove) = +6 pts/rd vs 0 · Collision = -10 pts/rd each [Over ${formatUnit(count, 'round')}: Dove/Dove = +${count * 3} each · Mixed ESS = ~${(count * 2.3).toFixed(1)} each]`;
         studentFrequencies = `${hawk}/${count} Hawk (${pct}%) · ${dove}/${count} Dove (${100 - pct}%) · ${crashes} Fight${crashes === 1 ? '' : 's'}`;
         if (hawkEssGap <= 8) {
           gapSentence = pScore < bScore
@@ -462,8 +474,8 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const accepted = rounds.filter(r => r.botAction === 'Accept').length;
         const pct = Math.round((avg / 10) * 100);
         const scoreCmp = getScoreCmp(pScore, bScore, true);
-        equilibriumBenchmark = `SPNE: Proposer $9.00/round ($${(count * 9).toFixed(2)} over ${count} rounds) · Responder $1.00/round ($${(count * 1).toFixed(2)} over ${count} rounds)`;
-        studentFrequencies = `Average Offer: $${avg.toFixed(2)} of $10.00 (${pct}% Share) · ${accepted}/${count} Accepted`;
+        equilibriumBenchmark = `SPNE: Proposer $9.00/round ($${(count * 9).toFixed(2)} over ${formatUnit(count, 'round')}) · Responder $1.00/round ($${(count * 1).toFixed(2)} over ${formatUnit(count, 'round')})`;
+        studentFrequencies = `Average Offer: $${avg.toFixed(2)} of $10.00 (${pct}% Share) · ${accepted}/${formatUnit(count, 'match', 'matches')} Accepted`;
         if (avg <= 1.50) {
           gapSentence = pScore < bScore || accepted < count
             ? `Close to equilibrium: ${scoreCmp}. Your average offer of $${avg.toFixed(2)} adhered strictly to the 10% SPNE prediction ($1.00), but ${botProfile.name} vetoed low-ball offers to $0 to punish perceived greed.`
@@ -474,7 +486,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
             : `Noticeable deviation: ${scoreCmp}. Your average offer of $${avg.toFixed(2)} (${pct}%) earned points by probing the boundary of acceptable bargaining concessions.`;
         } else {
           gapSentence = pScore >= bScore * 0.8
-            ? `Productive deviation from theory: ${scoreCmp}. Your average offer of $${avg.toFixed(2)} (${pct}%) departed substantially from the selfish $1 SPNE prediction to satisfy social fairness norms, securing agreement in ${accepted}/${count} matches and avoiding costly vetoes.`
+            ? `Productive deviation from theory: ${scoreCmp}. Your average offer of $${avg.toFixed(2)} (${pct}%) departed substantially from the selfish $1 SPNE prediction to satisfy social fairness norms, securing agreement in ${accepted}/${formatUnit(count, 'match', 'matches')} and avoiding costly vetoes.`
             : `Systematic deviation, here is what that suggests about behavior: ${scoreCmp}. Offering $${avg.toFixed(2)} (${pct}%) ensured guaranteed agreement, though high generosity conceded the majority of the surplus to your partner.`;
         }
         break;
@@ -486,7 +498,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const wins = rounds.filter(r => r.playerAction === r.botAction).length;
         const penniesGap = Math.abs(pct - 50);
         const scoreCmp = getScoreCmp(pScore, bScore);
-        equilibriumBenchmark = `Minimax EV: 1.0 pt/round each (${(count * 1.0).toFixed(1)} pts over ${count} rounds) · Stake per round: +2 pts for winner, 0 for loser (p = 0.50 mix)`;
+        equilibriumBenchmark = `Unique Mixed Equilibrium (Minimax): 1.0 pt/round each (${(count * 1.0).toFixed(1)} pts over ${formatUnit(count, 'round')}) · Stake per round: +2 pts for winner, 0 for loser (50/50 mix)`;
         studentFrequencies = `${heads}/${count} Heads (${pct}%) · ${tails}/${count} Tails (${100 - pct}%) · Matched ${wins}/${count} (${Math.round((wins / count) * 100)}% Win Rate)`;
         if (penniesGap <= 6) {
           gapSentence = pScore < bScore
@@ -509,7 +521,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const pct = Math.round((opera / count) * 100);
         const coords = rounds.filter(r => (r.playerAction === 'Opera' && r.botAction === 'Opera') || (r.playerAction === 'Football' && r.botAction === 'Football')).length;
         const scoreCmp = getScoreCmp(pScore, bScore);
-        equilibriumBenchmark = `Coordinated Payoffs: +3 or +2 pts/round (+${count * 3} or +${count * 2} pts over ${count} rounds) · Miscoordination: 0 pts/round (0 pts over ${count} rounds)`;
+        equilibriumBenchmark = `Coordinated Payoffs: +3 or +2 pts/round (+${count * 3} or +${count * 2} pts over ${formatUnit(count, 'round')}) · Miscoordination: 0 pts/round (0 pts over ${formatUnit(count, 'round')})`;
         studentFrequencies = `${opera}/${count} Opera (${pct}%) · ${football}/${count} Football (${100 - pct}%) · Coordinated: ${coords}/${count}`;
         if (coords >= Math.round(count * 0.7) || pct === 100 || pct === 0) {
           gapSentence = pScore < bScore
@@ -531,7 +543,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const avg = Math.round((invs.reduce((a, b) => a + b, 0) / count) * 10) / 10;
         const pct = Math.round((avg / 10) * 100);
         const scoreCmp = getScoreCmp(pScore, bScore);
-        equilibriumBenchmark = `SPNE: Investor keeps 10 pts/round, Trustee gets 0 (${count * 10} vs 0 over ${count} rounds) · Social Maximum: 15 pts each/round for fair 50/50 return (${count * 15} pts each over ${count} rounds; 30 pts/round joint total)`;
+        equilibriumBenchmark = `SPNE: Investor keeps 10 pts/round, Trustee gets 0 (${count * 10} vs 0 over ${formatUnit(count, 'round')}) · Social Maximum: 15 pts each/round for fair 50/50 return (${count * 15} pts each over ${formatUnit(count, 'round')}; 30 pts/round joint total)`;
         studentFrequencies = `Average Transfer: ${avg}/10 pts (${pct}% Trust Rate)`;
         if (pct <= 15) {
           gapSentence = pScore >= bScore
@@ -553,7 +565,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const passedN1 = count - n1Takes;
         const pct = Math.round((passedN1 / count) * 100);
         const scoreCmp = getScoreCmp(pScore, bScore);
-        equilibriumBenchmark = `SPNE Defection: +2 pts/chain for you, 0 for bot (${count * 2} vs 0 over ${count} chains) · Social Optimum: +8 pts each/chain (${count * 8} pts each over ${count} chains)`;
+        equilibriumBenchmark = `SPNE Defection: +2 pts/chain for you, 0 for bot (${count * 2} vs 0 over ${formatUnit(count, 'chain')}) · Social Optimum: +8 pts each/chain (${count * 8} pts each over ${formatUnit(count, 'chain')})`;
         studentFrequencies = `${n1Takes}/${count} Node 1 Takes · ${passedN1}/${count} Chains Passed Beyond Node 1 (${pct}% Passing Rate)`;
         if (pct <= 15) {
           gapSentence = pScore >= bScore
@@ -605,20 +617,20 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
           <button
             type="button"
             onClick={() => onOpenWhatIfSandbox(data.gameId)}
-            className="min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer flex-1 sm:flex-none"
+            className="w-full sm:w-auto min-h-[56px] px-5 py-3.5 rounded-2xl text-base font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>∫ Test in What-If Sandbox</span>
           </button>
           <button
             type="button"
             onClick={onRestartExperiment}
-            className="min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer flex items-center justify-center flex-1 sm:flex-none"
+            className="w-full sm:w-auto min-h-[56px] px-5 py-3.5 rounded-2xl text-base font-bold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-2"
           >
-            Restart
+            🔄 Restart Experiment
           </button>
         </div>
       </div>
@@ -676,7 +688,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
             <span>⚖️ Whole Match Decisions vs. Equilibrium Prediction</span>
             <span className="text-slate-600">·</span>
-            <span className="text-blue-400 font-mono">{(data.roundsSummary || []).length} Rounds Analyzed</span>
+            <span className="text-blue-400 font-mono">{formatUnit((data.roundsSummary || []).length, 'Round')} Analyzed</span>
           </div>
           <div className="text-xs font-mono font-bold text-slate-300">
             Total Points: <strong className="text-emerald-400">You: {data.playerTotalScore}</strong> vs <strong className={botProfile.color}>{botProfile.name}: {data.botTotalScore}</strong>
@@ -697,7 +709,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
           <div className="bg-slate-900/90 p-3 sm:p-3.5 rounded-xl border border-emerald-900/50 space-y-1.5">
             <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
               <span>Your Actual Choice Frequencies</span>
-              <span className="font-mono text-emerald-300">{(data.roundsSummary || []).length} Rds Played</span>
+              <span className="font-mono text-emerald-300">{(data.roundsSummary || []).length} {pluralWord((data.roundsSummary || []).length, 'Rd', 'Rds')} Played</span>
             </div>
             <div className="text-xs sm:text-sm font-black text-white font-mono leading-snug">
               {wholeMatchStats.studentFrequencies}
@@ -887,9 +899,9 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         <div className="bg-slate-950/60 p-3 sm:p-4 rounded-xl border border-slate-800">
           <div className="text-xs font-bold text-white mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <span>Face a Different Strategic Opponent in this Game:</span>
-            <span className="text-[10px] text-slate-400">Click to switch opponent persona and run a new trial</span>
+            <span className="text-[10px] text-slate-400 font-mono">Swipe horizontally to pick · Touch card to switch</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+          <div className="overflow-x-auto flex gap-3 pb-2 pt-1 touch-pan-x snap-x scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {availableBots.map(b => {
               const isCurrent = data.botInfo.id === b.id;
               return (
@@ -897,17 +909,24 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
                   key={b.id}
                   type="button"
                   onClick={() => onChangeBot(b.id)}
-                  className={`w-full min-h-[44px] p-2.5 rounded-xl text-left border transition-all cursor-pointer flex items-center ${
+                  className={`min-h-[56px] min-w-[220px] sm:min-w-[260px] p-3.5 rounded-2xl text-left border-2 transition-all cursor-pointer flex items-center shrink-0 snap-start active:scale-[0.98] ${
                     isCurrent
-                      ? `${b.badgeBg} ${b.badgeBorder} border-2 ring-1 ring-blue-500/30`
-                      : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+                      ? `${b.badgeBg} ${b.badgeBorder} border-blue-500 ring-2 ring-blue-400/40 shadow-lg text-white`
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 w-full">
-                    <span className="text-xl shrink-0">{b.avatar}</span>
+                  <div className="flex items-center gap-3 w-full">
+                    <span className="text-3xl shrink-0">{b.avatar}</span>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-white break-words">{b.name}</div>
-                      <div className={`text-[11px] leading-tight break-words ${b.color}`}>{b.title}</div>
+                      <div className="text-sm font-black text-white flex items-center gap-1.5 truncate">
+                        <span className="truncate">{b.name}</span>
+                        {isCurrent && (
+                          <span className="text-[10px] bg-blue-500 text-white font-black px-1.5 py-0.5 rounded-full shrink-0">
+                            Current
+                          </span>
+                        )}
+                      </div>
+                      <div className={`text-xs font-bold truncate mt-0.5 ${b.color}`}>{b.title}</div>
                     </div>
                   </div>
                 </button>

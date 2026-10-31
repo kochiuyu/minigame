@@ -98,6 +98,62 @@ export const GLOSSARY_TERMS: Record<string, GlossaryEntry> = {
     shortTag: 'Coordination Concept',
     definition: 'A Nash equilibrium that carries less risk if the other player hesitates or behaves unpredictably, having the largest basin of strategic attraction (such as mutual Hare).',
     aliases: ['risk dominance', 'risk-dominant', 'risk dominant']
+  },
+  'bertrand-competition': {
+    id: 'bertrand-competition',
+    title: 'Bertrand Price Competition',
+    shortTag: 'Oligopoly Theory',
+    definition: 'A pricing game where competing firms set prices simultaneously. If products are identical, price undercutting cascades down to marginal cost (P = MC), wiping out all economic profit.',
+    aliases: ['bertrand', 'bertrand competition', 'bertrand paradox', 'bertrand nash']
+  },
+  'vickrey-auction': {
+    id: 'vickrey-auction',
+    title: 'Vickrey Auction (Second-Price Sealed-Bid)',
+    shortTag: 'Auction Theory',
+    definition: 'A sealed-bid auction where the highest bidder wins the item but pays the second-highest bid. Bidding your exact private valuation (b = v) is a weakly dominant strategy.',
+    aliases: ['vickrey', 'vickrey auction', 'second-price auction', 'second price auction', 'truthful bidding']
+  },
+  'beauty-contest': {
+    id: 'beauty-contest',
+    title: 'Keynesian Beauty Contest (Guess 2/3 of Avg)',
+    shortTag: 'Cognitive Hierarchy',
+    definition: 'A game where players guess numbers aiming to hit 2/3 of the group average. Strategic depth cascades downward (Level-0 ~50, Level-1 ~33, Level-2 ~22) to the unique Nash equilibrium of 0.',
+    aliases: ['beauty contest', 'guess 2/3', '2/3 of average', 'level-k reasoning', 'iterated dominance']
+  },
+  'ultimatum-game': {
+    id: 'ultimatum-game',
+    title: 'Ultimatum Bargaining',
+    shortTag: 'Bargaining & Fairness',
+    definition: 'A sequential game where a proposer offers a split of a prize, and the responder can accept or veto it to zero. SPNE predicts offering minimal positive crumbs, but humans veto unfair offers under 30%.',
+    aliases: ['ultimatum', 'ultimatum game', 'ultimatum bargaining']
+  },
+  'trust-game': {
+    id: 'trust-game',
+    title: 'Trust Game (Berg-Dickhaut-McCabe)',
+    shortTag: 'Social Capital',
+    definition: 'An investor transfers capital that triples (3x) to a trustee, who decides how much to return. Backward induction predicts zero trust, yet human reciprocity unlocks high mutual wealth.',
+    aliases: ['trust game', 'investment game', 'berg-dickhaut-mccabe']
+  },
+  'hawk-dove': {
+    id: 'hawk-dove',
+    title: 'Hawk-Dove (Game of Chicken)',
+    shortTag: 'Anti-Coordination',
+    definition: 'A conflict game where players choose between aggression (Hawk) and conciliation (Dove). Mutual aggression causes catastrophic collision (-10), creating a mixed ESS of 23% Hawk.',
+    aliases: ['hawk-dove', 'game of chicken', 'chicken game', 'hawk dove']
+  },
+  'battle-of-sexes': {
+    id: 'battle-of-sexes',
+    title: 'Battle of the Sexes',
+    shortTag: 'Coordination Game',
+    definition: 'A game with two pure Nash equilibria where both players want to coordinate on the same venue, but disagree on which event is best. Alternating turns achieves egalitarian efficiency.',
+    aliases: ['battle of the sexes', 'battle of sexes', 'bach or stravinsky']
+  },
+  'public-goods': {
+    id: 'public-goods',
+    title: 'Public Goods Dilemma',
+    shortTag: 'Collective Action',
+    definition: 'A multi-player dilemma where voluntary contributions create a shared social surplus, but private incentives lead to dominant-strategy free-riding and under-provision.',
+    aliases: ['public goods', 'public goods dilemma', 'voluntary contribution mechanism']
   }
 };
 
@@ -131,4 +187,17 @@ export function getGlossaryEntry(query: string): GlossaryEntry | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * Formats a count with the correct singular or plural noun.
+ * Ensures '1 round' / 'N rounds', '1 chain' / 'N chains', '1 match' / 'N matches', etc.
+ */
+export function formatUnit(count: number, singular: string, plural?: string): string {
+  const noun = count === 1 ? singular : (plural || `${singular}s`);
+  return `${count} ${noun}`;
+}
+
+export function pluralWord(count: number, singular: string, plural?: string): string {
+  return count === 1 ? singular : (plural || `${singular}s`);
 }

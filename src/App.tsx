@@ -20,10 +20,10 @@ export default function App() {
   const [roundsData, setRoundsData] = useState<RoundsState>({});
   const [reflections, setReflections] = useState<ReflectionsState>({});
   const [copyStatus, setCopyStatus] = useState<string>('');
-  const [soloModuleId, setSoloModuleId] = useState<number>(6);
-  const [soloNodeLabel, setSoloNodeLabel] = useState<string>('Game 1 of 12');
+  const [soloModuleId, setSoloModuleId] = useState<number>(1);
+  const [soloNodeLabel, setSoloNodeLabel] = useState<string>('Game 1 of 13');
   const [soloGameIndex, setSoloGameIndex] = useState<number>(1);
-  const [totalSoloGames, setTotalSoloGames] = useState<number>(12);
+  const [totalSoloGames, setTotalSoloGames] = useState<number>(13);
   const [completedSoloGamesCount, setCompletedSoloGamesCount] = useState<number>(0);
 
   // Load data from safeStorage on mount
@@ -337,18 +337,19 @@ export default function App() {
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {[
-                  { id: 7, label: '⚖️ Vickrey Auction' },
-                  { id: 6, label: '🔁 Repeated Dilemma' },
-                  { id: 17, label: '🪙 Matching Pennies' },
-                  { id: 18, label: '🎭 Battle of the Sexes' },
-                  { id: 19, label: '🏦 The Trust Game' },
-                  { id: 20, label: '🐛 Centipede Game' },
+                  { id: 1, label: "🤝 One-Shot Dilemma" },
                   { id: 13, label: '🦌 Stag Hunt' },
-                  { id: 14, label: '🏷️ Bertrand Duopoly' },
                   { id: 15, label: '🦅 Hawk-Dove' },
+                  { id: 18, label: '🎭 Battle of the Sexes' },
+                  { id: 17, label: '🪙 Matching Pennies' },
                   { id: 16, label: '🍰 Ultimatum Bargaining' },
+                  { id: 19, label: '🏦 The Trust Game' },
+                  { id: 12, label: '🌍 Public Goods' },
+                  { id: 6, label: '🔁 Repeated Dilemma' },
+                  { id: 7, label: '⚖️ Vickrey Auction' },
+                  { id: 14, label: '🏷️ Bertrand Duopoly' },
                   { id: 11, label: '💭 Beauty Contest' },
-                  { id: 12, label: '🌍 Public Goods' }
+                  { id: 20, label: '🐛 Centipede Game' }
                 ].map(item => (
                   <button
                     key={item.id}

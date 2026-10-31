@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { getGlossaryEntry, GlossaryEntry } from '../data/glossaryData';
+import { getGlossaryEntry, GlossaryEntry, formatUnit, pluralWord } from '../data/glossaryData';
+
+export { formatUnit, pluralWord };
 
 interface GlossaryTermProps {
   /** The term name or ID to look up in the glossary */
@@ -184,6 +186,8 @@ export const GlossaryTerm: React.FC<GlossaryTermProps> = ({
               bottom: coords.position === 'top' ? `${window.innerHeight - coords.top}px` : undefined,
               left: `${coords.left}px`,
               width: `${coords.width}px`,
+              maxHeight: 'calc(100vh - 24px)',
+              overflowY: 'auto',
               zIndex: 9999
             }}
             role="tooltip"
@@ -249,33 +253,74 @@ interface MatchSpan {
 }
 
 const KEYWORD_MAPPINGS: { pattern: RegExp; termId: string }[] = [
+  // Subgame perfection & backward induction
   { pattern: /\bsubgame\s+perfect\s+nash\s+equilibrium\b/gi, termId: 'spne' },
   { pattern: /\bsubgame\s+perfect\s+equilibrium\b/gi, termId: 'spne' },
   { pattern: /\bsubgame\s+perfection\b/gi, termId: 'spne' },
   { pattern: /\bSPNE\b/g, termId: 'spne' },
   { pattern: /\bbackward\s+induction\b/gi, termId: 'backward-induction' },
+
+  // ESS & Hawk-Dove
   { pattern: /\bevolutionarily\s+stable\s+strateg(?:y|ies)\b/gi, termId: 'ess' },
   { pattern: /\bevolutionary\s+stable\s+strateg(?:y|ies)\b/gi, termId: 'ess' },
   { pattern: /\bmixed\s+ESS\b/gi, termId: 'ess' },
   { pattern: /\bESS\b/g, termId: 'ess' },
+  { pattern: /\bhawk-dove\b/gi, termId: 'hawk-dove' },
+  { pattern: /\bgame\s+of\s+chicken\b/gi, termId: 'hawk-dove' },
+
+  // Dominant Strategy & Auctions
   { pattern: /\bstrictly\s+dominant\s+strateg(?:y|ies)\b/gi, termId: 'dominant-strategy' },
   { pattern: /\bweakly\s+dominant\s+strateg(?:y|ies)\b/gi, termId: 'dominant-strategy' },
   { pattern: /\bdominant\s+strateg(?:y|ies)\b/gi, termId: 'dominant-strategy' },
+  { pattern: /\btruthful\s+bidding\b/gi, termId: 'dominant-strategy' },
+  { pattern: /\bvickrey\s+auction\b/gi, termId: 'vickrey-auction' },
+  { pattern: /\bvickrey\b/gi, termId: 'vickrey-auction' },
+  { pattern: /\bsecond-price\s+auction\b/gi, termId: 'vickrey-auction' },
+
+  // Mixed Strategy & Minimax
+  { pattern: /\bunique\s+mixed\s+equilibrium\b/gi, termId: 'mixed-strategy' },
   { pattern: /\bmixed-strategy\s+nash\s+equilibrium\b/gi, termId: 'mixed-strategy' },
   { pattern: /\bmixed-strategy\b/gi, termId: 'mixed-strategy' },
+  { pattern: /\bmixed\s+equilibri(?:um|a)\b/gi, termId: 'mixed-strategy' },
   { pattern: /\bmixed\s+strateg(?:y|ies)\b/gi, termId: 'mixed-strategy' },
   { pattern: /\bminimax\s+randomization\b/gi, termId: 'minimax' },
   { pattern: /\bminimax\s+EV\b/gi, termId: 'minimax' },
   { pattern: /\bminimax\b/gi, termId: 'minimax' },
+
+  // Bertrand Competition
+  { pattern: /\bbertrand\s+price\s+competition\b/gi, termId: 'bertrand-competition' },
+  { pattern: /\bbertrand\s+paradox\b/gi, termId: 'bertrand-competition' },
+  { pattern: /\bbertrand\s+nash\b/gi, termId: 'bertrand-competition' },
+  { pattern: /\bbertrand\b/gi, termId: 'bertrand-competition' },
+
+  // Beauty Contest & Cognitive Hierarchy
+  { pattern: /\bbeauty\s+contest\b/gi, termId: 'beauty-contest' },
+  { pattern: /\blevel-k\s+reasoning\b/gi, termId: 'beauty-contest' },
+  { pattern: /\biterated\s+dominance\b/gi, termId: 'beauty-contest' },
+
+  // Ultimatum, Trust, Battle of Sexes, Public Goods
+  { pattern: /\bultimatum\s+bargaining\b/gi, termId: 'ultimatum-game' },
+  { pattern: /\bultimatum\s+game\b/gi, termId: 'ultimatum-game' },
+  { pattern: /\bultimatum\b/gi, termId: 'ultimatum-game' },
+  { pattern: /\btrust\s+game\b/gi, termId: 'trust-game' },
+  { pattern: /\bbattle\s+of\s+the\s+sexes\b/gi, termId: 'battle-of-sexes' },
+  { pattern: /\bpublic\s+goods\s+dilemma\b/gi, termId: 'public-goods' },
+  { pattern: /\bpublic\s+goods\b/gi, termId: 'public-goods' },
+
+  // Nash Equilibrium
   { pattern: /\bnash\s+equilibri(?:um|a)\b/gi, termId: 'nash-equilibrium' },
   { pattern: /\bnash\s+trap\b/gi, termId: 'nash-equilibrium' },
   { pattern: /\bnash\s+benchmark\b/gi, termId: 'nash-equilibrium' },
+
+  // Pareto Efficiency
   { pattern: /\bpareto\s+efficienc(?:y|ies)\b/gi, termId: 'pareto-efficiency' },
   { pattern: /\bpareto\s+optimum\b/gi, termId: 'pareto-efficiency' },
   { pattern: /\bpareto\s+optimal\b/gi, termId: 'pareto-efficiency' },
   { pattern: /\bpareto-dominated\b/gi, termId: 'pareto-efficiency' },
   { pattern: /\bpareto-dominates\b/gi, termId: 'pareto-efficiency' },
   { pattern: /\bpareto\b/gi, termId: 'pareto-efficiency' },
+
+  // Free-riding & Cooperation
   { pattern: /\bfree-riding\b/gi, termId: 'free-riding' },
   { pattern: /\bfree\s+riding\b/gi, termId: 'free-riding' },
   { pattern: /\bfree-riders?\b/gi, termId: 'free-riding' },
@@ -296,11 +341,13 @@ export function annotateTextWithGlossary(text: string): React.ReactNode[] {
   const matches: MatchSpan[] = [];
 
   for (const { pattern, termId } of KEYWORD_MAPPINGS) {
-    pattern.lastIndex = 0;
+    // Instantiate a fresh regex per evaluation to prevent shared state or lastIndex race conditions
+    const regex = new RegExp(pattern.source, pattern.flags);
     let m: RegExpExecArray | null;
-    while ((m = pattern.exec(text)) !== null) {
+    while ((m = regex.exec(text)) !== null) {
       const start = m.index;
       const end = m.index + m[0].length;
+      // Prevent overlapping matches
       const overlaps = matches.some(
         existing => !(end <= existing.start || start >= existing.end)
       );
@@ -319,22 +366,30 @@ export function annotateTextWithGlossary(text: string): React.ReactNode[] {
     return [text];
   }
 
+  // Sort matches strictly by starting position
   matches.sort((a, b) => a.start - b.start);
 
   const nodes: React.ReactNode[] = [];
   let cursor = 0;
 
-  matches.forEach((m, idx) => {
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    // Safety guard against any potential overlap
+    if (m.start < cursor) {
+      continue;
+    }
+
     if (m.start > cursor) {
       nodes.push(text.slice(cursor, m.start));
     }
+
     nodes.push(
-      <GlossaryTerm key={`glossary-${idx}-${m.start}`} term={m.termId}>
+      <GlossaryTerm key={`glossary-${m.termId}-${m.start}-${m.end}`} term={m.termId}>
         {m.matchedText}
       </GlossaryTerm>
     );
     cursor = m.end;
-  });
+  }
 
   if (cursor < text.length) {
     nodes.push(text.slice(cursor));

@@ -58,7 +58,88 @@ export function getBotStrategySummary(bot: GameSpecificBot): string {
 
 
 // -------------------------------------------------------------
-// 1. REPEATED PRISONER'S DILEMMA BOTS (Game 6 & 1)
+// 0. ONE-SHOT PRISONER'S DILEMMA BOTS (Game 1)
+// -------------------------------------------------------------
+export const ONE_SHOT_PD_BOTS: GameSpecificBot[] = [
+  {
+    id: 'apex_dominant',
+    gameId: 1,
+    name: 'Apex (Strict Defector)',
+    avatar: '🐺',
+    title: 'Dominant Strategy Optimizer',
+    tagline: 'Always defects. Pursues dominant one-shot payoffs ($3 or $1).',
+    strategySummary: 'Defects unconditionally because Defect strictly dominates Cooperate (3 > 2 and 1 > 0).',
+    backstory: 'Apex understands that in a one-shot game without future retaliation, defecting is strictly dominant. No matter what you choose, defecting yields a strictly higher payoff.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Dominant Strategy Adherence', value: 100, color: 'bg-rose-500' },
+      { label: 'Cooperation Propensity', value: 0, color: 'bg-slate-600' },
+      { label: 'Risk Aversion', value: 95, color: 'bg-blue-500' }
+    ],
+    getAnticipationThought: () =>
+      "In a one-shot game with no future rounds, Defect strictly dominates Cooperate. I will defect.",
+    decide: () => ({
+      action: 'Defect',
+      rationale: 'Strict Dominance: Defecting gives 3 > 2 if you cooperate, and 1 > 0 if you defect.'
+    })
+  },
+  {
+    id: 'anatol_optimist',
+    gameId: 1,
+    name: 'Anatol (Hopeful Cooperator)',
+    avatar: '🤝',
+    title: 'Social Optimum Seeker',
+    tagline: 'Cooperates hoping to achieve the mutual Pareto maximum (+2 each).',
+    strategySummary: 'Plays Cooperate to aim for the collective best outcome (+2 each), risking exploitation.',
+    backstory: 'Anatol values collective efficiency over selfish advantage. In this one-shot interaction, Anatol chooses Cooperate hoping you will do the same to achieve (+2, +2).',
+    color: 'text-emerald-400',
+    badgeBg: 'bg-emerald-950/40',
+    badgeBorder: 'border-emerald-700/60',
+    gauges: [
+      { label: 'Initial Goodwill', value: 100, color: 'bg-emerald-500' },
+      { label: 'Social Welfare Weight', value: 95, color: 'bg-blue-500' },
+      { label: 'Fear of Exploitation', value: 10, color: 'bg-amber-500' }
+    ],
+    getAnticipationThought: () =>
+      "If we both cooperate, we both earn +2 pts. I will play Cooperate in hopes of mutual benefit.",
+    decide: () => ({
+      action: 'Cooperate',
+      rationale: 'Social Optimum: Aiming for mutual cooperation (+2, +2) despite the risk of betrayal.'
+    })
+  },
+  {
+    id: 'clara_random',
+    gameId: 1,
+    name: 'Clara (Unpredictable)',
+    avatar: '🎲',
+    title: '50/50 Randomizer',
+    tagline: 'Flips an unbiased coin between Cooperate and Defect.',
+    strategySummary: 'Randomizes with 50% Cooperate and 50% Defect.',
+    backstory: 'Clara treats the decision as uncertain and randomizes equally between cooperation and defection.',
+    color: 'text-amber-400',
+    badgeBg: 'bg-amber-950/40',
+    badgeBorder: 'border-amber-700/60',
+    gauges: [
+      { label: 'Randomness', value: 100, color: 'bg-amber-500' },
+      { label: 'Predictability', value: 0, color: 'bg-slate-600' },
+      { label: 'Rationality', value: 50, color: 'bg-blue-500' }
+    ],
+    getAnticipationThought: () =>
+      "Flipping a coin: 50% chance of Cooperate, 50% chance of Defect.",
+    decide: () => {
+      const act = Math.random() < 0.5 ? 'Cooperate' : 'Defect';
+      return {
+        action: act,
+        rationale: `Randomized choice: Clara flipped a coin and picked ${act}.`
+      };
+    }
+  }
+];
+
+// -------------------------------------------------------------
+// 1. REPEATED PRISONER'S DILEMMA BOTS (Game 6)
 // -------------------------------------------------------------
 export const PD_BOTS: GameSpecificBot[] = [
   {
@@ -1982,6 +2063,7 @@ export const CENTIPEDE_BOTS: GameSpecificBot[] = [
 export function getBotsForGame(gameId: number): GameSpecificBot[] {
   switch (gameId) {
     case 1:
+      return ONE_SHOT_PD_BOTS;
     case 6:
       return PD_BOTS;
     case 13:
