@@ -29,10 +29,16 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
 
+      # AI Studio syncs do not track package-lock.json and delete it on every
+      # push. cache: npm and a bare `npm ci` both fail without a lockfile.
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
 
       - name: Build
         run: npm run build
