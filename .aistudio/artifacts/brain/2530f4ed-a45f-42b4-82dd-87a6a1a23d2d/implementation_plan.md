@@ -1,81 +1,115 @@
-# Implementation Plan: Hawk-Dove Brinkmanship & Ultimatum Bargaining
+# Solo Lab 20-Game Catalog Expansion Plan
 
-Add two classic game theory simulations to the Solo Lab suite:
-1. **Hawk-Dove / Chicken (Game 15)**: High-stakes anti-coordination, brinkmanship, and evolutionary stable strategies (ESS).
-2. **Ultimatum Bargaining (Game 16)**: The clash between subgame-perfect Nash equilibrium (rational selfishness) and empirical human fairness (inequity aversion).
+Expand Solo Lab from 13 games to all **20 games** to achieve 100% feature and content parity with Live Class. Every newly integrated game features curated behavioral bot opponents, interactive payoff/outcome visualizers, deep dive theory debriefs, and end-of-game equilibrium quizzes with persistent high-score badges.
 
 ---
 
-## 1. Game Mechanics & Payoffs
+## User Review & Critical Decisions
 
-### Game 15: Hawk-Dove Brinkmanship (Game of Chicken)
-- **Concept**: Anti-coordination and credible threats.
-- **Actions**:
-  - `Dove` (Swerve / Share)
-  - `Hawk` (Drive Straight / Fight)
-- **Payoffs**:
-  - Mutual Dove: Shared Resource $(+3, +3)$
-  - Mutual Hawk: Catastrophic Collision $(-10, -10)$
-  - You Hawk, Bot Dove: Hawk Exploits Dove $(+6, 0)$
-  - You Dove, Bot Hawk: Dove Concedes to Hawk $(0, +6)$
-- **Equilibria**:
-  - Two Pure Nash Equilibria: $(\text{Hawk}, \text{Dove})$ and $(\text{Dove}, \text{Hawk})$.
-  - Mixed Strategy Nash Equilibrium: Randomize Hawk with probability $p = 3/13 \approx 23\%$.
-
-### Game 16: Ultimatum Bargaining & Fairness
-- **Concept**: Subgame-perfect Nash equilibrium vs. behavioral inequity aversion.
-- **Actions**:
-  - Propose an offer $O \in [0, 10]$ out of a $\$10.00$ stake (Proposer keeps $\$10 - O$).
-  - Opponent bot decides whether to **Accept** or **Reject**.
-- **Payoffs**:
-  - If Accepted: Proposer gets $\$10 - O$, Responder gets $\$O$.
-  - If Rejected: Both get $\$0$ (mutual destruction).
-- **Equilibria**:
-  - Subgame Perfect Nash (SPNE): Responder accepts any $O > 0$; Proposer offers minimal positive amount.
-  - Empirical Reality: Offers below $\$3.00$ are frequently rejected out of spite/fairness norms; modal offer is $\$4.00-\$5.00$.
+> [!IMPORTANT]
+> The following parameters were confirmed during the interactive interview:
+> - **Game Scope**: Implemented all 7 missing games (Games 2, 3, 4, 5, 8, 9, 10) to reach complete 20/20 parity with Live Class.
+> - **Bot Personalities**: Curated behavioral personas with diverse strategic rationales (e.g., Nash rational, aggressive/exploitative, cautious/fair, and erratic) rather than rigid formulaic bots.
+> - **Full Parity**: Full integration across all steps: Interactive Rule Visualizer (Step 1), Live Choice Previews (Step 2), Match Outcome Illuminations (Step 3), Theory Debrief (Step 4), and 3-Question Equilibrium Quizzes (Step 5).
+> - **Single-Round Flow**: All 7 newly added games follow single-round gameplay with instant "Play Again" replays, preserving Game 6 (Repeated Prisoner's Dilemma) as the sole multi-round game.
 
 ---
 
-## 2. Dedicated Bot Personas & Behavioral Engines
+## 1. Overview & Catalog Architecture
 
-### For Hawk-Dove (Game 15) in `src/services/botEngine.ts`:
-1. **John Maynard Smith (Evolutionary Hawk)**: Relentlessly aggressive Hawk player daring the opponent to swerve or crash.
-2. **Pax (Peaceful Dove)**: Pure pacifist; always plays Dove to eliminate the risk of a $-10$ catastrophe.
-3. **ESS Calculator (Evolutionary Mixed Strategist)**: Randomizes Hawk with mathematical ESS frequency ($p = 23\%$).
-4. **Bourgeois / Correlated Falcon**: Starts peaceful as Dove, but if provoked by a Hawk, escalates to Hawk in retaliation.
+All 20 games are now active in Solo Lab's pedagogical difficulty progression (Easy $\to$ Medium $\to$ Hard):
 
-### For Ultimatum Bargaining (Game 16) in `src/services/botEngine.ts`:
-1. **Homo Economicus (Rational Profit Maximizer)**: Strict subgame-perfect responder; accepts ANY offer $\ge \$1.00$.
-2. **Equity Enforcer (50/50 Egalitarian)**: Rejects any offer strictly below $\$4.50$; prioritizes fairness over money.
-3. **Spiteful Punisher (Inequity Averse)**: Rejects offers below $\$3.00$ to punish greed with zero payoff for both.
-4. **Adaptive Negotiator (Dynamic Expectation)**: Adjusts its acceptance threshold each round based on your past generosity.
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        SOLO LAB 20-GAME CATALOG                        │
+├────────────────────────────────┬───────────────────────────────────────┤
+│ EXISTING (13 Games)            │ NEW ADDITIONS (7 Games)               │
+├────────────────────────────────┼───────────────────────────────────────┤
+│ Game 1: One-Shot PD            │ Game 2: Launch-or-Wait (Sequential)   │
+│ Game 13: Stag Hunt             │ Game 3: Price Competition (Bertrand)  │
+│ Game 15: Hawk-Dove             │ Game 4: Promotion Timing (3x3 Mixed)  │
+│ Game 18: Battle of the Sexes   │ Game 5: Entry Deterrence & Commitment │
+│ Game 17: Matching Pennies      │ Game 8: First-Price Auction (Shading) │
+│ Game 16: Ultimatum Bargaining  │ Game 9: Split-the-Pie (Outside Opt)   │
+│ Game 19: The Trust Game        │ Game 10: Costly Signaling (Spence)    │
+│ Game 12: Public Goods          │                                       │
+│ Game 6: Repeated PD            │                                       │
+│ Game 7: Vickrey 2nd-Price      │                                       │
+│ Game 14: Bertrand Duopoly      │                                       │
+│ Game 11: Beauty Contest (2/3)  │                                       │
+│ Game 20: Centipede Game        │                                       │
+└────────────────────────────────┴───────────────────────────────────────┘
+```
+
+### Detailed Breakdown of the 7 New Games
+
+1. **Game 2: Launch-or-Wait (Sequential First-Mover Advantage)** [COMPLETED]
+   - *Category*: Bargaining & Sequential Markets
+   - *Mechanic*: First mover chooses Launch or Wait. Second mover observes and chooses Enter or Stay Out.
+   - *Bots*: Atlas (Backward Inducer), Shelby (Timid Follower), Viper (Aggressive Second Mover).
+   - *Visualizer*: Two-stage extensive-form tree with highlighted path and terminal payoff nodes.
+
+2. **Game 3: Simultaneous Price Competition (Bertrand 2×2)** [COMPLETED]
+   - *Category*: Foundations & Dominance
+   - *Mechanic*: Simultaneous choice between High Price ($2) and Low Price ($1).
+   - *Bots*: Slicer (Relentless Cutter), Harmony (Collusive Optimist), Dice (Randomizer).
+   - *Visualizer*: 2×2 normal-form payoff matrix with pure Nash Equilibrium marker at (Low, Low).
+
+3. **Game 4: Promotion Timing (3×3 Mixed Strategy Coordination)** [COMPLETED]
+   - *Category*: Zero-Sum & Mixed Strategies
+   - *Mechanic*: Choose launch day: Monday, Wednesday, or Friday. Clashing on the same day yields 0; separate days yield +1.
+   - *Bots*: Entropy (Uniform 1/3 Randomizer), Apex (Weekend Bias), Shift (Counter-Cyclical).
+   - *Visualizer*: 3×3 matrix showing zeroed diagonal clashes and positive off-diagonals.
+
+4. **Game 5: Entry Deterrence & Strategic Commitment** [COMPLETED]
+   - *Category*: Extensive Form & Commitment
+   - *Mechanic*: Incumbent decides to Commit (invest in capacity) or Stay Flexible. Rival decides to Enter or Stay Out.
+   - *Bots*: Fortress (Credible Commitment Deterrent), Scout (Timid Entrant), Goliath (Aggressive Entrant).
+   - *Visualizer*: Extensive-form tree displaying threat credibility and duopoly vs monopoly payoffs.
+
+5. **Game 8: First-Price Sealed-Bid Auction & Winner's Curse** [COMPLETED]
+   - *Category*: Auctions & Mechanism Design
+   - *Mechanic*: Private valuation drawn uniformly from $1–$10. Highest bidder wins and pays their own bid (incentive to shade bid).
+   - *Bots*: Nash Shader (bids $v/2$), Maximus (Aggressive Bidder), Bargain Hunter (Deep Shader).
+   - *Visualizer*: Bid shading comparison scale ($v$ vs $b$) and shaded profit margin gauge.
+
+6. **Game 9: Split-the-Pie Bargaining (Outside Options)** [COMPLETED]
+   - *Category*: Bargaining & Behavioral Fairness
+   - *Mechanic*: Simultaneous demand for a share of 10 points. If $D_1 + D_2 \le 10$, both get demand; if $>10$, deal collapses to outside option (1 pt).
+   - *Bots*: Justice (50/50 Egalitarian), Maximus (Hardball Demander), Pax (Accommodating Shareholder).
+   - *Visualizer*: Overlapping demands gauge highlighting conflict zone vs surplus allocation.
+
+7. **Game 10: Costly Signaling & Asymmetric Information** [COMPLETED]
+   - *Category*: Information Economics
+   - *Mechanic*: High-quality vs Low-quality seller chooses whether to invest in a costly warranty/credential. Buyer chooses Trust or Don't Trust.
+   - *Bots*: Veritas (Spence Auditor), Cynic (Lemon Skeptic), Optimist (Credulous Buyer).
+   - *Visualizer*: Signaling tree highlighting Separating Equilibrium vs Pooling Equilibrium paths.
 
 ---
 
-## 3. UI & Visual Components
+## 2. Implementation Status & File Modifications
 
-### 1. `src/components/InteractiveMatrixVisualizer.tsx`
-- **Hawk-Dove Visualizer (Module 15)**:
-  - 2x2 interactive matrix with live highlighting of candidate action and anticipated bot move.
-  - "Collision Danger Gauge" showing catastrophic loss potential $(-10)$ when hovering or selecting Hawk.
-- **Ultimatum Bargaining Visualizer (Module 16)**:
-  - Interactive split slider showing Proposer keep ($\$10 - O$) vs Responder receive ($\$O$).
-  - Visual pie/bar divider and real-time bot acceptance likelihood zone (Green: safe, Amber: risky, Red: rejection danger).
-
-### 2. `src/components/SoloLabView.tsx`
-- Add Modules 15 and 16 to `availableModules` with custom icons (`🦅`, `🍰`), categories, and descriptions.
-- Add state handlers for Hawk-Dove (`hawkChoice`) and Ultimatum (`ultimatumOffer`).
-- Integrate round submission and history resolution for both modules.
-- Pass appropriate theoretical benchmarks (Nash vs Pareto) to `TheoryDebrief`.
-
-### 3. `src/components/TheoryDebrief.tsx`
-- Add formal theory insight cards for Game 15 and Game 16:
-  - **Hawk-Dove**: Evolutionarily Stable Strategy (ESS), mixed strategy calculations, Cuban Missile Crisis brinkmanship case study.
-  - **Ultimatum**: Backward induction unravelling, Fehr-Schmidt inequity aversion model, real-world salary and labor union bargaining case study.
-
----
-
-## 4. Verification Plan
-- Run `lint_applet` (`tsc --noEmit`) to verify 0 type or import errors.
-- Run `compile_applet` to confirm the production build succeeds.
-- Test round submission, visualizer updates, thought streams, and theory debriefs for both new games.
+- [x] **`src/services/botEngine.ts`**:
+  - Implemented all 7 bot rosters with full backstories, strategy profiles, and decision functions.
+  - Updated `getBotsForGame(gameId)` switch to route all 20 games to their custom rosters.
+- [x] **`src/data/soloLabQuizzes.ts`**:
+  - Added 3-question multiple choice quizzes for each of the 7 new games (covering first-mover advantage, backward induction, Bertrand undercutting, mixed-strategy unexploitability, credible commitment, first-price bid shading, Winner's Curse, Schelling focal points, outside options, and Spence separating/pooling equilibria).
+- [x] **`src/components/InteractiveMatrixVisualizer.tsx`**:
+  - Added normal-form matrix configurations for Game 3 (Bertrand 2×2 High/Low Price) and Game 4 (3×3 Promotion Timing: Mon, Wed, Fri with clash diagonals).
+  - Dynamic `th colSpan={config.colActions.length}` to cleanly support any $N \times M$ matrix grid.
+- [x] **`src/components/SequentialVisualizer.tsx`**:
+  - Added specialized visual outcome diagrams for:
+    - Game 2: Extensive-form sequential decision tree (Launch vs Wait $\to$ Enter vs Stay Out with SPNE marker).
+    - Game 5: Strategic commitment deterrence tree (Commit capacity vs Stay Flexible $\to$ Challenger response).
+    - Game 8: First-Price Sealed-Bid comparison scale ($v$ vs $b$ vs Nash $v/2$ and winning profit margin).
+    - Game 9: Split-the-Pie demand compatibility bar ($D_1 + D_2 \le 10$ vs collapse to outside options).
+    - Game 10: Spence costly signaling information tree (Nature Type $\to$ Costly Signal vs Cheap Talk $\to$ Buyer Trust).
+- [x] **`src/components/SoloLabView.tsx`**:
+  - Expanded `availableModules` to all 20 games with icons, titles, categories, and difficulty.
+  - Added state hooks and Step 2 controls for all games (buttons, sliders, quality cards).
+  - Implemented payoff calculations and decoupled Game 9 from Game 16.
+  - Added Step 1 quick rules, Step 2 live previews, Step 3 takeaways and outcome illuminations, and Step 4 theory debriefs.
+  - Verified `resetExperiment` resets state for all games.
+- [x] **Build & Verification**:
+  - `lint_applet` passed (`tsc --noEmit` exited 0).
+  - `compile_applet` passed (Vite build successful).

@@ -44,32 +44,31 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
-      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 py-2 sm:py-2.5 flex flex-wrap md:flex-nowrap items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 py-1.5 flex items-center justify-between gap-2 sm:gap-4">
         {/* Zone 1: Brand Wordmark */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white font-mono text-sm shadow-sm shrink-0">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white font-mono text-xs shadow-xs shrink-0">
             Γ
           </div>
           <div>
-            <div className="text-xs sm:text-base font-bold tracking-tight text-white whitespace-nowrap leading-tight">
-              DOTE 3090 <span className="text-slate-400 font-normal hidden sm:inline">Game Theory Lab</span>
+            <div className="text-xs sm:text-sm font-bold tracking-tight text-white whitespace-nowrap leading-tight">
+              DOTE 3090 <span className="text-slate-400 font-normal hidden sm:inline">Game Theory</span>
             </div>
             <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1.5">
               <span>Room: <strong className="font-mono text-blue-300 font-bold">{authSession.roomCode || 'DOTE-3090'}</strong></span>
               {currentMode === 'solo' ? (
                 <>
                   <span>·</span>
-                  <span className="text-sky-300 font-semibold truncate max-w-[130px] sm:max-w-none">
+                  <span className="text-sky-300 font-semibold truncate max-w-[120px] sm:max-w-none">
                     Game {soloGameIndex || 1} of {totalSoloGames || 13}
-                    {soloModuleId === 20 ? ' · 6-Node Chain' : ''}
                   </span>
                 </>
               ) : currentWeek && currentMode === 'live' ? (
                 <>
                   <span>·</span>
-                  <span className="text-amber-300 font-semibold truncate max-w-[130px] sm:max-w-none">
+                  <span className="text-amber-300 font-semibold truncate max-w-[120px] sm:max-w-none">
                     {currentWeek.id === 20
-                      ? 'Game 13 of 13 · 6-Node Chain'
+                      ? 'Game 13 of 13'
                       : `${currentWeek.icon} ${currentWeek.shortTitle || currentWeek.title}`}
                   </span>
                 </>
@@ -79,13 +78,13 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zone 2: Primary Platform Mode Switcher */}
-        <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800 shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-1 bg-slate-950/80 p-0.5 sm:p-1 rounded-xl border border-slate-800 shrink-0">
           <button
             type="button"
             onClick={() => onSelectMode('solo')}
-            className={`min-h-[44px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`min-h-[38px] px-2 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               currentMode === 'solo'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -96,9 +95,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => onSelectMode('live')}
-            className={`min-h-[44px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`min-h-[38px] px-2 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               currentMode === 'live'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -109,9 +108,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => onSelectMode('sandbox')}
-            className={`min-h-[44px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`min-h-[38px] px-2 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               currentMode === 'sandbox'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
@@ -259,11 +258,11 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zone 3: Profile & Sign-Out Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {isStudent && (
             <button
               onClick={() => setIsProfileOpen(prev => !prev)}
-              className="min-h-[44px] text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center"
+              className="min-h-[38px] text-xs text-slate-300 hover:text-white px-2 sm:px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center font-mono"
             >
               ID: {authSession.id || 'N/A'}
             </button>
@@ -271,7 +270,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={onSignOut}
-            className="min-h-[44px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            className="min-h-[38px] px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
             title="Leave session and return to sign-in portal"
           >
             <span className="hidden sm:inline">Exit /</span>

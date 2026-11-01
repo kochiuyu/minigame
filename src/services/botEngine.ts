@@ -2040,21 +2040,618 @@ export const CENTIPEDE_BOTS: GameSpecificBot[] = [
     decide: ({ currentNode = 2 }) => {
       const node = currentNode || 2;
       const passProb = node === 2 ? 0.80 : node === 4 ? 0.45 : 0.15;
-      const roll = Math.random();
-      const willPass = roll < passProb;
-
-      if (willPass && node < 6) {
+      const passes = Math.random() < passProb;
+      if (passes) {
         return {
           action: 'Pass',
-          rationale: `Empirical Pass (${Math.round(passProb * 100)}% lab rate): Passed at Node ${node} to test trust and expand the pot.`
-        };
-      } else {
-        const botPayoff = node === 2 ? 4 : node === 4 ? 6 : 8;
-        return {
-          action: 'Take',
-          rationale: `Empirical Defection: Took at Node ${node} to secure ${botPayoff} pts (modeled after lab exit distributions).`
+          rationale: `Behavioral Cooperation: Passed at Node ${node} (${Math.round(passProb * 100)}% chance) to build reciprocal trust.`
         };
       }
+      return {
+        action: 'Take',
+        rationale: `Behavioral Harvest: Took at Node ${node} (${Math.round((1 - passProb) * 100)}% chance) to secure payout.`
+      };
+    }
+  }
+];
+
+// -------------------------------------------------------------
+// 14. LAUNCH-OR-WAIT BOTS (Game 2: Sequential Entry & First-Mover)
+// -------------------------------------------------------------
+export const LAUNCH_WAIT_BOTS: GameSpecificBot[] = [
+  {
+    id: 'spne_backward_inducer',
+    gameId: 2,
+    name: 'Atlas (Backward Inducer)',
+    avatar: '♟️',
+    title: 'SPNE Rationalist',
+    tagline: 'Solves subgames by backward induction. Always takes the highest subgame payoff.',
+    strategySummary: 'As Second Mover: Enters if Launch (2 > 1) and enters if Wait (4 > 0). Backward induction predicts Second Mover always enters.',
+    backstory: 'Atlas applies Zermelo backward induction to extensive-form game trees. He never makes non-credible threats.',
+    color: 'text-indigo-400',
+    badgeBg: 'bg-indigo-950/40',
+    badgeBorder: 'border-indigo-700/60',
+    gauges: [
+      { label: 'Backward Induction', value: 100, color: 'bg-indigo-500' },
+      { label: 'Subgame Perfection', value: 100, color: 'bg-emerald-500' },
+      { label: 'Irrational Spite', value: 0, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'I analyze terminal nodes first and fold back the game tree.',
+    decide: ({ history }) => {
+      // If student is First Mover and played 'Launch'
+      const lastPlayerAction = history.length > 0 ? history[history.length - 1].playerAction : 'Launch';
+      if (lastPlayerAction === 'Wait') {
+        return {
+          action: 'Enter',
+          rationale: 'First mover Waited. Second mover enters to claim 4 points (vs 0 if staying out).'
+        };
+      }
+      return {
+        action: 'Enter',
+        rationale: 'First mover Launched. Second mover still earns 2 points by entering vs 1 by staying out. Backward induction dictates Enter.'
+      };
+    }
+  },
+  {
+    id: 'timid_follower',
+    gameId: 2,
+    name: 'Shelby (Timid Follower)',
+    avatar: '🐢',
+    title: 'Crowding Avoider',
+    tagline: 'Yields the market to first movers to avoid crowded competition.',
+    strategySummary: 'Stays out if you Launch to let you have monopoly, but Enters if you hesitate and Wait.',
+    backstory: 'Shelby hates head-to-head market clashes. If she sees a first mover commit, she concedes market space.',
+    color: 'text-teal-400',
+    badgeBg: 'bg-teal-950/40',
+    badgeBorder: 'border-teal-700/60',
+    gauges: [
+      { label: 'Conflict Avoidance', value: 90, color: 'bg-teal-500' },
+      { label: 'First-Mover Deference', value: 95, color: 'bg-blue-500' },
+      { label: 'Opportunism', value: 50, color: 'bg-amber-500' }
+    ],
+    getAnticipationThought: () => 'If you claim the market first, I will not contest it.',
+    decide: ({ history }) => {
+      const lastPlayerAction = history.length > 0 ? history[history.length - 1].playerAction : 'Launch';
+      if (lastPlayerAction === 'Launch') {
+        return {
+          action: 'Stay Out',
+          rationale: 'You launched first! Conceding market to avoid shared duopoly (yielding +4 to you, taking +1).'
+        };
+      }
+      return {
+        action: 'Enter',
+        rationale: 'You hesitated and waited! Seizing first-mover opening (+4 pts for entrant).'
+      };
+    }
+  },
+  {
+    id: 'spiteful_challenger',
+    gameId: 2,
+    name: 'Viper (Contestant)',
+    avatar: '⚡',
+    title: 'Aggressive Entrant',
+    tagline: 'Always enters regardless of first-mover choices to force shared margins.',
+    strategySummary: 'Unconditionally enters to deny first-mover monopoly profits.',
+    backstory: 'Viper refuses to be intimidated by early launches. She enters every time.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Aggression', value: 95, color: 'bg-rose-500' },
+      { label: 'Deterrence Resistance', value: 100, color: 'bg-amber-500' },
+      { label: 'Concession Rate', value: 0, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'No first mover gets a free monopoly on my watch.',
+    decide: () => ({
+      action: 'Enter',
+      rationale: 'Entering aggressively to contest the space. No first mover gets uncontested dominance.'
+    })
+  }
+];
+
+// -------------------------------------------------------------
+// 15. SIMULTANEOUS PRICE COMPETITION BOTS (Game 3: Bertrand 2x2)
+// -------------------------------------------------------------
+export const PRICE_COMPETITION_2X2_BOTS: GameSpecificBot[] = [
+  {
+    id: 'slicer_undercutter',
+    gameId: 3,
+    name: 'Slicer (Relentless Cutter)',
+    avatar: '⚡',
+    title: 'Dominant Price Cutter',
+    tagline: 'Always sets Low Price. Low Price strictly dominates High Price in static Bertrand.',
+    strategySummary: 'Plays Low Price unconditionally because 3 > 2 (if you price high) and 1 > 0 (if you price low).',
+    backstory: 'Slicer knows that in a single simultaneous pricing round, undercutting is strictly dominant.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Price War Aggression', value: 100, color: 'bg-rose-500' },
+      { label: 'Dominant Adherence', value: 100, color: 'bg-emerald-500' },
+      { label: 'Collusion Propensity', value: 0, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'Low Price guarantees I never get zeroed out by a price cut.',
+    decide: () => ({
+      action: 'Low Price',
+      rationale: 'Strictly dominant pricing: Low Price guarantees either the temptation payoff (3 pts) or mutual safety (1 pt).'
+    })
+  },
+  {
+    id: 'harmony_colluder',
+    gameId: 3,
+    name: 'Harmony (Tacit Colluder)',
+    avatar: '🤝',
+    title: 'Cartel Builder',
+    tagline: 'Attempts to sustain monopoly prices (High Price) for mutual +2 profit.',
+    strategySummary: 'Sets High Price hoping for mutual cooperation, but is vulnerable to sucker payoff.',
+    backstory: 'Harmony believes price wars are self-destructive and seeks the joint profit-maximizing outcome.',
+    color: 'text-emerald-400',
+    badgeBg: 'bg-emerald-950/40',
+    badgeBorder: 'border-emerald-700/60',
+    gauges: [
+      { label: 'Collusive Intent', value: 95, color: 'bg-emerald-500' },
+      { label: 'Risk Tolerance', value: 80, color: 'bg-blue-500' },
+      { label: 'Price Cutting', value: 10, color: 'bg-rose-500' }
+    ],
+    getAnticipationThought: () => 'If we both price High, we split the market at monopoly profit (+2 each).',
+    decide: () => ({
+      action: 'High Price',
+      rationale: 'Offering cartel pricing: Setting High Price to achieve Pareto-superior mutual profit (+2 pts).'
+    })
+  },
+  {
+    id: 'dice_mixed_pricer',
+    gameId: 3,
+    name: 'Dice (Disruptive Pricer)',
+    avatar: '🎲',
+    title: 'Unpredictable Merchant',
+    tagline: 'Randomly alternates between High Price and Low Price to keep competitors guessing.',
+    strategySummary: 'Flips a coin (50% High / 50% Low) to avoid being pinned down.',
+    backstory: 'Dice disrupts rival forecasting by using randomized discount promotions.',
+    color: 'text-amber-400',
+    badgeBg: 'bg-amber-950/40',
+    badgeBorder: 'border-amber-700/60',
+    gauges: [
+      { label: 'Randomness', value: 85, color: 'bg-amber-500' },
+      { label: 'Unpredictability', value: 90, color: 'bg-purple-500' },
+      { label: 'Calculated Risk', value: 60, color: 'bg-blue-500' }
+    ],
+    getAnticipationThought: () => 'Will today be a discount blowout or high-margin pricing?',
+    decide: () => {
+      const isLow = Math.random() < 0.5;
+      return {
+        action: isLow ? 'Low Price' : 'High Price',
+        rationale: `Randomized price point: Set ${isLow ? 'Low Price' : 'High Price'} to test rival response.`
+      };
+    }
+  }
+];
+
+// -------------------------------------------------------------
+// 16. PROMOTION TIMING BOTS (Game 4: 3x3 Mixed Coordination)
+// -------------------------------------------------------------
+export const PROMOTION_TIMING_BOTS: GameSpecificBot[] = [
+  {
+    id: 'entropy_minimax',
+    gameId: 4,
+    name: 'Entropy (Minimax Randomizer)',
+    avatar: '🎲',
+    title: 'Uniform Minimax Player',
+    tagline: 'Plays Monday, Wednesday, and Friday with exact equal probability (1/3 each).',
+    strategySummary: 'Unique symmetric mixed-strategy Nash equilibrium: randomizing with p = 1/3 ensures unexploitability.',
+    backstory: 'Entropy understands that any predictable timing schedule will be exploited by rival advertising.',
+    color: 'text-purple-400',
+    badgeBg: 'bg-purple-950/40',
+    badgeBorder: 'border-purple-700/60',
+    gauges: [
+      { label: 'Minimax Randomness', value: 100, color: 'bg-purple-500' },
+      { label: 'Exploitability', value: 0, color: 'bg-emerald-500' },
+      { label: 'Predictability', value: 0, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'Randomizing perfectly (1/3, 1/3, 1/3) gives you zero pattern to exploit.',
+    decide: () => {
+      const days = ['Monday', 'Wednesday', 'Friday'];
+      const pick = days[Math.floor(Math.random() * days.length)];
+      return {
+        action: pick,
+        rationale: `Minimax equilibrium roll: Selected ${pick} with 1/3 uniform probability to prevent clashing.`
+      };
+    }
+  },
+  {
+    id: 'friday_fanatic',
+    gameId: 4,
+    name: 'Apex Weekend (Friday Bias)',
+    avatar: '📅',
+    title: 'Peak Traffic Chaser',
+    tagline: 'Prefers Friday promotions where consumer spending peaks (60% Friday, 20% Mon, 20% Wed).',
+    strategySummary: 'Skews heavily toward Friday to capture high traffic, creating a predictable focal point.',
+    backstory: 'Apex bets that consumers shop most on payday Fridays, even at the risk of scheduling collisions.',
+    color: 'text-amber-400',
+    badgeBg: 'bg-amber-950/40',
+    badgeBorder: 'border-amber-700/60',
+    gauges: [
+      { label: 'Friday Preference', value: 75, color: 'bg-amber-500' },
+      { label: 'Focal Point Bias', value: 80, color: 'bg-blue-500' },
+      { label: 'Pattern Uniformity', value: 30, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'Friday is prime shopping day. Will you dare to clash with me?',
+    decide: () => {
+      const roll = Math.random();
+      const pick = roll < 0.60 ? 'Friday' : roll < 0.80 ? 'Wednesday' : 'Monday';
+      return {
+        action: pick,
+        rationale: `Peak traffic scheduling: Targeted ${pick} (60% weight on Friday retail volume).`
+      };
+    }
+  },
+  {
+    id: 'anti_pattern_shifter',
+    gameId: 4,
+    name: 'Shift (Anti-Pattern Tracker)',
+    avatar: '🔄',
+    title: 'Adaptive Day Shifter',
+    tagline: 'Anticipates player day preferences and swerves to an open calendar slot.',
+    strategySummary: 'Avoids whichever day was chosen last to guarantee a separate retail window.',
+    backstory: 'Shift tracks competitor calendars and actively dodges clashing days.',
+    color: 'text-cyan-400',
+    badgeBg: 'bg-cyan-950/40',
+    badgeBorder: 'border-cyan-700/60',
+    gauges: [
+      { label: 'Collision Avoidance', value: 90, color: 'bg-cyan-500' },
+      { label: 'Adaptive Tracking', value: 85, color: 'bg-blue-500' },
+      { label: 'Minimax Precision', value: 70, color: 'bg-purple-500' }
+    ],
+    getAnticipationThought: () => 'I am looking for the emptiest day on the retail calendar.',
+    decide: ({ history }) => {
+      const lastPick = history.length > 0 ? history[history.length - 1].playerAction : null;
+      const options = ['Monday', 'Wednesday', 'Friday'].filter(d => d !== lastPick);
+      const pick = options[Math.floor(Math.random() * options.length)];
+      return {
+        action: pick,
+        rationale: `Anti-collision targeting: Selected ${pick} to avoid your previous promotion window.`
+      };
+    }
+  }
+];
+
+// -------------------------------------------------------------
+// 17. ENTRY DETERRENCE & STRATEGIC COMMITMENT BOTS (Game 5)
+// -------------------------------------------------------------
+export const ENTRY_DETERRENCE_BOTS: GameSpecificBot[] = [
+  {
+    id: 'credible_incumbent',
+    gameId: 5,
+    name: 'Fortress (Sunk Cost Deterrent)',
+    avatar: '🏰',
+    title: 'Irreversible Commitment Incumbent',
+    tagline: 'Always Commits irreversible capacity to make retaliation credible and deter entry.',
+    strategySummary: 'As Incumbent, burns flexibility and commits capital. Rivals calculate that entering leads to a price war (-2) and stay out (0).',
+    backstory: 'Fortress follows Thomas Schelling strategic commitment doctrine: sinking costs turns empty threats into credible deterrence.',
+    color: 'text-indigo-400',
+    badgeBg: 'bg-indigo-950/40',
+    badgeBorder: 'border-indigo-700/60',
+    gauges: [
+      { label: 'Commitment Credibility', value: 100, color: 'bg-indigo-500' },
+      { label: 'Deterrence Success', value: 95, color: 'bg-emerald-500' },
+      { label: 'Flexibility', value: 0, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'An irreversible commitment removes all temptation to back down.',
+    decide: () => ({
+      action: 'Commit',
+      rationale: 'Strategic Commitment: Invested heavily in irreversible capacity to credibly deter rival entry (+4 monopoly payoff).'
+    })
+  },
+  {
+    id: 'rational_rival_entrant',
+    gameId: 5,
+    name: 'Scout (SPNE Entrant)',
+    avatar: '🧭',
+    title: 'Subgame Perfect Challenger',
+    tagline: 'Enters if Incumbent stays flexible (+2 duopoly), but stays out if Incumbent commits (avoids -2 war).',
+    strategySummary: 'Backward induction response: respects credible commitment, but ruthlessly enters when the incumbent stays flexible.',
+    backstory: 'Scout calculates payoff trees coldly. He will never fight a committed incumbent with excess capacity.',
+    color: 'text-emerald-400',
+    badgeBg: 'bg-emerald-950/40',
+    badgeBorder: 'border-emerald-700/60',
+    gauges: [
+      { label: 'Backward Induction', value: 100, color: 'bg-emerald-500' },
+      { label: 'Risk Discipline', value: 90, color: 'bg-blue-500' },
+      { label: 'Bluff Susceptibility', value: 0, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'Did you actually sink the capital, or is your threat a bluff?',
+    decide: ({ history }) => {
+      const incumbentAction = history.length > 0 ? history[history.length - 1].playerAction : 'Commit';
+      if (incumbentAction === 'Commit') {
+        return {
+          action: 'Stay Out',
+          rationale: 'Incumbent committed capacity: Entering causes a price war (-2 pts). Staying out yields 0 pts (SPNE outcome).'
+        };
+      }
+      return {
+        action: 'Enter',
+        rationale: 'Incumbent stayed flexible: Accommodating entry is incumbent best response. Entering yields +2 duopoly profit!'
+      };
+    }
+  },
+  {
+    id: 'reckless_challenger',
+    gameId: 5,
+    name: 'Goliath (Aggressive Entrant)',
+    avatar: '🥊',
+    title: 'War of Attrition Challenger',
+    tagline: 'Always enters regardless of commitment to test whether the incumbent will really fight.',
+    strategySummary: 'Enters even against committed incumbents, gambling that mutual pain will force concession.',
+    backstory: 'Goliath ignores backward induction and enters to trigger high-stakes brinkmanship.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Aggression', value: 95, color: 'bg-rose-500' },
+      { label: 'Threat Defiance', value: 100, color: 'bg-amber-500' },
+      { label: 'Rational Restraint', value: 10, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'I will enter anyway and call your price war bluff.',
+    decide: () => ({
+      action: 'Enter',
+      rationale: 'Aggressive Challenge: Entered the market despite risks to force market sharing or mutual fight.'
+    })
+  }
+];
+
+// -------------------------------------------------------------
+// 18. FIRST-PRICE SEALED-BID AUCTION BOTS (Game 8)
+// -------------------------------------------------------------
+export const FIRST_PRICE_AUCTION_BOTS: GameSpecificBot[] = [
+  {
+    id: 'bayes_nash_shader',
+    gameId: 8,
+    name: 'Nash Shader (Bayes-Nash Rationalist)',
+    avatar: '📐',
+    title: 'Equilibrium Bid Shader',
+    tagline: 'Bids exactly (N-1)/N of private valuation. For N=2, b*(v) = v / 2.',
+    strategySummary: 'In a symmetric uniform first-price auction with 2 bidders, bidding half your valuation maximizes expected surplus (Win Prob * Margin).',
+    backstory: 'Nash Shader balances the tradeoff: bidding higher increases win probability, but reduces profit upon winning.',
+    color: 'text-sky-400',
+    badgeBg: 'bg-sky-950/40',
+    badgeBorder: 'border-sky-700/60',
+    gauges: [
+      { label: 'Equilibrium Shading', value: 100, color: 'bg-sky-500' },
+      { label: 'Winner Curse Avoidance', value: 95, color: 'bg-emerald-500' },
+      { label: 'Overbidding Bias', value: 0, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'In a first-price auction, bidding your true value earns $0 profit. Shading is essential.',
+    decide: ({ botValuation = 6 }) => {
+      const bid = Math.round((botValuation / 2) * 10) / 10;
+      return {
+        action: bid,
+        rationale: `Bayes-Nash Equilibrium Bid: Valued item at $${botValuation}. Shaded bid to $${bid} (50% rule for N=2).`
+      };
+    }
+  },
+  {
+    id: 'winners_curse_risk',
+    gameId: 8,
+    name: 'Maximus (Aggressive Winner)',
+    avatar: '💸',
+    title: 'Overbidding Competitor',
+    tagline: 'Bids 80-90% of valuation to ensure victory, suffering Winner Curse in common value settings.',
+    strategySummary: 'Shades very little (b = 0.85 * v), winning frequently but with razor-thin margins.',
+    backstory: 'Maximus hates losing auctions. He bids aggressively, frequently falling prey to winner curse.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Win Priority', value: 95, color: 'bg-rose-500' },
+      { label: 'Winner Curse Risk', value: 90, color: 'bg-amber-500' },
+      { label: 'Margin Protection', value: 20, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'I want that prize and will bid high enough to beat you.',
+    decide: ({ botValuation = 7 }) => {
+      const bid = Math.round((botValuation * 0.85) * 10) / 10;
+      return {
+        action: bid,
+        rationale: `Aggressive bid: Valued at $${botValuation}, submitted high bid of $${bid} to secure win.`
+      };
+    }
+  },
+  {
+    id: 'discount_sniper',
+    gameId: 8,
+    name: 'Bargain Hunter (Heavy Shader)',
+    avatar: '🎯',
+    title: 'Deep Margin Maximizer',
+    tagline: 'Bids only 30-35% of valuation, winning rarely but enjoying huge margins when successful.',
+    strategySummary: 'Shades heavily (b = 0.35 * v) to protect deep profit margins.',
+    backstory: 'Bargain Hunter treats auctions as discount bins. If she cannot win at a steal, she walks away.',
+    color: 'text-amber-400',
+    badgeBg: 'bg-amber-950/40',
+    badgeBorder: 'border-amber-700/60',
+    gauges: [
+      { label: 'Margin Priority', value: 95, color: 'bg-amber-500' },
+      { label: 'Win Frequency', value: 25, color: 'bg-slate-600' },
+      { label: 'Disciplined Patience', value: 90, color: 'bg-blue-500' }
+    ],
+    getAnticipationThought: () => 'I only buy if the profit margin is enormous.',
+    decide: ({ botValuation = 8 }) => {
+      const bid = Math.round((botValuation * 0.35) * 10) / 10;
+      return {
+        action: bid,
+        rationale: `Deep discount bid: Valued at $${botValuation}, bid low at $${bid} to seek massive surplus.`
+      };
+    }
+  }
+];
+
+// -------------------------------------------------------------
+// 19. SPLIT-THE-PIE BARGAINING BOTS (Game 9: Nash Demand & Outside Options)
+// -------------------------------------------------------------
+export const SPLIT_PIE_DEMAND_BOTS: GameSpecificBot[] = [
+  {
+    id: 'fair_split_50_50',
+    gameId: 9,
+    name: 'Justice (50/50 Focal Point)',
+    avatar: '⚖️',
+    title: 'Egalitarian Demander',
+    tagline: 'Demands exactly 5 points (50% of the 10-point pie).',
+    strategySummary: 'Plays the Schelling focal point and Nash Bargaining Solution of 5 pts. If you demand <= 5, agreement succeeds.',
+    backstory: 'Justice anchors on fairness. 50-50 splits are the unique symmetric focal point in human bargaining.',
+    color: 'text-emerald-400',
+    badgeBg: 'bg-emerald-950/40',
+    badgeBorder: 'border-emerald-700/60',
+    gauges: [
+      { label: 'Fairness Focal Point', value: 100, color: 'bg-emerald-500' },
+      { label: 'Greed Restraint', value: 95, color: 'bg-blue-500' },
+      { label: 'Outside Option Reliance', value: 10, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'The 5-5 split is the most natural coordination equilibrium.',
+    decide: () => ({
+      action: 5,
+      rationale: 'Symmetric Nash Bargaining: Demanded 5 points (half of 10). If you demand 5 or less, we both prosper.'
+    })
+  },
+  {
+    id: 'greedy_claimant',
+    gameId: 9,
+    name: 'Maximus (Hard Bargainer)',
+    avatar: '🦁',
+    title: 'Aggressive Claimant',
+    tagline: 'Demands 7 points, forcing you to accept 3 points or trigger outside options (1 pt).',
+    strategySummary: 'Tests whether you will accommodate an asymmetric split rather than collapse the deal into outside options.',
+    backstory: 'Maximus knows that 3 points is still better than your outside option of 1 point.',
+    color: 'text-amber-400',
+    badgeBg: 'bg-amber-950/40',
+    badgeBorder: 'border-amber-700/60',
+    gauges: [
+      { label: 'Claim Aggression', value: 85, color: 'bg-amber-500' },
+      { label: 'Outside Option Threat', value: 90, color: 'bg-rose-500' },
+      { label: 'Concession Willingness', value: 15, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'You will take 3 points because 3 is better than your outside option of 1.',
+    decide: () => ({
+      action: 7,
+      rationale: 'Hardball demand: Demanded 7 points. You must demand 3 or less to avoid deal collapse.'
+    })
+  },
+  {
+    id: 'modest_conceder',
+    gameId: 9,
+    name: 'Pax (Accommodating Partner)',
+    avatar: '🕊️',
+    title: 'Safety Satisficer',
+    tagline: 'Demands only 3 or 4 points to ensure total demands never exceed 10.',
+    strategySummary: 'Leaves 6 to 7 points on the table for you to guarantee an agreement.',
+    backstory: 'Pax fears deal breakdown and outside option misery. She prioritizes agreement over peak share.',
+    color: 'text-teal-400',
+    badgeBg: 'bg-teal-950/40',
+    badgeBorder: 'border-teal-700/60',
+    gauges: [
+      { label: 'Agreement Priority', value: 95, color: 'bg-teal-500' },
+      { label: 'Risk Aversion', value: 90, color: 'bg-blue-500' },
+      { label: 'Greed', value: 20, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'I leave plenty of room so our total demands do not exceed 10.',
+    decide: () => ({
+      action: 3.5,
+      rationale: 'Accommodating demand: Demanded 3.5 points, leaving 6.5 points available to guarantee agreement.'
+    })
+  }
+];
+
+// -------------------------------------------------------------
+// 20. COSTLY SIGNALING & ASYMMETRIC INFORMATION BOTS (Game 10)
+// -------------------------------------------------------------
+export const COSTLY_SIGNALING_BOTS: GameSpecificBot[] = [
+  {
+    id: 'spence_auditor',
+    gameId: 10,
+    name: 'Veritas (Separating Auditor)',
+    avatar: '🔬',
+    title: 'Spence Credential Auditor',
+    tagline: 'Trusts if and only if the seller sent a costly signal. Single-crossing property separates types.',
+    strategySummary: 'Separating equilibrium strategy: knows that low-quality sellers cannot afford the signal cost ($5 vs $2). Trusts signaled goods, rejects unsignaled goods.',
+    backstory: 'Veritas applies Michael Spence signaling model: signals are credible solely because high-quality types bear lower costs.',
+    color: 'text-indigo-400',
+    badgeBg: 'bg-indigo-950/40',
+    badgeBorder: 'border-indigo-700/60',
+    gauges: [
+      { label: 'Separating Equilibrium', value: 100, color: 'bg-indigo-500' },
+      { label: 'Single-Crossing Adherence', value: 100, color: 'bg-emerald-500' },
+      { label: 'Cheap Talk Immunity', value: 100, color: 'bg-blue-500' }
+    ],
+    getAnticipationThought: () => 'Talk is cheap. Only an investment that costs low-quality types more is believable.',
+    decide: ({ history }) => {
+      const didSignal = history.length > 0 ? history[history.length - 1].playerAction === 'Yes (Costly)' : true;
+      if (didSignal) {
+        return {
+          action: 'Trust',
+          rationale: 'Seller sent costly signal: High-quality types face lower cost. Separating equilibrium confirmed -> Trust!'
+        };
+      }
+      return {
+        action: "Don't Trust",
+        rationale: 'No costly signal sent: Without verification, lemons crowd out high quality (Akerlof effect) -> Do Not Trust.'
+      };
+    }
+  },
+  {
+    id: 'lemon_cynic',
+    gameId: 10,
+    name: 'Cynic (Lemon Market Skeptic)',
+    avatar: '🛡️',
+    title: 'Adverse Selection Avoider',
+    tagline: 'High skepticism. Only trusts with a costly signal, and even then verifies quality rigorously.',
+    strategySummary: 'Expects adverse selection everywhere. Never trusts unsignaled sellers.',
+    backstory: 'Cynic was burned in used car markets. Without certified warranties, he assumes everything is a lemon.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Skepticism', value: 95, color: 'bg-rose-500' },
+      { label: 'Adverse Selection Fear', value: 90, color: 'bg-amber-500' },
+      { label: 'Trust Propensity', value: 25, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'Used car markets collapse into lemons if buyers are gullible.',
+    decide: ({ history }) => {
+      const didSignal = history.length > 0 ? history[history.length - 1].playerAction === 'Yes (Costly)' : false;
+      if (didSignal && Math.random() < 0.85) {
+        return {
+          action: 'Trust',
+          rationale: 'Costly warranty verified. Reluctantly trusting the certified seller.'
+        };
+      }
+      return {
+        action: "Don't Trust",
+        rationale: 'Unverified offering: Refusing to buy to avoid the lemon market trap.'
+      };
+    }
+  },
+  {
+    id: 'credulous_buyer',
+    gameId: 10,
+    name: 'Optimist (Credulous Buyer)',
+    avatar: '🌟',
+    title: 'Goodwill Presumer',
+    tagline: 'Frequently trusts even without costly signals, vulnerable to low-quality pooling exploitation.',
+    strategySummary: 'Trusts 75% of the time, allowing low-quality sellers to sell lemons without paying for certification.',
+    backstory: 'Optimist believes in general goodwill, making him the target of opportunistic sellers in pooling equilibria.',
+    color: 'text-amber-400',
+    badgeBg: 'bg-amber-950/40',
+    badgeBorder: 'border-amber-700/60',
+    gauges: [
+      { label: 'Credulity', value: 85, color: 'bg-amber-500' },
+      { label: 'Pooling Vulnerability', value: 90, color: 'bg-rose-500' },
+      { label: 'Auditing Rigor', value: 15, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'I hope sellers are honest even without costly certificates.',
+    decide: () => {
+      const trusts = Math.random() < 0.75;
+      return {
+        action: trusts ? 'Trust' : "Don't Trust",
+        rationale: trusts
+          ? 'Optimistic purchase: Trusted the seller based on initial goodwill.'
+          : 'Cautious hesitation: Decided to pass on this transaction.'
+      };
     }
   }
 ];
@@ -2064,22 +2661,34 @@ export function getBotsForGame(gameId: number): GameSpecificBot[] {
   switch (gameId) {
     case 1:
       return ONE_SHOT_PD_BOTS;
+    case 2:
+      return LAUNCH_WAIT_BOTS;
+    case 3:
+      return PRICE_COMPETITION_2X2_BOTS;
+    case 4:
+      return PROMOTION_TIMING_BOTS;
+    case 5:
+      return ENTRY_DETERRENCE_BOTS;
     case 6:
       return PD_BOTS;
-    case 13:
-      return STAG_BOTS;
-    case 14:
-      return BERTRAND_BOTS;
     case 7:
-    case 8:
       return AUCTION_BOTS;
+    case 8:
+      return FIRST_PRICE_AUCTION_BOTS;
+    case 9:
+      return SPLIT_PIE_DEMAND_BOTS;
+    case 10:
+      return COSTLY_SIGNALING_BOTS;
     case 11:
       return BEAUTY_BOTS;
     case 12:
       return PUBLIC_GOODS_BOTS;
+    case 13:
+      return STAG_BOTS;
+    case 14:
+      return BERTRAND_BOTS;
     case 15:
       return HAWK_DOVE_BOTS;
-    case 9:
     case 16:
       return ULTIMATUM_BOTS;
     case 17:

@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for adding Hawk-Dove Brinkmanship (Game 15) and Ultimatum Bargaining (Game 16) to the Solo Lab simulation suite. Covers mathematical mechanics, game-specific bot rosters, dynamic trait gauges, interactive payoff matrix and pie visualizers, and Theory Debrief integration.",
-  "updatedAt":  "2026-10-27T14:35:15.155800478Z",
+  "summary":  "All 20 games are now fully integrated in Solo Lab with 100% feature parity with Live Class, including curated behavioral bot rosters, interactive 2x2/3x3 matrices and extensive sequential trees, Step 2-4 debrief calculations, and 3-question equilibrium quizzes with persistent badges.",
+  "updatedAt":  "2026-11-01T15:59:21.193128431Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

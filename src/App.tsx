@@ -306,7 +306,7 @@ export default function App() {
         completedSoloGamesCount={completedSoloGamesCount}
       />
 
-      <main className="max-w-7xl mx-auto px-2.5 sm:px-6 mt-3 sm:mt-6 max-w-full">
+      <main className="max-w-7xl mx-auto px-2.5 sm:px-6 mt-2 sm:mt-3 max-w-full">
         {platformMode === 'solo' ? (
           <SoloLabView
             allGames={WEEKS}
