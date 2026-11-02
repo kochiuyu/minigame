@@ -2656,6 +2656,322 @@ export const COSTLY_SIGNALING_BOTS: GameSpecificBot[] = [
   }
 ];
 
+export const COURNOT_BOTS: GameSpecificBot[] = [
+  {
+    id: 'cournot_nash',
+    gameId: 21,
+    name: 'Antoine Cournot (Nash Optimizer)',
+    avatar: '📐',
+    title: 'Symmetric Nash Equilibrium Strategist',
+    tagline: 'Calculates the strict Best Response curve: q* = (90 - q_rival) / 2 = 30 units.',
+    strategySummary: 'Produces exactly the Cournot-Nash quantity q = 30 units to maximize profit given symmetric expectations.',
+    backstory: 'The pioneer of industrial economics who showed that quantity competition resolves Bertrand zero-profit traps.',
+    color: 'text-indigo-400',
+    badgeBg: 'bg-indigo-950/40',
+    badgeBorder: 'border-indigo-700/60',
+    gauges: [
+      { label: 'Analytical Rigor', value: 98, color: 'bg-indigo-500' },
+      { label: 'Collusion Resistance', value: 90, color: 'bg-blue-500' },
+      { label: 'Market Discipline', value: 95, color: 'bg-emerald-500' }
+    ],
+    getAnticipationThought: () => 'In Cournot duopoly, our best response functions intersect at exactly q = 30.',
+    decide: ({ history }) => {
+      let q = 30;
+      if (history.length > 0) {
+        const lastPlayerQ = Number(history[history.length - 1].playerAction) || 30;
+        q = Math.round((90 - lastPlayerQ) / 2);
+        q = Math.max(10, Math.min(45, q));
+      }
+      return {
+        action: q,
+        rationale: `Cournot Best-Response function: q = (90 - ${history.length > 0 ? history[history.length - 1].playerAction : 30})/2 = ${q} units.`
+      };
+    }
+  },
+  {
+    id: 'cournot_cartel',
+    gameId: 21,
+    name: 'OPEC Coordinator (Cartel Colluder)',
+    avatar: '🤝',
+    title: 'Monopoly Profit Maximizer',
+    tagline: 'Restricts output to the joint-profit maximizing level (q = 22.5 units) to maximize total industry profit.',
+    strategySummary: 'Attempts collusive cooperation by producing q = 22.5 units, achieving $1,012.50 shared monopoly profit.',
+    backstory: 'Believes cutthroat volume wars destroy shareholder value; seeks cartel discipline unless betrayed.',
+    color: 'text-emerald-400',
+    badgeBg: 'bg-emerald-950/40',
+    badgeBorder: 'border-emerald-700/60',
+    gauges: [
+      { label: 'Cartel Discipline', value: 95, color: 'bg-emerald-500' },
+      { label: 'Cooperation Propensity', value: 85, color: 'bg-blue-500' },
+      { label: 'Retaliatory Trigger', value: 75, color: 'bg-amber-500' }
+    ],
+    getAnticipationThought: () => 'If we both restrict production to 22.5 units, we share maximum monopoly profits of $2,025.',
+    decide: () => ({
+      action: 22.5,
+      rationale: 'Cartel quota: Producing half of monopoly output (qm/2 = 22.5 units) to maximize industry surplus.'
+    })
+  },
+  {
+    id: 'cournot_flooder',
+    gameId: 21,
+    name: 'Mega-Plant Titan (Market Flooder)',
+    avatar: '🌊',
+    title: 'Stackelberg Volume Leader',
+    tagline: 'Pumps aggressive volume (q = 38-42 units) to depress market price and crowd out competitors.',
+    strategySummary: 'Floods the market with high output, gambling that the rival will back down along their downward-sloping reaction curve.',
+    backstory: 'An aggressive industrial conglomerate using massive scale economies to bully rivals into downsizing.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Market Aggression', value: 92, color: 'bg-rose-500' },
+      { label: 'Capacity Utilization', value: 96, color: 'bg-amber-500' },
+      { label: 'Price Caution', value: 20, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'I will flood the market with high volume to force you to reduce your quota.',
+    decide: () => ({
+      action: 38,
+      rationale: 'Aggressive volume expansion: Flooding 38 units to suppress prices and dominate market share.'
+    })
+  }
+];
+
+export const HOTELLING_BOTS: GameSpecificBot[] = [
+  {
+    id: 'hotelling_centrist',
+    gameId: 22,
+    name: 'Harold Hotelling (Median Centrist)',
+    avatar: '🏖️',
+    title: 'Principle of Minimum Differentiation',
+    tagline: 'Anchors right at Mile 50. In spatial competition, the median is the unique Nash equilibrium.',
+    strategySummary: 'Positions cart at location 50 to capture 50% minimum market share against any rival move.',
+    backstory: 'Discovered that competitors in two-player spatial games inexorably cluster at the exact center.',
+    color: 'text-blue-400',
+    badgeBg: 'bg-blue-950/40',
+    badgeBorder: 'border-blue-700/60',
+    gauges: [
+      { label: 'Centrist Discipline', value: 99, color: 'bg-blue-500' },
+      { label: 'Median Voter Adherence', value: 95, color: 'bg-emerald-500' },
+      { label: 'Peripheral Dispersion', value: 5, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'Locating at 50 guarantees that neither side can box me out of the median consumer base.',
+    decide: () => ({
+      action: 50,
+      rationale: 'Hotelling center lock: Positioning at Mile 50 (Median) to prevent rival market capture.'
+    })
+  },
+  {
+    id: 'hotelling_stalker',
+    gameId: 22,
+    name: 'Flanking Predator (Proximity Undercutter)',
+    avatar: '🎯',
+    title: 'Parasitic Adjacent Placer',
+    tagline: 'Positions just adjacent to your location to siphon off the entire larger side of the promenade.',
+    strategySummary: 'Tracks your predicted location and sets up shop immediately next to you on the longer stretch of beach.',
+    backstory: 'A tactical food vendor who sets up 5 feet from the market leader to capture 90% of passing pedestrians.',
+    color: 'text-amber-400',
+    badgeBg: 'bg-amber-950/40',
+    badgeBorder: 'border-amber-700/60',
+    gauges: [
+      { label: 'Parasitic Proximity', value: 92, color: 'bg-amber-500' },
+      { label: 'Opportunism', value: 88, color: 'bg-rose-500' },
+      { label: 'Social Efficiency', value: 10, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'I will set up shop immediately next to you to capture the longer beach segment.',
+    decide: ({ history }) => {
+      let loc = 51;
+      if (history.length > 0) {
+        const lastP = Number(history[history.length - 1].playerAction) || 50;
+        loc = lastP > 50 ? lastP - 2 : lastP + 2;
+        loc = Math.max(0, Math.min(100, loc));
+      }
+      return {
+        action: loc,
+        rationale: `Flanking maneuver: Setting up at Mile ${loc} immediately adjacent to your position to steal maximum shoreline.`
+      };
+    }
+  },
+  {
+    id: 'hotelling_planner',
+    gameId: 22,
+    name: 'Social Planner (Convenience Maximizer)',
+    avatar: '📐',
+    title: 'Social Welfare Optimizer',
+    tagline: 'Sets up at Mile 75, leaving Mile 25 for you to minimize total walking distance for all beachgoers.',
+    strategySummary: 'Plays the socially optimal location (Mile 75), which minimizes customer travel cost if you pick Mile 25.',
+    backstory: 'An urban municipal planner who cares about minimizing total human walking fatigue rather than ruthless market capture.',
+    color: 'text-emerald-400',
+    badgeBg: 'bg-emerald-950/40',
+    badgeBorder: 'border-emerald-700/60',
+    gauges: [
+      { label: 'Social Efficiency', value: 95, color: 'bg-emerald-500' },
+      { label: 'Competitive Ruthlessness', value: 15, color: 'bg-slate-600' },
+      { label: 'Customer Empathy', value: 90, color: 'bg-blue-500' }
+    ],
+    getAnticipationThought: () => 'If I take Mile 75 and you take Mile 25, average customer walking distance is minimized to just 12.5 yards!',
+    decide: () => ({
+      action: 75,
+      rationale: 'Social Optimum: Positioning at Mile 75 (expecting you at Mile 25 to minimize total customer walking distance).'
+    })
+  }
+];
+
+export const BLOTTO_BOTS: GameSpecificBot[] = [
+  {
+    id: 'blotto_blitz',
+    gameId: 23,
+    name: 'General Blitz (Two-Front Striker)',
+    avatar: '⚡',
+    title: 'Concentrated Mass Doctrine',
+    tagline: 'Sacrifices Front C to commit 50 battalions each to Front A and Front B (50 / 50 / 0).',
+    strategySummary: 'Overwhelms 2 out of 3 fronts with concentrated force (50/50/0), easily defeating evenly spread armies.',
+    backstory: 'A Prussian military theorist who knows you only need to win 2 of 3 passes to win the campaign.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Force Concentration', value: 96, color: 'bg-rose-500' },
+      { label: 'Decisive Strike', value: 90, color: 'bg-amber-500' },
+      { label: 'Perimeter Defense', value: 10, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'Spreading troops evenly across all three passes is military suicide against concentrated force.',
+    decide: () => ({
+      action: { a: 50, b: 50, c: 0 },
+      rationale: 'Blitzkrieg doctrine: 50 battalions to Northern Pass, 50 to Central Valley, 0 to Southern Defile.'
+    })
+  },
+  {
+    id: 'blotto_fabian',
+    gameId: 23,
+    name: 'Fabian Defender (Balanced Dispersal)',
+    avatar: '🛡️',
+    title: 'Equally Guarded Frontier',
+    tagline: 'Guards every pass evenly: 34 on Front A, 33 on Front B, 33 on Front C.',
+    strategySummary: 'Distributes battalions evenly (34/33/33) to protect all territorial borders symmetrically.',
+    backstory: 'A cautious general whose conservative instincts guard every frontier entrance from rogue incursions.',
+    color: 'text-blue-400',
+    badgeBg: 'bg-blue-950/40',
+    badgeBorder: 'border-blue-700/60',
+    gauges: [
+      { label: 'Boundary Prudence', value: 92, color: 'bg-blue-500' },
+      { label: 'Risk Aversion', value: 85, color: 'bg-slate-500' },
+      { label: 'Aggression Factor', value: 25, color: 'bg-amber-500' }
+    ],
+    getAnticipationThought: () => 'A strong defense guards every pass with roughly equal battalion strength.',
+    decide: () => ({
+      action: { a: 34, b: 33, c: 33 },
+      rationale: 'Symmetric defensive line: 34 battalions at Pass A, 33 at Pass B, 33 at Pass C.'
+    })
+  },
+  {
+    id: 'blotto_feint',
+    gameId: 23,
+    name: 'Tactical Deceiver (Asymmetric Feint)',
+    avatar: '🎭',
+    title: 'Deceptive Maneuver Specialist',
+    tagline: 'Feints with 60 battalions at Front A, then allocates 40 to Front C and 0 to B (60 / 0 / 40).',
+    strategySummary: 'Uses an asymmetric distribution (60/0/40) designed to smash enemy spearheads and sweep the flank.',
+    backstory: 'A master of deceptive troop movements who lures enemy forces into defensive traps.',
+    color: 'text-purple-400',
+    badgeBg: 'bg-purple-950/40',
+    badgeBorder: 'border-purple-700/60',
+    gauges: [
+      { label: 'Deception & Feints', value: 94, color: 'bg-purple-500' },
+      { label: 'Unpredictability', value: 88, color: 'bg-indigo-500' },
+      { label: 'Tactical Risk', value: 75, color: 'bg-amber-500' }
+    ],
+    getAnticipationThought: () => 'I will fake a massive central push while secretly overwhelming your southern flank.',
+    decide: () => ({
+      action: { a: 60, b: 0, c: 40 },
+      rationale: 'Asymmetric flank attack: 60 battalions at Pass A, 0 at Pass B, 40 at Pass C.'
+    })
+  }
+];
+
+export const COMMON_VALUE_AUCTION_BOTS: GameSpecificBot[] = [
+  {
+    id: 'cv_bayesian',
+    gameId: 24,
+    name: 'Dr. Thomas Bayes (Winner\'s Curse Immune)',
+    avatar: '🔬',
+    title: 'Adverse Selection Discount Specialist',
+    tagline: 'Shades bid significantly below private estimate: b = Estimate - $6.00 to account for the curse of winning.',
+    strategySummary: 'Understands that winning reveals your signal was highest; aggressively shades bid to ensure positive profit upon winning.',
+    backstory: 'A legendary petroleum econometrician who saved oil majors billions by correcting for estimation bias.',
+    color: 'text-emerald-400',
+    badgeBg: 'bg-emerald-950/40',
+    badgeBorder: 'border-emerald-700/60',
+    gauges: [
+      { label: 'Winner\'s Curse Immunity', value: 98, color: 'bg-emerald-500' },
+      { label: 'Bayesian Updating', value: 96, color: 'bg-blue-500' },
+      { label: 'Naive Optimism', value: 2, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'If I win this auction, it means my survey was the most optimistic. I must shade my bid to avoid bankruptcy!',
+    decide: ({ botValuation }) => {
+      const signal = botValuation || 50;
+      const bid = Math.max(10, Math.round((signal - 6) * 10) / 10);
+      return {
+        action: bid,
+        rationale: `Bayesian Adverse-Selection Discount: Seismic signal was $${signal.toFixed(2)}, shaded down by $6.00 -> Bid $${bid.toFixed(2)}.`
+      };
+    }
+  },
+  {
+    id: 'cv_naive',
+    gameId: 24,
+    name: 'Wildcatter Pete (Naive Optimist)',
+    avatar: '🤠',
+    title: 'Unshaded Geological Believer',
+    tagline: 'Bids almost his full private estimate: b = Estimate - $0.50. Constantly suffers the Winner\'s Curse!',
+    strategySummary: 'Fails to condition on winning; bids his raw geological estimate and frequently buys oil leases at a net loss.',
+    backstory: 'An eager wildcat driller who believes his seismic charts are infallible, repeatedly falling victim to the Winner\'s Curse.',
+    color: 'text-amber-400',
+    badgeBg: 'bg-amber-950/40',
+    badgeBorder: 'border-amber-700/60',
+    gauges: [
+      { label: 'Naive Enthusiasm', value: 92, color: 'bg-amber-500' },
+      { label: 'Winner\'s Curse Vulnerability', value: 95, color: 'bg-rose-500' },
+      { label: 'Shading Discipline', value: 8, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'My seismic readings show a gusher! I am bidding high to ensure we secure this tract.',
+    decide: ({ botValuation }) => {
+      const signal = botValuation || 50;
+      const bid = Math.max(10, Math.round((signal - 0.5) * 10) / 10);
+      return {
+        action: bid,
+        rationale: `Naive unshaded bid: Signal was $${signal.toFixed(2)}, bidding $${bid.toFixed(2)} without conditioning on winning.`
+      };
+    }
+  },
+  {
+    id: 'cv_speculator',
+    gameId: 24,
+    name: 'Corporate Raider (Aggressive Overbidder)',
+    avatar: '🦈',
+    title: 'Prestige Lease Collector',
+    tagline: 'Bids above estimated survey value: b = Estimate + $2.00 to guarantee victory at any cost.',
+    strategySummary: 'Driven by hubris and market dominance, systematically overbids and absorbs catastrophic write-downs.',
+    backstory: 'An aggressive energy CEO obsessed with pipeline acreage, whose aggressive bids guarantee winning but bleed capital.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Corporate Hubris', value: 95, color: 'bg-rose-500' },
+      { label: 'Acreage Acquisition Bias', value: 90, color: 'bg-amber-500' },
+      { label: 'Downside Protection', value: 5, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'We cannot afford to let our rivals win this reserve, whatever the cost!',
+    decide: ({ botValuation }) => {
+      const signal = botValuation || 50;
+      const bid = Math.max(10, Math.round((signal + 2) * 10) / 10);
+      return {
+        action: bid,
+        rationale: `Aggressive overbid: Signal was $${signal.toFixed(2)}, bid $${bid.toFixed(2)} to secure lease at any cost.`
+      };
+    }
+  }
+];
+
 // Helper to retrieve the custom bot roster for any game
 export function getBotsForGame(gameId: number): GameSpecificBot[] {
   switch (gameId) {
@@ -2699,6 +3015,14 @@ export function getBotsForGame(gameId: number): GameSpecificBot[] {
       return TRUST_GAME_BOTS;
     case 20:
       return CENTIPEDE_BOTS;
+    case 21:
+      return COURNOT_BOTS;
+    case 22:
+      return HOTELLING_BOTS;
+    case 23:
+      return BLOTTO_BOTS;
+    case 24:
+      return COMMON_VALUE_AUCTION_BOTS;
     default:
       return PD_BOTS;
   }

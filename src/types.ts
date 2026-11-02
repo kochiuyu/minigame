@@ -43,7 +43,7 @@ export interface StudentInfo {
   alias: string;
 }
 
-export type UserRole = 'student' | 'instructor';
+export type UserRole = 'student' | 'instructor' | 'guest';
 
 export interface AuthSession {
   role: UserRole;

@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { AuthSession, GameConfig } from '../types';
 
 interface HeaderProps {
-  authSession: AuthSession;
+  authSession: AuthSession | null;
   onSignOut: () => void;
+  onOpenSignIn?: () => void;
   completedRoundsCount: number;
   totalRounds?: number;
   currentWeek?: GameConfig;
@@ -21,6 +22,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   authSession,
   onSignOut,
+  onOpenSignIn,
   completedRoundsCount,
   totalRounds = 6,
   currentWeek,
@@ -37,25 +39,25 @@ export const Header: React.FC<HeaderProps> = ({
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
 
-  const isStudent = authSession.role === 'student';
+  const isStudent = authSession?.role === 'student';
 
   // Group games by category
   const categories = Array.from(new Set(allWeeks.map(g => g.category || 'Other Classroom Games')));
 
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
-      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 py-1.5 flex items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-4 py-1 h-11 flex items-center justify-between gap-1.5 sm:gap-3">
         {/* Zone 1: Brand Wordmark */}
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-          <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white font-mono text-xs shadow-xs shrink-0">
+          <div className="h-6 w-6 rounded-md bg-blue-600 flex items-center justify-center font-bold text-white font-mono text-[11px] shadow-xs shrink-0">
             Γ
           </div>
           <div>
             <div className="text-xs sm:text-sm font-bold tracking-tight text-white whitespace-nowrap leading-tight">
               DOTE 3090 <span className="text-slate-400 font-normal hidden sm:inline">Game Theory</span>
             </div>
-            <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1.5">
-              <span>Room: <strong className="font-mono text-blue-300 font-bold">{authSession.roomCode || 'DOTE-3090'}</strong></span>
+            <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1.5 leading-none mt-0.5">
+              <span>Room: <strong className="font-mono text-blue-300 font-bold">{authSession?.roomCode || 'DOTE-3090'}</strong></span>
               {currentMode === 'solo' ? (
                 <>
                   <span>·</span>
@@ -78,11 +80,11 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zone 2: Primary Platform Mode Switcher */}
-        <div className="flex items-center gap-0.5 sm:gap-1 bg-slate-950/80 p-0.5 sm:p-1 rounded-xl border border-slate-800 shrink-0">
+        <div className="flex items-center gap-0.5 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800 shrink-0">
           <button
             type="button"
             onClick={() => onSelectMode('solo')}
-            className={`min-h-[38px] px-2 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`min-h-[30px] px-2 sm:px-2.5 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
               currentMode === 'solo'
                 ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -95,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => onSelectMode('live')}
-            className={`min-h-[38px] px-2 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`min-h-[30px] px-2 sm:px-2.5 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
               currentMode === 'live'
                 ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -108,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => onSelectMode('sandbox')}
-            className={`min-h-[38px] px-2 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`min-h-[30px] px-2 sm:px-2.5 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
               currentMode === 'sandbox'
                 ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -205,21 +207,27 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
 
-          {/* Role Pill */}
-          <span className={`hidden xl:flex px-2.5 py-1 rounded-md font-bold tracking-wide items-center gap-1.5 ${
-            isStudent
-              ? 'bg-blue-900/60 text-blue-200 border border-blue-700/60'
-              : 'bg-purple-900/60 text-purple-200 border border-purple-700/60'
-          }`}>
-            <span>{isStudent ? '🎓 Student' : '👨‍🏫 Instructor'}</span>
-            <span className="text-slate-400">·</span>
-            <span className="font-semibold">{authSession.name}</span>
-            {isStudent && authSession.alias && (
-              <span className="text-amber-300 font-mono">({authSession.alias})</span>
-            )}
-          </span>
+          {/* Role Pill or Guest Badge */}
+          {authSession && authSession.role !== 'guest' ? (
+            <span className={`hidden xl:flex px-2.5 py-1 rounded-md font-bold tracking-wide items-center gap-1.5 ${
+              isStudent
+                ? 'bg-blue-900/60 text-blue-200 border border-blue-700/60'
+                : 'bg-purple-900/60 text-purple-200 border border-purple-700/60'
+            }`}>
+              <span>{isStudent ? '🎓 Student' : '👨‍🏫 Instructor'}</span>
+              <span className="text-slate-400">·</span>
+              <span className="font-semibold">{authSession.name}</span>
+              {isStudent && authSession.alias && (
+                <span className="text-amber-300 font-mono">({authSession.alias})</span>
+              )}
+            </span>
+          ) : (
+            <span className="hidden xl:flex px-2.5 py-1 rounded-md font-bold tracking-wide items-center gap-1.5 bg-slate-800/80 text-slate-300 border border-slate-700/80 text-xs">
+              <span>👤 Guest Practice</span>
+            </span>
+          )}
 
-          {isStudent && (
+          {isStudent && authSession && authSession.role !== 'guest' && (
             <span className="text-slate-400 font-mono text-[11px] bg-slate-800 px-2.5 py-1 rounded border border-slate-700 hidden sm:inline-block">
               {currentMode === 'solo' ? (
                 <span className="text-sky-300 font-semibold flex items-center gap-1.5">
@@ -257,30 +265,43 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Zone 3: Profile & Sign-Out Actions */}
+        {/* Zone 3: Profile & Sign-Out Actions or Join Live Class Button */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {isStudent && (
+          {!authSession || authSession.role === 'guest' ? (
             <button
-              onClick={() => setIsProfileOpen(prev => !prev)}
-              className="min-h-[38px] text-xs text-slate-300 hover:text-white px-2 sm:px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center font-mono"
+              type="button"
+              onClick={onOpenSignIn}
+              className="min-h-[30px] px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:via-indigo-500 hover:to-blue-500 text-white shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ring-1 ring-blue-400/40"
             >
-              ID: {authSession.id || 'N/A'}
+              <span>🎓</span>
+              <span>Join Live Class</span>
             </button>
-          )}
+          ) : (
+            <>
+              {isStudent && (
+                <button
+                  onClick={() => setIsProfileOpen(prev => !prev)}
+                  className="min-h-[30px] text-xs text-slate-300 hover:text-white px-2 py-0.5 rounded-md border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center font-mono"
+                >
+                  ID: {authSession.id || 'N/A'}
+                </button>
+              )}
 
-          <button
-            onClick={onSignOut}
-            className="min-h-[38px] px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-            title="Leave session and return to sign-in portal"
-          >
-            <span className="hidden sm:inline">Exit /</span>
-            <span>Sign Out</span>
-          </button>
+              <button
+                onClick={onSignOut}
+                className="min-h-[30px] px-2.5 py-0.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                title="Leave session and return to guest practice"
+              >
+                <span className="hidden sm:inline">Exit /</span>
+                <span>Sign Out</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Slide-down Student Profile View when opened */}
-      {isProfileOpen && isStudent && (
+      {isProfileOpen && isStudent && authSession && (
         <div className="bg-slate-800 border-t border-slate-700 px-4 sm:px-6 py-2.5 text-xs text-slate-300">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex flex-wrap items-center gap-x-6 gap-y-1">

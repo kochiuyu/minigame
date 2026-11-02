@@ -805,6 +805,166 @@ export const SOLO_LAB_QUIZZES: Record<number, QuizQuestion[]> = {
       correctIndex: 0,
       explanation: 'In a separating equilibrium, high types signal while low types do not, revealing true quality; in a pooling equilibrium, all types mimic each other so uncertainty persists.'
     }
+  ],
+
+  // Game 21: Cournot Duopoly Quantity Competition
+  21: [
+    {
+      id: 'cournot-1',
+      question: 'In a standard Cournot duopoly with inverse demand P = 100 - (q1 + q2) and marginal cost c = 10, what is each firm\'s Nash equilibrium quantity?',
+      options: [
+        '30 units each (Market Q = 60, P = $40)',
+        '45 units each (Competitive Price P = $10)',
+        '22.5 units each (Cartel Collusion)',
+        '50 units each'
+      ],
+      correctIndex: 0,
+      explanation: 'Each firm maximizes (100 - q_i - q_j - 10)q_i, yielding reaction function q_i = (90 - q_j)/2. Symmetrically solving gives q1 = q2 = 30.'
+    },
+    {
+      id: 'cournot-2',
+      question: 'How does the Cournot duopoly outcome compare to Bertrand price competition with identical products and constant marginal cost?',
+      options: [
+        'Cournot yields positive economic profit and higher price than Bertrand',
+        'Bertrand yields higher prices and lower output than Cournot',
+        'Both yield identical competitive pricing at marginal cost',
+        'Cournot always yields monopoly profit'
+      ],
+      correctIndex: 0,
+      explanation: 'In Bertrand with homogeneous goods, fierce price undercutting drives price down to marginal cost (P=c, profit=0). In Cournot, quantity commitments prevent price collapse, sustaining positive margins.'
+    },
+    {
+      id: 'cournot-3',
+      question: 'Why is the cartel collusive agreement (q1 = q2 = 22.5) unstable without external enforcement?',
+      options: [
+        'Each firm has a unilateral incentive to cheat and produce q = 33.75 against a partner producing 22.5',
+        'Collusion produces zero total industry profits',
+        'Consumers refuse to purchase if prices rise above $40',
+        'Firms are legally required to produce at least 30 units'
+      ],
+      correctIndex: 0,
+      explanation: 'The cartel output is not a Nash equilibrium: given q2 = 22.5, firm 1\'s best response is (90 - 22.5)/2 = 33.75, earning higher unilateral profit while crashing market price for both.'
+    }
+  ],
+
+  // Game 22: Hotelling\'s Spatial Competition
+  22: [
+    {
+      id: 'hotelling-1',
+      question: 'What is the famous "Principle of Minimum Differentiation" discovered by Harold Hotelling?',
+      options: [
+        'Competing sellers tend to cluster near the center (median consumer) to maximize captive market share',
+        'Competing sellers always position at opposite extremes to minimize conflict',
+        'Sellers randomize locations uniformly across the space',
+        'Sellers charge different prices at every single point'
+      ],
+      correctIndex: 0,
+      explanation: 'If a competitor sets up at location 40, your best response is 41, capturing nearly 60% of the boardwalk. Both vendors have incentives to move toward the center (location 50).'
+    },
+    {
+      id: 'hotelling-2',
+      question: 'If both ice cream vendors locate at position 50 on a 0–100 beach with uniformly distributed bathers, what is the equilibrium market share?',
+      options: [
+        'Each vendor captures exactly 50% of the market',
+        'The first vendor captures 75%',
+        'Vendors split 33% and 66%',
+        'Zero bathers purchase ice cream'
+      ],
+      correctIndex: 0,
+      explanation: 'At location 50, bathers to the left (0 to 50) and right (50 to 100) split evenly between the two adjacent vendors, yielding 50 customers each in pure spatial equilibrium.'
+    },
+    {
+      id: 'hotelling-3',
+      question: 'Why is the Hotelling spatial equilibrium at the center considered socially sub-optimal from the consumers\' standpoint?',
+      options: [
+        'Average travel distance for consumers is higher than if sellers were dispersed at locations 25 and 75',
+        'Consumers are forced to pay monopoly prices',
+        'Center locations cause product shortages',
+        'Only central consumers are allowed to buy'
+      ],
+      correctIndex: 0,
+      explanation: 'To minimize total walking distance for consumers, vendors should locate at quartiles (25 and 75, average walk = 12.5). But competitive incentives pull both to the center 50 (average walk = 25).'
+    }
+  ],
+
+  // Game 23: Colonel Blotto Resource War
+  23: [
+    {
+      id: 'blotto-1',
+      question: 'Why does the Colonel Blotto game with deterministic forces have NO pure-strategy Nash equilibrium?',
+      options: [
+        'Any deterministic allocation can be defeated by a counter-allocation concentrating slightly more force on two fronts',
+        'Players always have infinite resources to allocate',
+        'Ties are strictly illegal in military games',
+        'Battlefield fronts change location randomly'
+      ],
+      correctIndex: 0,
+      explanation: 'If you commit to (34, 33, 33), an opponent can allocate (35, 34, 31) and win fronts A and B. Thus, only randomized mixed strategies are equilibria.'
+    },
+    {
+      id: 'blotto-2',
+      question: 'What is the strategic vulnerability of spreading your 100 battalions equally (e.g., 34, 33, 33) across all three battlefronts?',
+      options: [
+        'An opponent who intentionally cedes one front with 0 can concentrate 50 each on the other two and win 2-to-1',
+        'It violates the total resource constraint',
+        'It guarantees you lose all three battlefronts',
+        'It gives you zero points in every conflict'
+      ],
+      correctIndex: 0,
+      explanation: 'Equal dispersion leaves you thin everywhere. An opponent sacrificing one front (0 troops) can heavily fortify the other two (e.g. 50, 50, 0) and comfortably capture a majority of fronts.'
+    },
+    {
+      id: 'blotto-3',
+      question: 'In political campaigns, how does Colonel Blotto theory apply to electoral swing states?',
+      options: [
+        'Candidates concentrate finite campaign budgets and visits on critical battleground states rather than safe states',
+        'Candidates spend equal money in every single congressional district',
+        'Campaigns ignore all voters and rely solely on debates',
+        'Winner-take-all states receive zero campaign advertising'
+      ],
+      correctIndex: 0,
+      explanation: 'With finite resources, allocating funds across electoral battlegrounds mimics Blotto: winning a state with 51% awards all electors, so resources concentrate on tipping-point fronts.'
+    }
+  ],
+
+  // Game 24: Common-Value Oil Lease Auction & Winner\'s Curse
+  24: [
+    {
+      id: 'cv-1',
+      question: 'What causes the "Winner\'s Curse" in common-value auctions with uncertain true value?',
+      options: [
+        'The highest bidder usually possesses the most optimistic overestimation of the asset\'s true worth',
+        'The winner must pay an extra government penalty fee',
+        'Sellers only auction off bankrupt oil reserves',
+        'The auctioneer always rigs the winning bid'
+      ],
+      correctIndex: 0,
+      explanation: 'Because signals are noisy estimates centered around true value V, the winning bidder is usually whoever received the highest positive noise error, leading to losses unless bids are shaded.'
+    },
+    {
+      id: 'cv-2',
+      question: 'How must a sophisticated bidder adjust their bid in a common-value auction to avoid losing money?',
+      options: [
+        'Condition their valuation on the assumption that winning implies their signal was the most optimistic, shading bids downward',
+        'Bid exactly equal to their private seismic signal',
+        'Bid higher than all known estimates to intimidate rivals',
+        'Refuse to calculate expected values'
+      ],
+      correctIndex: 0,
+      explanation: 'Rational bidders condition on the event: "If I win among N bidders, my signal is the maximum." They shade downward by the expected overestimate to ensure positive profit.'
+    },
+    {
+      id: 'cv-3',
+      question: 'As the number of rival bidders in a common-value auction increases, how should an individual\'s bid change?',
+      options: [
+        'The bidder should shade their bid even more aggressively downward',
+        'The bidder should bid much higher to beat the larger crowd',
+        'The bid should stay completely unchanged',
+        'The bidder should bid twice the signal value'
+      ],
+      correctIndex: 0,
+      explanation: 'With more bidders, winning implies an even more extreme high-tail estimation error. To prevent catastrophic overpayment, sophisticated bidders shade down even further as competition grows.'
+    }
   ]
 };
 

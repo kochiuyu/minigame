@@ -12,6 +12,7 @@ import { safeStorage } from '../utils/safeStorage';
 import { getQuizForGame } from '../data/soloLabQuizzes';
 import { InteractiveMatrixVisualizer } from './InteractiveMatrixVisualizer';
 import { SequentialVisualizer } from './SequentialVisualizer';
+import { getGameStory } from '../data/gameStories';
 
 export interface SoloLabRoundHistoryEntry extends RoundHistoryEntry {
   botRationale: string;
@@ -55,7 +56,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   onSwitchToLiveClass: _onSwitchToLiveClass,
   onModuleChange
 }) => {
-  // Solo Lab Supported Educational Modules (Ordered from Easiest to Hardest: 1 to 20)
+  // Solo Lab Supported Educational Modules (Organized into an Authoritative 8-Tier Curriculum: 24 Games Total)
   const availableModules: Array<{
     id: number;
     title: string;
@@ -65,6 +66,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
     difficulty: 'Easy' | 'Medium' | 'Hard';
     description: string;
   }> = [
+    // TIER 1: Foundations & Dominance
     {
       id: 1,
       title: "One-Shot Prisoner's Dilemma",
@@ -83,23 +85,16 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       difficulty: 'Easy',
       description: "Choose High Price or Low Price. Witness how undercutting temptation drives both firms to a low-profit Nash equilibrium."
     },
+
+    // TIER 2: Coordination & Conflict
     {
       id: 13,
       title: "Stag Hunt Coordination",
       shortTitle: "Stag Hunt",
       icon: "🦌",
-      category: "Strategic Coordination & Trust",
+      category: "Coordination & Conflict",
       difficulty: 'Easy',
       description: "Navigate multiple Nash equilibria: will you risk hunting the +10 Stag, or retreat to the safe +4 Hare?"
-    },
-    {
-      id: 15,
-      title: "Hawk-Dove Brinkmanship",
-      shortTitle: "Hawk-Dove",
-      icon: "🦅",
-      category: "Brinkmanship & Anti-Coordination",
-      difficulty: 'Easy',
-      description: "Navigate dangerous anti-coordination: will you play aggressive Hawk or peaceful Dove when mutual aggression causes catastrophic collision?"
     },
     {
       id: 18,
@@ -111,14 +106,16 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       description: "Coordinate on Opera vs Football when preferences clash. Will you concede, insist on your favorite, or alternate turns?"
     },
     {
-      id: 2,
-      title: "Launch-or-Wait (Sequential Entry)",
-      shortTitle: "Sequential Entry",
-      icon: "🚀",
-      category: "Extensive Form & Backward Induction",
+      id: 15,
+      title: "Hawk-Dove Brinkmanship",
+      shortTitle: "Hawk-Dove",
+      icon: "🦅",
+      category: "Coordination & Conflict",
       difficulty: 'Easy',
-      description: "Experience first-mover commitment in a sequential game tree: will the follower enter or stay out?"
+      description: "Navigate dangerous anti-coordination: will you play aggressive Hawk or peaceful Dove when mutual aggression causes catastrophic collision?"
     },
+
+    // TIER 3: Mixed Strategies & Zero-Sum
     {
       id: 17,
       title: "Matching Pennies (Zero-Sum)",
@@ -138,6 +135,75 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       description: "Launch promotions on Monday, Wednesday, or Friday. Clashing yields 0; unexploitability requires 1/3 randomization."
     },
     {
+      id: 23,
+      title: "Colonel Blotto Resource War",
+      shortTitle: "Colonel Blotto",
+      icon: "⚔️",
+      category: "Zero-Sum & Mixed Strategies",
+      difficulty: 'Hard',
+      description: "Deploy 100 battalions across 3 fronts (A, B, C). Win 2 of 3 fronts to conquer territory; outfox your rival's troop concentration!"
+    },
+
+    // TIER 4: Extensive Form & Backward Induction
+    {
+      id: 2,
+      title: "Launch-or-Wait (Sequential Entry)",
+      shortTitle: "Sequential Entry",
+      icon: "🚀",
+      category: "Extensive Form & Backward Induction",
+      difficulty: 'Easy',
+      description: "Experience first-mover commitment in a sequential game tree: will the follower enter or stay out?"
+    },
+    {
+      id: 5,
+      title: "Entry Deterrence & Commitment",
+      shortTitle: "Entry Deterrence",
+      icon: "🏰",
+      category: "Extensive Form & Backward Induction",
+      difficulty: 'Medium',
+      description: "Sunk costs vs empty threats: commit irreversible capital to credibly deter rival entry and maintain monopoly profits."
+    },
+    {
+      id: 20,
+      title: "Centipede Game (Backward Induction)",
+      shortTitle: "Centipede Game",
+      icon: "🐛",
+      category: "Extensive Form & Backward Induction",
+      difficulty: 'Hard',
+      description: "Pass to double the collective pot or Take to grab the larger share. Backward induction predicts taking on Node 1!"
+    },
+
+    // TIER 5: Repeated Games & Trust
+    {
+      id: 6,
+      title: "Repeated Prisoner's Dilemma",
+      shortTitle: "Repeated Dilemma",
+      icon: "🔁",
+      category: "Repeated Games & Reciprocity",
+      difficulty: 'Medium',
+      description: "Test reciprocal strategies across repeated rounds. Can Tit-for-Tat sustain cooperation against opportunistic defectors?"
+    },
+    {
+      id: 19,
+      title: "The Trust Game (Investment)",
+      shortTitle: "The Trust Game",
+      icon: "🏦",
+      category: "Repeated Games & Reciprocity",
+      difficulty: 'Medium',
+      description: "Invest up to 10 points to triple your capital (3x). Will the trustee reciprocate with a fair return, or defect and keep everything?"
+    },
+    {
+      id: 12,
+      title: "Tragedy of the Commons & Coastal Fishery",
+      shortTitle: "Commons & Fishery",
+      icon: "🐟",
+      category: "Repeated Games & Reciprocity",
+      difficulty: 'Medium',
+      description: "Manage common pool resources: conserve breeding stock to let marine life regenerate at 1.6x, or overharvest and collapse the fishery."
+    },
+
+    // TIER 6: Behavioral Bargaining & Fairness
+    {
       id: 16,
       title: "Ultimatum Bargaining & Fairness",
       shortTitle: "Ultimatum Bargaining",
@@ -155,75 +221,43 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       difficulty: 'Medium',
       description: "Simultaneously demand your share of 10 points. If total demands exceed 10, deal collapses to outside options (1 pt)!"
     },
-    {
-      id: 19,
-      title: "The Trust Game (Investment)",
-      shortTitle: "The Trust Game",
-      icon: "🏦",
-      category: "Trust & Reciprocity",
-      difficulty: 'Medium',
-      description: "Invest up to 10 points to triple your capital (3x). Will the trustee reciprocate with a fair return, or defect and keep everything?"
-    },
-    {
-      id: 12,
-      title: "Public Goods Dilemma",
-      shortTitle: "Public Goods",
-      icon: "🌍",
-      category: "Social Dilemmas & Cooperation",
-      difficulty: 'Medium',
-      description: "Investigate free-riding and group efficiency in a tragedy-of-the-commons public funding pool."
-    },
-    {
-      id: 6,
-      title: "Repeated Prisoner's Dilemma",
-      shortTitle: "Repeated Dilemma",
-      icon: "🔁",
-      category: "Repeated Games & Reciprocity",
-      difficulty: 'Medium',
-      description: "Test reciprocal strategies across repeated rounds. Can Tit-for-Tat sustain cooperation against opportunistic defectors?"
-    },
-    {
-      id: 5,
-      title: "Entry Deterrence & Commitment",
-      shortTitle: "Entry Deterrence",
-      icon: "🏰",
-      category: "Extensive Form & Backward Induction",
-      difficulty: 'Medium',
-      description: "Sunk costs vs empty threats: commit irreversible capital to credibly deter rival entry and maintain monopoly profits."
-    },
-    {
-      id: 7,
-      title: "Second-Price Vickrey Auction",
-      shortTitle: "Vickrey Auction",
-      icon: "⚖️",
-      category: "Auctions & Mechanism Design",
-      difficulty: 'Hard',
-      description: "Discover why truthful bidding is a weakly dominant strategy in a second-price sealed-bid auction."
-    },
-    {
-      id: 8,
-      title: "First-Price Sealed-Bid Auction",
-      shortTitle: "First-Price Auction",
-      icon: "🎯",
-      category: "Auctions & Mechanism Design",
-      difficulty: 'Hard',
-      description: "Balance win probability against profit margins. Shade your bid below valuation, but beware the Winner's Curse!"
-    },
+
+    // TIER 7: Industrial Organization & Market Competition
     {
       id: 14,
       title: "Bertrand Duopoly Competition",
       shortTitle: "Bertrand Duopoly",
       icon: "🏷️",
-      category: "Industrial Organization & Price Wars",
+      category: "Industrial Organization & Markets",
       difficulty: 'Hard',
       description: "Witness the Bertrand Paradox: how price competition between two identical sellers drives market price down to cost."
     },
+    {
+      id: 21,
+      title: "Cournot Duopoly Competition",
+      shortTitle: "Cournot Duopoly",
+      icon: "🏭",
+      category: "Industrial Organization & Markets",
+      difficulty: 'Hard',
+      description: "Simultaneously choose production output (q). Higher industry supply pushes price down; balance volume vs profit margins!"
+    },
+    {
+      id: 22,
+      title: "Hotelling's Spatial Competition",
+      shortTitle: "Hotelling Beach",
+      icon: "🏖️",
+      category: "Industrial Organization & Markets",
+      difficulty: 'Medium',
+      description: "Place your ice cream stand along a 0–100 boardwalk. Minimum differentiation pulls both sellers to the center (location 50)!"
+    },
+
+    // TIER 8: Information Economics, Cognitive Levels & Auctions
     {
       id: 11,
       title: "Keynesian Beauty Contest (2/3 of Average)",
       shortTitle: "Beauty Contest",
       icon: "💭",
-      category: "Cognitive Hierarchy & Level-k",
+      category: "Information, Levels & Auctions",
       difficulty: 'Hard',
       description: "Guess 2/3 of the average. Outsmart competitors by anticipating whether they think 0, 1, 2, or infinite steps ahead."
     },
@@ -232,18 +266,36 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       title: "Costly Signaling & Adverse Selection",
       shortTitle: "Costly Signaling",
       icon: "📜",
-      category: "Information Economics & Signaling",
+      category: "Information, Levels & Auctions",
       difficulty: 'Hard',
       description: "Overcome Akerlof's lemon market trap using Spence's costly signaling to separate high quality from low quality."
     },
     {
-      id: 20,
-      title: "Centipede Game (Backward Induction)",
-      shortTitle: "Centipede Game",
-      icon: "🐛",
-      category: "Extensive Form & Backward Induction",
+      id: 7,
+      title: "Second-Price Vickrey Auction",
+      shortTitle: "Vickrey Auction",
+      icon: "⚖️",
+      category: "Information, Levels & Auctions",
       difficulty: 'Hard',
-      description: "Pass to double the collective pot or Take to grab the larger share. Backward induction predicts taking on Node 1!"
+      description: "Discover why truthful bidding is a weakly dominant strategy in a second-price sealed-bid auction."
+    },
+    {
+      id: 8,
+      title: "First-Price Sealed-Bid Auction",
+      shortTitle: "First-Price Auction",
+      icon: "🎯",
+      category: "Information, Levels & Auctions",
+      difficulty: 'Hard',
+      description: "Balance win probability against profit margins. Shade your bid below valuation, but beware the Winner's Curse!"
+    },
+    {
+      id: 24,
+      title: "Common-Value Oil Lease Auction",
+      shortTitle: "Common-Value Auction",
+      icon: "🛢️",
+      category: "Information, Levels & Auctions",
+      difficulty: 'Hard',
+      description: "Bid on an unknown common oil reservoir with noisy seismic estimates. Beware the Winner's Curse: winning often means you overpaid!"
     }
   ];
 
@@ -275,6 +327,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   const activeModuleIndex = availableModules.findIndex(m => m.id === selectedModuleId);
   const currentModuleIndex = activeModuleIndex >= 0 ? activeModuleIndex + 1 : 1;
   const totalModulesCount = availableModules.length;
+  const activeModule = availableModules[activeModuleIndex] || availableModules[0];
 
   const nextModuleIndex = (currentModuleIndex % totalModulesCount) + 1;
   const nextModule = availableModules[nextModuleIndex - 1];
@@ -393,22 +446,30 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   const [isSimpleBotPickerOpen, setIsSimpleBotPickerOpen] = useState<boolean>(false);
   const simpleBotPickerRef = useRef<HTMLDivElement>(null);
 
+  // Simple Mode counterpart bot strategy intel popover state
+  const [isBotIntelOpen, setIsBotIntelOpen] = useState<boolean>(false);
+  const botIntelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (simpleBotPickerRef.current && !simpleBotPickerRef.current.contains(event.target as Node)) {
         setIsSimpleBotPickerOpen(false);
       }
+      if (botIntelRef.current && !botIntelRef.current.contains(event.target as Node)) {
+        setIsBotIntelOpen(false);
+      }
     };
-    if (isSimpleBotPickerOpen) {
+    if (isSimpleBotPickerOpen || isBotIntelOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isSimpleBotPickerOpen]);
+  }, [isSimpleBotPickerOpen, isBotIntelOpen]);
 
   useEffect(() => {
     setIsSimpleBotPickerOpen(false);
+    setIsBotIntelOpen(false);
   }, [selectedModuleId]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -639,6 +700,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   const handlePlayGame = (gameId: number) => {
     setSelectedModuleId(gameId);
     resetExperiment(undefined, gameId);
+    setIsGamePickerExpanded(false);
     try {
       safeStorage.setItem('sololab_last_played_game', String(gameId));
     } catch {
@@ -680,7 +742,33 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   const [_centipedeExitNode, setCentipedeExitNode] = useState<number | undefined>(undefined);
   const [_centipedeExitAction, setCentipedeExitAction] = useState<string | undefined>(undefined);
 
-  const isDollarGame = selectedModuleId === 6 || selectedModuleId === 14 || selectedModuleId === 7 || selectedModuleId === 8 || selectedModuleId === 16 || selectedModuleId === 9;
+  // Cournot Duopoly Quantity Competition (ID 21)
+  const [cournotQuantity, setCournotQuantity] = useState<number>(30);
+
+  // Hotelling's Spatial Competition (ID 22)
+  const [hotellingLocation, setHotellingLocation] = useState<number>(50);
+
+  // Colonel Blotto Resource War (ID 23)
+  const [blottoA, setBlottoA] = useState<number>(34);
+  const [blottoB, setBlottoB] = useState<number>(33);
+  const [blottoC, setBlottoC] = useState<number>(33);
+
+  // Common-Value Oil Lease Auction & Winner's Curse (ID 24)
+  const [cvTrueValue, setCvTrueValue] = useState<number>(() => Math.floor(Math.random() * 41) + 30);
+  const [cvPlayerSignal, setCvPlayerSignal] = useState<number>(() => Math.max(10, Math.min(90, Math.round(50 + (Math.random() * 20 - 10)))));
+  const [cvBotSignal, setCvBotSignal] = useState<number>(() => Math.max(10, Math.min(90, Math.round(50 + (Math.random() * 20 - 10)))));
+  const [cvBid, setCvBid] = useState<number>(44);
+
+  // Game 12: Tragedy of the Commons Fishery View Toggle (Fishery vs Token View)
+  const [isFisheryView, setIsFisheryView] = useState<boolean>(true);
+
+  // Expert Mode toggle for formal 2x2 payoff matrix & sequential visualizers
+  const [showExpertMatrix, setShowExpertMatrix] = useState<boolean>(false);
+
+  // Compact Game Picker toggle (default false so game selection collapses once selected)
+  const [isGamePickerExpanded, setIsGamePickerExpanded] = useState<boolean>(false);
+
+  const isDollarGame = selectedModuleId === 6 || selectedModuleId === 14 || selectedModuleId === 7 || selectedModuleId === 8 || selectedModuleId === 16 || selectedModuleId === 9 || selectedModuleId === 21 || selectedModuleId === 24;
 
   const getSelectedActionForGame = (): string | undefined => {
     switch (selectedModuleId) {
@@ -705,6 +793,14 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         return deterrenceChoice;
       case 10:
         return signalingChoice;
+      case 21:
+        return `${cournotQuantity} units`;
+      case 22:
+        return `Location ${hotellingLocation}`;
+      case 23:
+        return `Passes (${blottoA}, ${blottoB}, ${blottoC})`;
+      case 24:
+        return `$${cvBid.toFixed(2)}`;
       default:
         return undefined;
     }
@@ -763,6 +859,21 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
     setCentipedePath([]);
     setCentipedeExitNode(undefined);
     setCentipedeExitAction(undefined);
+    setCournotQuantity(30);
+    setHotellingLocation(50);
+    setBlottoA(34);
+    setBlottoB(33);
+    setBlottoC(33);
+
+    const freshTrue = Math.floor(Math.random() * 41) + 30;
+    const freshPlayerNoise = Math.floor(Math.random() * 21) - 10;
+    const freshBotNoise = Math.floor(Math.random() * 21) - 10;
+    const freshPlayerSignal = Math.max(10, Math.min(90, freshTrue + freshPlayerNoise));
+    const freshBotSignal = Math.max(10, Math.min(90, freshTrue + freshBotNoise));
+    setCvTrueValue(freshTrue);
+    setCvPlayerSignal(freshPlayerSignal);
+    setCvBotSignal(freshBotSignal);
+    setCvBid(Math.max(10, freshPlayerSignal - 6));
 
     // Reset Quiz state for new experiment
     setQuizQuestionIndex(0);
@@ -796,8 +907,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       round: currentRound,
       totalRounds,
       history: roundHistoryForBot,
-      botValuation,
-      studentValuation
+      botValuation: selectedModuleId === 24 ? cvBotSignal : botValuation,
+      studentValuation: selectedModuleId === 24 ? cvPlayerSignal : studentValuation
     });
 
     if (selectedModuleId === 6 || selectedModuleId === 1) {
@@ -1117,6 +1228,84 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
           }
         }
       }
+    } else if (selectedModuleId === 21) {
+      // Cournot Duopoly Competition
+      // P = max(0, 100 - (q_player + q_bot)), MC = $10
+      playerAction = `${cournotQuantity} units`;
+      const botQ = Number(botDecision.action);
+      const totalQ = cournotQuantity + botQ;
+      const marketPrice = Math.max(0, 100 - totalQ);
+      const playerMargin = marketPrice - 10;
+      const botMargin = marketPrice - 10;
+      const rawPlayerProfit = Math.round(cournotQuantity * playerMargin);
+      const rawBotProfit = Math.round(botQ * botMargin);
+      // Scaled to dollars: raw profit / 100
+      playerPayoff = Math.round((rawPlayerProfit / 100) * 100) / 100;
+      botPayoff = Math.round((rawBotProfit / 100) * 100) / 100;
+      botDecision.action = `${botQ} units (P: $${marketPrice})`;
+    } else if (selectedModuleId === 22) {
+      // Hotelling's Spatial Competition (0 to 100 beach line)
+      playerAction = `Location ${hotellingLocation}`;
+      const botLoc = Number(botDecision.action);
+      let pShare = 50;
+      let bShare = 50;
+      if (hotellingLocation < botLoc) {
+        const midpoint = (hotellingLocation + botLoc) / 2;
+        pShare = Math.round(midpoint * 10) / 10;
+        bShare = Math.round((100 - midpoint) * 10) / 10;
+      } else if (hotellingLocation > botLoc) {
+        const midpoint = (botLoc + hotellingLocation) / 2;
+        bShare = Math.round(midpoint * 10) / 10;
+        pShare = Math.round((100 - midpoint) * 10) / 10;
+      }
+      playerPayoff = pShare;
+      botPayoff = bShare;
+      botDecision.action = `Location ${botLoc}`;
+    } else if (selectedModuleId === 23) {
+      // Colonel Blotto Resource War (3 Fronts A, B, C; sum = 100)
+      playerAction = `Passes (${blottoA}, ${blottoB}, ${blottoC})`;
+      const bObj = botDecision.action as { a?: number; b?: number; c?: number };
+      const botA = bObj?.a ?? 34;
+      const botB = bObj?.b ?? 33;
+      const botC = bObj?.c ?? 33;
+      let pFrontWins = 0;
+      let bFrontWins = 0;
+      if (blottoA > botA) pFrontWins++;
+      else if (botA > blottoA) bFrontWins++;
+      if (blottoB > botB) pFrontWins++;
+      else if (botB > blottoB) bFrontWins++;
+      if (blottoC > botC) pFrontWins++;
+      else if (botC > blottoC) bFrontWins++;
+
+      if (pFrontWins > bFrontWins) {
+        playerPayoff = 1;
+        botPayoff = -1;
+      } else if (bFrontWins > pFrontWins) {
+        playerPayoff = -1;
+        botPayoff = 1;
+      } else {
+        playerPayoff = 0;
+        botPayoff = 0;
+      }
+      botDecision.action = `Passes (${botA}, ${botB}, ${botC}) [${pFrontWins}-${bFrontWins} Fronts]`;
+    } else if (selectedModuleId === 24) {
+      // Common-Value Oil Lease Auction & Winner's Curse
+      playerAction = `$${cvBid.toFixed(2)} (Signal: $${cvPlayerSignal.toFixed(2)})`;
+      const botBidVal = Number(botDecision.action);
+      if (cvBid > botBidVal) {
+        playerPayoff = Math.round((cvTrueValue - cvBid) * 100) / 100;
+        botPayoff = 0;
+        botDecision.action = `$${botBidVal.toFixed(2)} (You won lease! True Value: $${cvTrueValue.toFixed(2)})`;
+      } else if (botBidVal > cvBid) {
+        botPayoff = Math.round((cvTrueValue - botBidVal) * 100) / 100;
+        playerPayoff = 0;
+        botDecision.action = `$${botBidVal.toFixed(2)} (Bot won lease! True Value: $${cvTrueValue.toFixed(2)})`;
+      } else {
+        // Tied bid
+        playerPayoff = Math.round(((cvTrueValue - cvBid) / 2) * 100) / 100;
+        botPayoff = Math.round(((cvTrueValue - botBidVal) / 2) * 100) / 100;
+        botDecision.action = `$${botBidVal.toFixed(2)} (Tie split! True Value: $${cvTrueValue.toFixed(2)})`;
+      }
     }
 
     const roundResult: SoloLabRoundHistoryEntry = {
@@ -1126,8 +1315,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       playerPayoff,
       botPayoff,
       botRationale: botDecision.rationale,
-      playerValuation: selectedModuleId === 7 ? studentValuation : undefined,
-      botValuation: selectedModuleId === 7 ? botValuation : undefined
+      playerValuation: selectedModuleId === 7 ? studentValuation : selectedModuleId === 24 ? cvPlayerSignal : undefined,
+      botValuation: selectedModuleId === 7 ? botValuation : selectedModuleId === 24 ? cvBotSignal : undefined
     };
 
     setLastRoundResult(roundResult);
@@ -1173,8 +1362,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
     },
     playerTotalScore,
     botTotalScore,
-    nashBenchmarkScore: selectedModuleId === 1 ? 1 : selectedModuleId === 6 ? totalRounds * 1 : selectedModuleId === 13 ? totalRounds * 4 : totalRounds * 2,
-    paretoOptimumScore: selectedModuleId === 1 ? 2 : selectedModuleId === 6 ? totalRounds * 2 : selectedModuleId === 13 ? totalRounds * 10 : totalRounds * 6,
+    nashBenchmarkScore: selectedModuleId === 1 ? 1 : selectedModuleId === 6 ? totalRounds * 1 : selectedModuleId === 13 ? totalRounds * 4 : selectedModuleId === 21 ? 9.00 : selectedModuleId === 22 ? 50 : selectedModuleId === 23 ? 0 : selectedModuleId === 24 ? 4.00 : totalRounds * 2,
+    paretoOptimumScore: selectedModuleId === 1 ? 2 : selectedModuleId === 6 ? totalRounds * 2 : selectedModuleId === 13 ? totalRounds * 10 : selectedModuleId === 21 ? 10.13 : selectedModuleId === 22 ? 50 : selectedModuleId === 23 ? 1 : selectedModuleId === 24 ? 6.00 : totalRounds * 6,
     roundCount: totalRounds,
     roundsSummary: history
   };
@@ -1390,6 +1579,26 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
           action: "On your sequential turns (Nodes 1, 3, 5), choose Pass to double the pot or Take to end the match.",
           payoff: "Passing all 6 nodes reaches the maximum +8 pts each; taking immediately at Node 1 locks in (+2, 0) pts."
         };
+      case 21:
+        return {
+          action: "Choose quantity q (10 to 45 units) to produce simultaneously with your rival.",
+          payoff: "Market Price P = $100 - (q1 + q2). Profit = q * (P - $10). Nash is 30 units each ($9.00); collusion is 22.5 units each ($10.13)."
+        };
+      case 22:
+        return {
+          action: "Place your ice cream stand along the boardwalk beach between position 0 and 100.",
+          payoff: "Beachgoers visit the closer stand. Midpoint splits customers. Nash equilibrium pulls both stands to the median center (location 50, 50 pts each)."
+        };
+      case 23:
+        return {
+          action: "Allocate 100 battalions across 3 strategic passes (A, B, C; sum must equal 100).",
+          payoff: "Whoever sends more troops to a pass wins that front. Win 2 of 3 passes to win the campaign (+1 pt vs -1 pt; ties score 0)."
+        };
+      case 24:
+        return {
+          action: "Submit a sealed bid for the oil lease based on your noisy seismic survey estimate ($V ± $10).",
+          payoff: "High bidder wins and pays their own bid. Profit = True Reserve Value - Bid. Beware: winning often implies your survey was the most optimistic!"
+        };
       default:
         return {
           action: "Make your strategic choice against the bot opponent.",
@@ -1561,6 +1770,38 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="Passing all 6 nodes awards the social optimum of +8 pts each; backward induction predicts taking immediately at Node 1 (2, 0)." /></li>
           </>
         );
+      case 21:
+        return (
+          <>
+            <li><strong className="text-white">Action:</strong> Choose quantity <strong className="text-white">q (10 to 45 units)</strong> to produce (Demand P = 100 - Q; Marginal Cost = $10).</li>
+            <li><strong className="text-amber-300">Payoffs:</strong> Profit = <strong className="text-emerald-400">q × (P - $10)</strong>. Cournot-Nash is 30 units each (<strong className="text-emerald-400">+$9.00 each</strong>); Cartel Collusion is 22.5 units each (<strong className="text-amber-300">+$10.13 each</strong>).</li>
+            <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="Unlike Bertrand price wars, quantity choices sustain positive profit margins above cost." /></li>
+          </>
+        );
+      case 22:
+        return (
+          <>
+            <li><strong className="text-white">Action:</strong> Select stand location <strong className="text-white">x (0 to 100)</strong> along the beach boardwalk.</li>
+            <li><strong className="text-amber-300">Payoffs:</strong> Bathers go to closer stand; score = <strong className="text-emerald-400">number of customers captured</strong> (50 pts each in center).</li>
+            <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="Principle of Minimum Differentiation pulls competitors to the center (median consumer), even though quartile locations minimize consumer travel." /></li>
+          </>
+        );
+      case 23:
+        return (
+          <>
+            <li><strong className="text-white">Action:</strong> Allocate 100 battalions across <strong className="text-white">Pass A, Pass B, Pass C</strong> (must sum to 100).</li>
+            <li><strong className="text-amber-300">Payoffs:</strong> More troops win a pass; win ≥ 2 passes = <strong className="text-emerald-400">+1 pt</strong>, lose = <strong className="text-rose-400">-1 pt</strong>, tie = 0.</li>
+            <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="No pure strategy exists; symmetric defense (34/33/33) loses to concentrated force (50/50/0)." /></li>
+          </>
+        );
+      case 24:
+        return (
+          <>
+            <li><strong className="text-white">Action:</strong> Submit sealed bid for common oil tract given noisy seismic signal <strong className="text-white">s = V ± $10</strong>.</li>
+            <li><strong className="text-amber-300">Payoffs:</strong> Highest bidder wins and pays own bid: Profit = <strong className="text-emerald-400">True Value - Your Bid</strong> (Loser gets $0).</li>
+            <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="To avoid the Winner's Curse (winning because your survey had the largest positive error), shade bids by at least $6 below signal." /></li>
+          </>
+        );
       default:
         return null;
     }
@@ -1568,230 +1809,373 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      {/* Slim Game Selection & Progress Toolbar */}
-      <div className="bg-slate-900/95 border border-slate-800/90 rounded-xl px-3 sm:px-4 py-2 shadow-md flex items-center justify-between gap-2">
-        {/* Left: Left Arrow + Compact Game Counter & Completed Badge */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      {/* Unified Compact Game & Step Control Strip */}
+      <div className="bg-slate-900/95 border border-slate-800/90 rounded-2xl px-2.5 sm:px-3 py-1.5 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-2">
+        {/* Left: Previous Game Arrow + Current Active Game Info + Switcher */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
           <button
             type="button"
-            onClick={() => handleArrowScroll('left')}
-            disabled={activeCardIndex <= 0}
+            onClick={() => {
+              const prevIdx = activeModuleIndex > 0 ? activeModuleIndex - 1 : availableModules.length - 1;
+              const prevMod = availableModules[prevIdx];
+              if (prevMod) {
+                handlePlayGame(prevMod.id);
+              }
+            }}
             aria-label="Previous game"
-            className={`min-h-[44px] min-w-[44px] w-11 h-11 rounded-xl text-xl font-black flex items-center justify-center transition-all cursor-pointer shrink-0 ${
-              activeCardIndex <= 0
-                ? 'opacity-25 cursor-not-allowed bg-slate-950 text-slate-600 border border-slate-800/60'
-                : 'bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white border border-slate-700 shadow-sm active:scale-95'
-            }`}
+            className="min-h-[36px] min-w-[36px] w-9 h-9 rounded-xl text-base font-black flex items-center justify-center transition-all cursor-pointer shrink-0 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white border border-slate-700 shadow-sm active:scale-95"
+            title="Previous Game"
           >
             <span>←</span>
           </button>
 
-          <div className="flex items-center gap-2 truncate">
-            <span className="text-sm sm:text-base font-black text-white whitespace-nowrap">
-              Game {activeCardIndex + 1} of {totalModulesCount}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xl sm:text-2xl shrink-0 p-1 bg-slate-950 rounded-lg border border-slate-800">
+              {activeModule?.icon || '🎮'}
             </span>
-            <span className="hidden sm:inline-block text-xs font-mono font-bold text-blue-300 bg-blue-950/80 px-2.5 py-0.5 rounded-md border border-blue-800/80 shrink-0">
-              {activeCardIndex + 1} / {totalModulesCount}
-            </span>
-            {completedGameIds.length > 0 && (
-              <span className="hidden md:inline-flex text-[11px] font-mono font-semibold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-800/60 items-center gap-1 shrink-0">
-                <span>✓</span>
-                <span>{completedGameIds.length} Done</span>
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Right: 7-Dot Window + Right Arrow */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Dots Indicator: 7-dot sliding window */}
-          <div className="flex items-center gap-0.5 justify-center">
-            {(() => {
-              const WINDOW_SIZE = 7;
-              let startDot = Math.max(0, activeCardIndex - Math.floor(WINDOW_SIZE / 2));
-              let endDot = startDot + WINDOW_SIZE;
-              if (endDot > totalModulesCount) {
-                endDot = totalModulesCount;
-                startDot = Math.max(0, endDot - WINDOW_SIZE);
-              }
-              const visibleIndices = Array.from({ length: endDot - startDot }, (_, k) => startDot + k);
-
-              return (
-                <>
-                  {startDot > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => scrollToCard(0, true)}
-                      className="text-[10px] text-slate-500 hover:text-white px-1 py-1 cursor-pointer font-mono font-bold"
-                      title="Jump to Game 1"
-                    >
-                      «
-                    </button>
-                  )}
-                  {visibleIndices.map(i => {
-                    const m = availableModules[i];
-                    const isCurrent = i === activeCardIndex;
-                    const isDone = completedGameIds.includes(m.id);
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => scrollToCard(i, true)}
-                        aria-label={`Jump to game ${i + 1}: ${m.shortTitle}`}
-                        className="min-h-[36px] min-w-[16px] sm:min-w-[18px] px-0.5 py-1 flex items-center justify-center cursor-pointer"
-                      >
-                        <span
-                          className={`transition-all rounded-full block ${
-                            isCurrent
-                              ? 'w-5 sm:w-6 h-2 bg-blue-500 shadow-xs'
-                              : isDone
-                              ? 'w-2 h-2 bg-emerald-400/80 hover:bg-emerald-300'
-                              : 'w-2 h-2 bg-slate-700 hover:bg-slate-500'
-                          }`}
-                        />
-                      </button>
-                    );
-                  })}
-                  {endDot < totalModulesCount && (
-                    <button
-                      type="button"
-                      onClick={() => scrollToCard(totalModulesCount - 1, true)}
-                      className="text-[10px] text-slate-500 hover:text-white px-1 py-1 cursor-pointer font-mono font-bold"
-                      title="Jump to Game 13"
-                    >
-                      »
-                    </button>
-                  )}
-                </>
-              );
-            })()}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-mono font-bold text-blue-400 uppercase tracking-wider shrink-0">
+                  Game {currentModuleIndex}/{totalModulesCount}
+                </span>
+                <span
+                  className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border hidden sm:inline-block shrink-0 ${
+                    activeModule?.difficulty === 'Easy'
+                      ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                      : activeModule?.difficulty === 'Medium'
+                      ? 'bg-amber-950 text-amber-300 border-amber-700'
+                      : 'bg-rose-950 text-rose-300 border-rose-700'
+                  }`}
+                >
+                  {activeModule?.difficulty}
+                </span>
+                {completedGameIds.includes(selectedModuleId) && (
+                  <span className="text-[9px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-1 py-0.2 rounded-full hidden md:inline-flex items-center gap-0.5 shrink-0">
+                    ✓ Done
+                  </span>
+                )}
+              </div>
+              <h3 className="text-xs sm:text-sm font-black text-white truncate leading-tight">
+                {activeModule?.title}
+              </h3>
+            </div>
           </div>
 
           <button
             type="button"
-            onClick={() => handleArrowScroll('right')}
-            disabled={activeCardIndex >= totalModulesCount - 1}
-            aria-label="Next game"
-            className={`min-h-[44px] min-w-[44px] w-11 h-11 rounded-xl text-xl font-black flex items-center justify-center transition-all cursor-pointer shrink-0 ${
-              activeCardIndex >= totalModulesCount - 1
-                ? 'opacity-25 cursor-not-allowed bg-slate-950 text-slate-600 border border-slate-800/60'
-                : 'bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white border border-slate-700 shadow-sm active:scale-95'
+            onClick={() => {
+              setIsGamePickerExpanded(prev => !prev);
+              if (!isGamePickerExpanded) {
+                setTimeout(() => {
+                  const idx = availableModules.findIndex(m => m.id === selectedModuleId);
+                  if (idx >= 0) scrollToCard(idx, false);
+                }, 50);
+              }
+            }}
+            className={`min-h-[36px] px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border shrink-0 ${
+              isGamePickerExpanded
+                ? 'bg-blue-600 text-white border-blue-400'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700'
             }`}
+            title={isGamePickerExpanded ? "Collapse game picker" : "Browse all 20 game simulations"}
+          >
+            <span className="hidden sm:inline">Games</span>
+            <span>{isGamePickerExpanded ? '▲' : '▾'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const nextIdx = activeModuleIndex < availableModules.length - 1 ? activeModuleIndex + 1 : 0;
+              const nxtMod = availableModules[nextIdx];
+              if (nxtMod) {
+                handlePlayGame(nxtMod.id);
+              }
+            }}
+            aria-label="Next game"
+            className="min-h-[36px] min-w-[36px] w-9 h-9 rounded-xl text-base font-black flex items-center justify-center transition-all cursor-pointer shrink-0 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white border border-slate-700 shadow-sm active:scale-95"
+            title="Next Game"
           >
             <span>→</span>
           </button>
         </div>
-      </div>
 
-      {/* Horizontal Swipeable Carousel (on desktop shows ~3 large cards at a time, each roughly 380-420px wide with mouse drag & wheel horizontal scrolling) */}
-      <div
-        ref={gameCarouselRef}
-        onScroll={handleCarouselScroll}
-        onWheel={handleCarouselWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUpOrLeave}
-        onMouseLeave={handleMouseUpOrLeave}
-        className="overflow-x-auto flex gap-4 lg:gap-5 p-1 px-3 sm:px-4 pb-4 touch-pan-x snap-x snap-mandatory scroll-smooth scroll-pl-3 sm:scroll-pl-4 cursor-grab active:cursor-grabbing select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        {availableModules.map((mod, idx) => {
-          const isSelected = mod.id === selectedModuleId;
-          const isCompleted = completedGameIds.includes(mod.id);
-          return (
-            <div
-              key={mod.id}
-              data-card-index={idx}
-              className={`w-[85vw] max-w-sm sm:w-[360px] md:w-[380px] lg:w-[400px] xl:w-[410px] shrink-0 snap-start snap-always p-5 lg:p-6 rounded-3xl border-2 transition-all flex flex-col justify-between gap-5 select-none ${
-                isSelected
-                  ? 'bg-slate-900 border-blue-500 shadow-2xl shadow-blue-950/80 ring-2 ring-blue-500/50 text-white'
-                  : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 shadow-xl text-slate-300 hover:bg-slate-900'
-              }`}
-            >
-              <div className="space-y-4">
-                {/* Top Row: Game Number, Difficulty, and Done Badge */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs sm:text-sm font-mono font-bold text-blue-400 uppercase tracking-wider">
-                    Game {idx + 1} of {totalModulesCount}
-                  </span>
-                  <div className="flex items-center gap-2 flex-wrap justify-end">
-                    {/* Difficulty Label */}
-                    <span
-                      className={`text-xs sm:text-sm font-black px-3 py-1 rounded-full border ${
-                        mod.difficulty === 'Easy'
-                          ? 'bg-emerald-950/90 text-emerald-300 border-emerald-700/80'
-                          : mod.difficulty === 'Medium'
-                          ? 'bg-amber-950/90 text-amber-300 border-amber-700/80'
-                          : 'bg-rose-950/90 text-rose-300 border-rose-700/80'
-                      }`}
-                    >
-                      {mod.difficulty}
-                    </span>
-                    {/* Done Badge */}
-                    {isCompleted && (
-                      <span className="text-xs sm:text-sm font-black text-emerald-300 bg-emerald-950/90 border border-emerald-600/80 px-2.5 py-1 rounded-full flex items-center gap-1">
-                        <span>✓</span> Done
-                      </span>
-                    )}
-                    {/* Quiz Best Score Badge */}
-                    {bestQuizScores[mod.id] !== undefined && (
-                      <span
-                        className={`text-xs sm:text-sm font-black px-2.5 py-1 rounded-full border flex items-center gap-1 ${
-                          bestQuizScores[mod.id] === 3
-                            ? 'text-emerald-300 bg-emerald-950/90 border-emerald-600/80'
-                            : 'text-amber-300 bg-amber-950/90 border-amber-600/80'
-                        }`}
-                        title={`Best score on Quick Check: ${bestQuizScores[mod.id]}/3`}
-                      >
-                        <span>🎯</span> Quiz {bestQuizScores[mod.id]}/3
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Game Icon & Name (Title >= 24px on desktop) */}
-                <div className="flex items-start gap-3.5">
-                  <span className="text-4xl lg:text-5xl shrink-0 p-3 rounded-2xl bg-slate-950 border border-slate-800/80 shadow-inner">
-                    {mod.icon}
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="text-xl sm:text-2xl lg:text-[24px] font-black text-white tracking-tight leading-tight">
-                      {mod.title}
-                    </h3>
-                    <div className="text-xs sm:text-sm font-mono text-slate-400 mt-1 truncate">
-                      {mod.category}
-                    </div>
-                  </div>
-                </div>
-
-                {/* One-line Plain Description (at least 16px) */}
-                <p className="text-base sm:text-base lg:text-[17px] text-slate-200 line-clamp-3 leading-relaxed font-normal">
-                  {mod.description}
-                </p>
-              </div>
-
-              {/* Big 'Play Game' button at least 56px tall (strictly opens mod.id from the card, never active index) */}
+        {/* Right: Integrated Step Navigation Tabs */}
+        <div className="flex items-center gap-1 self-center sm:self-auto shrink-0 bg-slate-950/80 p-0.5 rounded-xl border border-slate-800">
+          {[
+            { num: 1, label: '1 Rules', icon: '📜' },
+            { num: 2, label: '2 Choice', icon: '🎮' },
+            { num: 3, label: '3 Result', icon: '🏆', locked: !isRoundResolved },
+            { num: 4, label: '4 Theory', icon: '🔍', locked: !isRoundResolved },
+            { num: 5, label: '5 Quiz', icon: '⚡', locked: !isRoundResolved }
+          ].map(s => {
+            const isActive = activeStep === s.num;
+            return (
               <button
+                key={s.num}
                 type="button"
                 onClick={() => {
-                  if (hasDraggedRef.current) {
-                    hasDraggedRef.current = false;
-                    return;
-                  }
-                  handlePlayGame(mod.id);
+                  if (!s.locked) scrollToStep(s.num);
                 }}
-                className={`w-full min-h-[56px] lg:min-h-[62px] py-4 px-6 rounded-2xl font-black text-base sm:text-lg lg:text-xl flex items-center justify-center gap-2.5 cursor-pointer transition-all active:scale-[0.98] ${
-                  isSelected
-                    ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-950/80 ring-2 ring-blue-400/50'
-                    : 'bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white border border-slate-700 hover:border-slate-600 shadow-lg'
+                disabled={s.locked}
+                className={`min-h-[34px] px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 select-none ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : s.locked
+                    ? 'text-slate-600 cursor-not-allowed opacity-50'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/80 cursor-pointer'
+                }`}
+                title={s.locked ? 'Locked until round decision is submitted' : `Switch to Step ${s.num}`}
+              >
+                <span className="text-xs">{s.icon}</span>
+                <span className="hidden sm:inline">{s.label}</span>
+                <span className="sm:hidden">{s.num}</span>
+                {s.locked && <span className="text-[10px] text-slate-500">🔒</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Expanded Game Selection Carousel (only when isGamePickerExpanded is true) */}
+      {isGamePickerExpanded && (
+        /* Expanded Game Selection Carousel */
+        <div className="space-y-3 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-blue-900/40 shadow-2xl">
+          {/* Expanded Carousel Toolbar with Close Button */}
+          <div className="bg-slate-900/95 border border-slate-800/90 rounded-xl px-3 sm:px-4 py-2 shadow-md flex items-center justify-between gap-2">
+            {/* Left: Left Arrow + Compact Game Counter & Completed Badge */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={() => handleArrowScroll('left')}
+                disabled={activeCardIndex <= 0}
+                aria-label="Previous game"
+                className={`min-h-[44px] min-w-[44px] w-11 h-11 rounded-xl text-xl font-black flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                  activeCardIndex <= 0
+                    ? 'opacity-25 cursor-not-allowed bg-slate-950 text-slate-600 border border-slate-800/60'
+                    : 'bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white border border-slate-700 shadow-sm active:scale-95'
                 }`}
               >
-                <span>{isSelected ? '▶ Resume Playing' : 'Play Game →'}</span>
+                <span>←</span>
+              </button>
+
+              <div className="flex items-center gap-2 truncate">
+                <span className="text-sm sm:text-base font-black text-white whitespace-nowrap">
+                  Game {activeCardIndex + 1} of {totalModulesCount}
+                </span>
+                <span className="hidden sm:inline-block text-xs font-mono font-bold text-blue-300 bg-blue-950/80 px-2.5 py-0.5 rounded-md border border-blue-800/80 shrink-0">
+                  {activeCardIndex + 1} / {totalModulesCount}
+                </span>
+                {completedGameIds.length > 0 && (
+                  <span className="hidden md:inline-flex text-[11px] font-mono font-semibold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-800/60 items-center gap-1 shrink-0">
+                    <span>✓</span>
+                    <span>{completedGameIds.length} Done</span>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Right: 7-Dot Window + Right Arrow + Collapse Button */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              {/* Dots Indicator: 7-dot sliding window */}
+              <div className="flex items-center gap-0.5 justify-center">
+                {(() => {
+                  const WINDOW_SIZE = 7;
+                  let startDot = Math.max(0, activeCardIndex - Math.floor(WINDOW_SIZE / 2));
+                  let endDot = startDot + WINDOW_SIZE;
+                  if (endDot > totalModulesCount) {
+                    endDot = totalModulesCount;
+                    startDot = Math.max(0, endDot - WINDOW_SIZE);
+                  }
+                  const visibleIndices = Array.from({ length: endDot - startDot }, (_, k) => startDot + k);
+
+                  return (
+                    <>
+                      {startDot > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => scrollToCard(0, true)}
+                          className="text-[10px] text-slate-500 hover:text-white px-1 py-1 cursor-pointer font-mono font-bold"
+                          title="Jump to Game 1"
+                        >
+                          «
+                        </button>
+                      )}
+                      {visibleIndices.map(i => {
+                        const m = availableModules[i];
+                        const isCurrent = i === activeCardIndex;
+                        const isDone = completedGameIds.includes(m.id);
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => scrollToCard(i, true)}
+                            aria-label={`Jump to game ${i + 1}: ${m.shortTitle}`}
+                            className="min-h-[36px] min-w-[16px] sm:min-w-[18px] px-0.5 py-1 flex items-center justify-center cursor-pointer"
+                          >
+                            <span
+                              className={`transition-all rounded-full block ${
+                                isCurrent
+                                  ? 'w-5 sm:w-6 h-2 bg-blue-500 shadow-xs'
+                                  : isDone
+                                  ? 'w-2 h-2 bg-emerald-400/80 hover:bg-emerald-300'
+                                  : 'w-2 h-2 bg-slate-700 hover:bg-slate-500'
+                              }`}
+                            />
+                          </button>
+                        );
+                      })}
+                      {endDot < totalModulesCount && (
+                        <button
+                          type="button"
+                          onClick={() => scrollToCard(totalModulesCount - 1, true)}
+                          className="text-[10px] text-slate-500 hover:text-white px-1 py-1 cursor-pointer font-mono font-bold"
+                          title="Jump to Game 20"
+                        >
+                          »
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleArrowScroll('right')}
+                disabled={activeCardIndex >= totalModulesCount - 1}
+                aria-label="Next game"
+                className={`min-h-[44px] min-w-[44px] w-11 h-11 rounded-xl text-xl font-black flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                  activeCardIndex >= totalModulesCount - 1
+                    ? 'opacity-25 cursor-not-allowed bg-slate-950 text-slate-600 border border-slate-800/60'
+                    : 'bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white border border-slate-700 shadow-sm active:scale-95'
+                }`}
+              >
+                <span>→</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsGamePickerExpanded(false)}
+                className="min-h-[44px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 cursor-pointer transition-all ml-1 shrink-0"
+                title="Collapse game list"
+              >
+                <span>▲ Hide List</span>
               </button>
             </div>
-          );
-        })}
-      </div>
+          </div>
+
+          {/* Horizontal Swipeable Carousel (desktop shows ~3 large cards at a time) */}
+          <div
+            ref={gameCarouselRef}
+            onScroll={handleCarouselScroll}
+            onWheel={handleCarouselWheel}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUpOrLeave}
+            onMouseLeave={handleMouseUpOrLeave}
+            className="overflow-x-auto flex gap-4 lg:gap-5 p-1 px-3 sm:px-4 pb-4 touch-pan-x snap-x snap-mandatory scroll-smooth scroll-pl-3 sm:scroll-pl-4 cursor-grab active:cursor-grabbing select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            {availableModules.map((mod, idx) => {
+              const isSelected = mod.id === selectedModuleId;
+              const isCompleted = completedGameIds.includes(mod.id);
+              return (
+                <div
+                  key={mod.id}
+                  data-card-index={idx}
+                  className={`w-[85vw] max-w-sm sm:w-[360px] md:w-[380px] lg:w-[400px] xl:w-[410px] shrink-0 snap-start snap-always p-5 lg:p-6 rounded-3xl border-2 transition-all flex flex-col justify-between gap-5 select-none ${
+                    isSelected
+                      ? 'bg-slate-900 border-blue-500 shadow-2xl shadow-blue-950/80 ring-2 ring-blue-500/50 text-white'
+                      : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 shadow-xl text-slate-300 hover:bg-slate-900'
+                  }`}
+                >
+                  <div className="space-y-4">
+                    {/* Top Row: Game Number, Difficulty, and Done Badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs sm:text-sm font-mono font-bold text-blue-400 uppercase tracking-wider">
+                        Game {idx + 1} of {totalModulesCount}
+                      </span>
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {/* Difficulty Label */}
+                        <span
+                          className={`text-xs sm:text-sm font-black px-3 py-1 rounded-full border ${
+                            mod.difficulty === 'Easy'
+                              ? 'bg-emerald-950/90 text-emerald-300 border-emerald-700/80'
+                              : mod.difficulty === 'Medium'
+                              ? 'bg-amber-950/90 text-amber-300 border-amber-700/80'
+                              : 'bg-rose-950/90 text-rose-300 border-rose-700/80'
+                          }`}
+                        >
+                          {mod.difficulty}
+                        </span>
+                        {/* Done Badge */}
+                        {isCompleted && (
+                          <span className="text-xs sm:text-sm font-black text-emerald-300 bg-emerald-950/90 border border-emerald-600/80 px-2.5 py-1 rounded-full flex items-center gap-1">
+                            <span>✓</span> Done
+                          </span>
+                        )}
+                        {/* Quiz Best Score Badge */}
+                        {bestQuizScores[mod.id] !== undefined && (
+                          <span
+                            className={`text-xs sm:text-sm font-black px-2.5 py-1 rounded-full border flex items-center gap-1 ${
+                              bestQuizScores[mod.id] === 3
+                                ? 'text-emerald-300 bg-emerald-950/90 border-emerald-600/80'
+                                : 'text-amber-300 bg-amber-950/90 border-amber-600/80'
+                            }`}
+                            title={`Best score on Quick Check: ${bestQuizScores[mod.id]}/3`}
+                          >
+                            <span>🎯</span> Quiz {bestQuizScores[mod.id]}/3
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Game Icon & Name */}
+                    <div className="flex items-start gap-3.5">
+                      <span className="text-4xl lg:text-5xl shrink-0 p-3 rounded-2xl bg-slate-950 border border-slate-800/80 shadow-inner">
+                        {mod.icon}
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="text-xl sm:text-2xl lg:text-[24px] font-black text-white tracking-tight leading-tight">
+                          {mod.title}
+                        </h3>
+                        <div className="text-xs sm:text-sm font-mono text-slate-400 mt-1 truncate">
+                          {mod.category}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* One-line Plain Description */}
+                    <p className="text-base sm:text-base lg:text-[17px] text-slate-200 line-clamp-3 leading-relaxed font-normal">
+                      {mod.description}
+                    </p>
+                  </div>
+
+                  {/* Play Game Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (hasDraggedRef.current) {
+                        hasDraggedRef.current = false;
+                        return;
+                      }
+                      handlePlayGame(mod.id);
+                    }}
+                    className={`w-full min-h-[56px] lg:min-h-[62px] py-4 px-6 rounded-2xl font-black text-base sm:text-lg lg:text-xl flex items-center justify-center gap-2.5 cursor-pointer transition-all active:scale-[0.98] ${
+                      isSelected
+                        ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-950/80 ring-2 ring-blue-400/50'
+                        : 'bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white border border-slate-700 hover:border-slate-600 shadow-lg'
+                    }`}
+                  >
+                    <span>{isSelected ? '▶ Resume Playing' : 'Play Game →'}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Main Game Arena / Debrief Section */}
       <div ref={arenaRef} className="scroll-mt-4">
@@ -1828,91 +2212,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         </div>
       ) : (
         /* Phone-First Step-By-Step Arena with Horizontal Swipe / Scroll-Snap */
-        <div className="space-y-4">
-          {/* Step Navigation Bar */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-2.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs sm:text-sm font-mono font-bold bg-blue-950 text-blue-300 border border-blue-800/80 px-3 py-1 rounded-lg">
-                  Step {activeStep} of 5
-                </span>
-                <span className="text-base sm:text-lg font-black text-white">
-                  {activeStep === 1 && '📜 Step 1: Game Rules & Payoffs'}
-                  {activeStep === 2 && '🎮 Step 2: Make Your Choice'}
-                  {activeStep === 3 && '🏆 Step 3: Result & Takeaway'}
-                  {activeStep === 4 && '🔍 Step 4: Go Deeper (Theory)'}
-                  {activeStep === 5 && '⚡ Step 5: Quick check (Quiz)'}
-                </span>
-              </div>
-
-              {/* Step Tabs / Dots (all min 44px tap targets) */}
-              <div className="grid grid-cols-5 sm:flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto">
-                {[
-                  { num: 1, label: '1 Rules', shortLabel: '1 Rules', icon: '📜' },
-                  { num: 2, label: '2 Choice', shortLabel: '2 Choice', icon: '🎮' },
-                  { num: 3, label: '3 Result', shortLabel: '3 Result', icon: '🏆', locked: !isRoundResolved },
-                  { num: 4, label: '4 Deep Dive', shortLabel: '4 Theory', icon: '🔍', locked: !isRoundResolved },
-                  { num: 5, label: '5 Quick check', shortLabel: '5 Quiz', icon: '⚡', locked: !isRoundResolved }
-                ].map(s => {
-                  const isActive = activeStep === s.num;
-                  return (
-                    <button
-                      key={s.num}
-                      type="button"
-                      disabled={s.locked}
-                      onClick={() => scrollToStep(s.num)}
-                      className={`min-h-[52px] sm:min-h-[56px] px-2 sm:px-4 py-2 rounded-xl text-xs sm:text-base font-black transition-all flex items-center justify-center gap-1 cursor-pointer select-none ${
-                        isActive
-                          ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-300'
-                          : s.locked
-                          ? 'bg-slate-950 text-slate-600 border border-slate-800/60 cursor-not-allowed opacity-50'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
-                      }`}
-                    >
-                      <span className="text-sm sm:text-lg">{s.locked ? '🔒' : s.icon}</span>
-                      <span className="hidden md:inline truncate">{s.label}</span>
-                      <span className="md:hidden truncate">{s.shortLabel}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Quick Next/Back Thumb Navigation Bar */}
-            <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-slate-800/60">
-              <button
-                type="button"
-                onClick={() => scrollToStep(Math.max(1, activeStep - 1))}
-                disabled={activeStep === 1}
-                className={`min-h-[56px] px-5 sm:px-6 py-3 rounded-xl text-base sm:text-lg font-black flex items-center gap-2 transition-all ${
-                  activeStep === 1
-                    ? 'opacity-30 cursor-not-allowed text-slate-600'
-                    : 'bg-slate-800 hover:bg-slate-700 text-white cursor-pointer active:scale-95 shadow-md'
-                }`}
-              >
-                <span>← Back</span>
-              </button>
-
-              <div className="text-xs sm:text-base text-slate-400 font-mono text-center flex items-center gap-2">
-                <span className="hidden sm:inline">👈 Swipe horizontally between steps or tap tabs 👉</span>
-                <span className="sm:hidden">👈 Swipe horizontally 👉</span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => scrollToStep(Math.min(isRoundResolved ? 5 : 2, activeStep + 1))}
-                disabled={activeStep === 5 || (!isRoundResolved && activeStep === 2)}
-                className={`min-h-[56px] px-5 sm:px-6 py-3 rounded-xl text-base sm:text-lg font-black flex items-center gap-2 transition-all ${
-                  activeStep === 5 || (!isRoundResolved && activeStep === 2)
-                    ? 'opacity-30 cursor-not-allowed text-slate-600'
-                    : 'bg-slate-800 hover:bg-slate-700 text-white cursor-pointer active:scale-95 shadow-md'
-                }`}
-              >
-                <span>Next →</span>
-              </button>
-            </div>
-          </div>
-
+        <div className="space-y-2">
           {/* Horizontal Swipeable Container with Scroll-Snap */}
           <div
             ref={scrollContainerRef}
@@ -1921,11 +2221,11 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {/* ========================================================================= */}
-            {/* STEP 1: RULES & PAYOFF STRUCTURE                                          */}
+            {/* STEP 1: VERBAL STORY & BRIEFING                                           */}
             {/* ========================================================================= */}
             <div className="w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-5 text-slate-100 max-w-4xl mx-auto">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 lg:p-5 shadow-xl space-y-3.5 text-slate-100 max-w-4xl lg:max-w-7xl mx-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-800/80 pb-3">
                   <div>
                     <span className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider block">
                       Game {currentModuleIndex} of {totalModulesCount} · Step 1 of 5
@@ -1941,7 +2241,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                       <button
                         type="button"
                         onClick={() => toggleBriefingMode('simple')}
-                        className={`min-h-[38px] px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        className={`min-h-[36px] px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                           briefingMode === 'simple'
                             ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-300'
                             : 'text-slate-400 hover:text-white'
@@ -1952,7 +2252,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                       <button
                         type="button"
                         onClick={() => toggleBriefingMode('expert')}
-                        className={`min-h-[38px] px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        className={`min-h-[36px] px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                           briefingMode === 'expert'
                             ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-300'
                             : 'text-slate-400 hover:text-white'
@@ -1970,158 +2270,301 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
 
                 {briefingMode === 'simple' ? (
                   /* ========================================================================= */
-                  /* SIMPLE BRIEFING: Fast 2-Line Rules, Compact Opponent, and Direct Start     */
+                  /* SIMPLE BRIEFING: Story First, Compact Counterpart, Rules & Direct Start   */
                   /* ========================================================================= */
-                  <div className="space-y-4">
-                    {/* Compact Opponent Identity with Bot Switcher */}
-                    <div className="bg-slate-950/80 rounded-2xl p-3.5 sm:p-4 border border-slate-800 flex items-center justify-between gap-3 relative">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className="text-3xl sm:text-4xl p-2 rounded-xl bg-slate-900 border border-slate-800 shrink-0">
-                          {activeBot.avatar}
-                        </span>
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Opponent Faced</div>
-                          <div className="text-base sm:text-lg font-black text-white flex items-center gap-2 truncate">
-                            <span className="truncate">{activeBot.name}</span>
-                            <span className={`text-xs font-bold truncate ${activeBot.color}`}>· {activeBot.title}</span>
+                  (() => {
+                    const gameStory = getGameStory(selectedModuleId);
+                    const simpleRule = renderSimpleRules(selectedModuleId);
+
+                    return (
+                      <div className="lg:grid lg:grid-cols-12 lg:gap-5 items-stretch space-y-3.5 lg:space-y-0">
+                        {/* LEFT COLUMN (7 cols): The Verbal Story Scenario in Point Form */}
+                        <div className="lg:col-span-7 flex flex-col justify-between bg-slate-950/80 rounded-2xl p-4 sm:p-4.5 border border-slate-800 space-y-3">
+                          <div className="space-y-2.5">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-mono font-bold uppercase tracking-wider">
+                                <span>📖</span>
+                                <span>The Scenario</span>
+                              </span>
+                              <span className="text-xs font-mono font-bold text-slate-300 truncate">
+                                {gameStory.title}
+                              </span>
+                            </div>
+
+                            {/* 3 Point-Form Bullets: Setup, Choices, Stakes */}
+                            <ul className="space-y-2 text-xs sm:text-sm text-slate-200">
+                              <li className="flex items-start gap-2.5 bg-slate-900/70 p-2 sm:p-2.5 rounded-xl border border-slate-800/80">
+                                <span className="font-bold text-blue-400 shrink-0 flex items-center gap-1">
+                                  <span>📍</span>
+                                  <span>Setup:</span>
+                                </span>
+                                <span className="leading-snug text-slate-200">{gameStory.setup}</span>
+                              </li>
+                              <li className="flex items-start gap-2.5 bg-slate-900/70 p-2 sm:p-2.5 rounded-xl border border-slate-800/80">
+                                <span className="font-bold text-emerald-400 shrink-0 flex items-center gap-1">
+                                  <span>⚡</span>
+                                  <span>Choices:</span>
+                                </span>
+                                <span className="leading-snug text-slate-200">{gameStory.choices}</span>
+                              </li>
+                              <li className="flex items-start gap-2.5 bg-slate-900/70 p-2 sm:p-2.5 rounded-xl border border-slate-800/80">
+                                <span className="font-bold text-amber-400 shrink-0 flex items-center gap-1">
+                                  <span>⚖️</span>
+                                  <span>Stakes:</span>
+                                </span>
+                                <span className="leading-snug text-slate-200">{gameStory.stakesDetail}</span>
+                              </li>
+                            </ul>
                           </div>
-                          <div className="text-xs text-amber-300 italic truncate mt-0.5">
-                            "{activeBot.tagline}"
+
+                          {/* Character Roles & High-Stakes Tension */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-slate-800/80">
+                            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 flex flex-col justify-between min-h-[52px]">
+                              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-blue-400">
+                                🎭 Your Role
+                              </span>
+                              <span className="text-xs sm:text-sm font-semibold text-white truncate">
+                                {gameStory.yourRole}
+                              </span>
+                            </div>
+                            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 flex flex-col justify-between min-h-[52px]">
+                              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">
+                                ⚖️ High-Level Stakes
+                              </span>
+                              <span className="text-xs sm:text-sm font-semibold text-white truncate">
+                                {gameStory.stakes}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* RIGHT COLUMN (5 cols): Opponent Counterpart, Quick Rules & Primary CTA */}
+                        <div className="lg:col-span-5 flex flex-col justify-between space-y-3">
+                          {/* Counterpart / Opponent Card with Inline Bot Switcher & Strategy Intel */}
+                          <div className="bg-slate-950/80 rounded-2xl p-3 sm:p-3.5 border border-slate-800 relative">
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+                                <span>🤝 Counterpart / Rival</span>
+                                <span className="text-slate-500 font-normal truncate">({gameStory.counterpartRole})</span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {/* Strategy Intel Hover/Tap Trigger */}
+                                <div className="relative shrink-0" ref={botIntelRef}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsBotIntelOpen(prev => !prev)}
+                                    onMouseEnter={() => setIsBotIntelOpen(true)}
+                                    className={`min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
+                                      isBotIntelOpen
+                                        ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
+                                        : 'bg-blue-950/70 hover:bg-blue-900/80 text-blue-300 hover:text-white border-blue-800/70'
+                                    }`}
+                                    aria-expanded={isBotIntelOpen}
+                                    aria-label="View opponent strategy intelligence"
+                                    title="Preview opponent strategy intelligence"
+                                  >
+                                    <span>ⓘ</span>
+                                    <span>Intel</span>
+                                  </button>
+
+                                  {/* Strategy Intel Popover */}
+                                  {isBotIntelOpen && (
+                                    <div
+                                      onMouseLeave={() => setIsBotIntelOpen(false)}
+                                      className="absolute right-0 top-full mt-2 z-50 w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] p-3 bg-slate-900/98 backdrop-blur-md border border-blue-500/50 rounded-2xl shadow-2xl shadow-black/90 space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-150"
+                                    >
+                                      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span className="text-xl p-1 bg-slate-950 rounded-lg border border-slate-800 shrink-0">
+                                            {activeBot.avatar}
+                                          </span>
+                                          <div className="min-w-0">
+                                            <div className="text-xs font-bold text-white truncate">
+                                              {activeBot.name}
+                                            </div>
+                                            <div className={`text-[10px] font-medium truncate ${activeBot.color}`}>
+                                              {activeBot.title}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => setIsBotIntelOpen(false)}
+                                          className="text-slate-400 hover:text-slate-200 text-xs px-1.5 py-0.5 rounded cursor-pointer"
+                                          aria-label="Close intel popover"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+
+                                      <div className="space-y-1.5 text-xs">
+                                        <div className="text-[10px] font-mono text-blue-400 uppercase tracking-wider font-bold">
+                                          Strategy Heuristic:
+                                        </div>
+                                        <p className="text-slate-200 leading-relaxed font-normal bg-slate-950/80 p-2 rounded-xl border border-slate-800/80">
+                                          {getBotStrategySummary(activeBot)}
+                                        </p>
+                                      </div>
+
+                                      {activeBot.gauges && activeBot.gauges.length > 0 && (
+                                        <div className="space-y-1 pt-1 border-t border-slate-800/80">
+                                          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">
+                                            Behavioral Traits:
+                                          </div>
+                                          <div className="grid grid-cols-2 gap-1.5">
+                                            {activeBot.gauges.slice(0, 2).map((gauge, gIdx) => (
+                                              <div key={gIdx} className="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800 text-[11px] flex items-center justify-between">
+                                                <span className="text-slate-400 truncate">{gauge.label}</span>
+                                                <span className={`font-mono font-bold ${gauge.color}`}>{gauge.value}%</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      <div className="text-[11px] text-amber-300/90 italic bg-amber-950/20 p-2 rounded-xl border border-amber-900/30">
+                                        "{activeBot.tagline}"
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Bot Switcher Trigger */}
+                                {activeGameBots.length > 1 && (
+                                  <div className="relative shrink-0" ref={simpleBotPickerRef}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsSimpleBotPickerOpen(prev => !prev)}
+                                      className="min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                      aria-expanded={isSimpleBotPickerOpen}
+                                      aria-label="Change opponent bot"
+                                    >
+                                      <span>🤖</span>
+                                      <span>Change</span>
+                                      <span className={`transition-transform duration-200 text-[10px] text-slate-400 ${isSimpleBotPickerOpen ? 'rotate-180' : ''}`}>▼</span>
+                                    </button>
+
+                                    {/* Dropdown Menu */}
+                                    {isSimpleBotPickerOpen && (
+                                      <div className="absolute right-0 top-full mt-2 z-40 w-72 max-w-[calc(100vw-2.5rem)] p-2.5 bg-slate-900/98 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl shadow-black/90 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                                        <div className="px-2 py-1 text-[11px] font-mono text-slate-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1.5">
+                                          <span>Choose Opponent ({activeGameBots.length})</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => setIsSimpleBotPickerOpen(false)}
+                                            className="text-slate-400 hover:text-slate-200 text-xs px-1 cursor-pointer"
+                                            aria-label="Close"
+                                          >
+                                            ✕
+                                          </button>
+                                        </div>
+                                        <div className="max-h-56 overflow-y-auto space-y-1.5 pr-0.5">
+                                          {activeGameBots.map(b => {
+                                            const isSelected = activeBot.id === b.id;
+                                            return (
+                                              <button
+                                                key={b.id}
+                                                type="button"
+                                                onClick={() => {
+                                                  setSelectedBotId(b.id);
+                                                  setIsSimpleBotPickerOpen(false);
+                                                }}
+                                                className={`w-full min-h-[44px] p-2 rounded-xl text-left cursor-pointer transition-all flex items-center gap-2 border ${
+                                                  isSelected
+                                                    ? `${b.badgeBg} ${b.badgeBorder} border-blue-500 ring-1 ring-blue-400/50 text-white font-semibold shadow-md`
+                                                    : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-700'
+                                                }`}
+                                              >
+                                                <span className="text-xl shrink-0">{b.avatar}</span>
+                                                <div className="min-w-0 flex-1">
+                                                  <div className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                                                    <span className="truncate">{b.name}</span>
+                                                    {isSelected && (
+                                                      <span className="text-[9px] bg-blue-500 text-white font-black px-1.5 py-0.2 rounded-full shrink-0">
+                                                        Active
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <div className={`text-[10px] font-medium truncate ${b.color}`}>
+                                                    {b.title}
+                                                  </div>
+                                                </div>
+                                                {isSelected && (
+                                                  <span className="text-emerald-400 text-xs font-black shrink-0">✓</span>
+                                                )}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="text-2xl sm:text-3xl p-1.5 sm:p-2 rounded-xl bg-slate-900 border border-slate-800 shrink-0">
+                                {activeBot.avatar}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm sm:text-base font-black text-white flex items-center gap-1.5 truncate">
+                                  <span className="truncate">{activeBot.name}</span>
+                                  <span className={`text-xs font-bold truncate ${activeBot.color}`}>· {activeBot.title}</span>
+                                </div>
+                                <div className="text-xs text-amber-300/90 italic truncate mt-0.5">
+                                  "{activeBot.tagline}"
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Plain-Language Rules in Brief */}
+                          <div className="bg-slate-950/80 rounded-2xl p-3 sm:p-3.5 border border-slate-800 space-y-2">
+                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                              <span>📋 Rules in Brief</span>
+                              <span className="text-[10px] font-mono text-emerald-400 font-bold flex items-center gap-1">
+                                <span>⚡</span>
+                                <span>Instant</span>
+                              </span>
+                            </div>
+                            <div className="space-y-1.5 text-xs sm:text-sm">
+                              <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-start gap-2">
+                                <span className="text-blue-400 font-bold shrink-0">1. Action:</span>
+                                <span className="text-slate-200 font-normal leading-snug">{simpleRule.action}</span>
+                              </div>
+                              <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-start gap-2">
+                                <span className="text-amber-400 font-bold shrink-0">2. Payoffs:</span>
+                                <span className="text-slate-200 font-normal leading-snug">{simpleRule.payoff}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Primary CTA Button */}
+                          <div className="space-y-1.5">
+                            <button
+                              type="button"
+                              onClick={() => scrollToStep(2)}
+                              className="w-full min-h-[48px] py-2.5 px-4 text-base sm:text-lg font-black bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-950/60 flex items-center justify-center gap-2 cursor-pointer transition-all ring-1 ring-blue-400/40"
+                            >
+                              <span>Enter Scenario & Make Your Choice (Step 2) →</span>
+                            </button>
+                            <div className="text-center">
+                              <button
+                                type="button"
+                                onClick={() => toggleBriefingMode('expert')}
+                                className="text-[11px] text-slate-400 hover:text-blue-300 font-medium cursor-pointer inline-flex items-center gap-1 transition-colors"
+                              >
+                                <span>Need payoff matrices and bot intelligence?</span>
+                                <span className="text-blue-400 font-bold underline">Expert Mode</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
-
-                      {/* Bot switcher dropdown + expert intel button */}
-                      <div className="relative shrink-0 flex items-center gap-2" ref={simpleBotPickerRef}>
-                        {activeGameBots.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setIsSimpleBotPickerOpen(prev => !prev)}
-                            className="min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                            aria-expanded={isSimpleBotPickerOpen}
-                            aria-label="Change opponent bot"
-                          >
-                            <span>🤖</span>
-                            <span>Change Bot</span>
-                            <span className={`transition-transform duration-200 text-[10px] text-slate-400 ${isSimpleBotPickerOpen ? 'rotate-180' : ''}`}>▼</span>
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => toggleBriefingMode('expert')}
-                          className="hidden sm:flex min-h-[40px] text-xs text-blue-400 hover:text-blue-300 font-bold items-center gap-1 shrink-0 px-3 py-1.5 rounded-xl bg-blue-950/60 hover:bg-blue-900/60 border border-blue-900/60 cursor-pointer transition-colors"
-                          title="View strategy intelligence & detailed backstory"
-                        >
-                          <span>🔬 Bot Intel</span>
-                          <span>→</span>
-                        </button>
-
-                        {/* Dropdown Menu */}
-                        {isSimpleBotPickerOpen && activeGameBots.length > 1 && (
-                          <div className="absolute right-0 top-full mt-2 z-40 w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] p-2.5 bg-slate-900/98 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl shadow-black/90 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
-                            <div className="px-2 py-1 text-[11px] font-mono text-slate-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1.5">
-                              <span>Choose Opponent ({activeGameBots.length})</span>
-                              <button
-                                type="button"
-                                onClick={() => setIsSimpleBotPickerOpen(false)}
-                                className="text-slate-400 hover:text-slate-200 text-xs px-1 cursor-pointer"
-                                aria-label="Close"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                            <div className="max-h-64 overflow-y-auto space-y-1.5 pr-0.5">
-                              {activeGameBots.map(b => {
-                                const isSelected = activeBot.id === b.id;
-                                return (
-                                  <button
-                                    key={b.id}
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedBotId(b.id);
-                                      setIsSimpleBotPickerOpen(false);
-                                    }}
-                                    className={`w-full min-h-[44px] p-2.5 rounded-xl text-left cursor-pointer transition-all flex items-center gap-2.5 border ${
-                                      isSelected
-                                        ? `${b.badgeBg} ${b.badgeBorder} border-blue-500 ring-1 ring-blue-400/50 text-white font-semibold shadow-md`
-                                        : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-700'
-                                    }`}
-                                  >
-                                    <span className="text-2xl shrink-0">{b.avatar}</span>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 truncate">
-                                        <span className="truncate">{b.name}</span>
-                                        {isSelected && (
-                                          <span className="text-[10px] bg-blue-500 text-white font-black px-1.5 py-0.2 rounded-full shrink-0">
-                                            Active
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className={`text-[11px] font-medium truncate ${b.color}`}>
-                                        {b.title}
-                                      </div>
-                                    </div>
-                                    {isSelected && (
-                                      <span className="text-emerald-400 text-sm font-black shrink-0">✓</span>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Short 2-Line Rules in Plain Language */}
-                    <div className="bg-slate-950/80 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3">
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                        <span>📋 Game Rules in Brief</span>
-                        <span className="text-xs font-mono text-emerald-400 font-bold flex items-center gap-1">
-                          <span>⚡</span>
-                          <span>Quick Start</span>
-                        </span>
-                      </div>
-                      {(() => {
-                        const simpleRule = renderSimpleRules(selectedModuleId);
-                        return (
-                          <div className="space-y-3 text-base sm:text-lg">
-                            <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-start gap-3">
-                              <span className="text-blue-400 font-black shrink-0 text-base sm:text-lg">1. Your Move:</span>
-                              <span className="text-slate-100 font-medium leading-relaxed">{simpleRule.action}</span>
-                            </div>
-                            <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-start gap-3">
-                              <span className="text-amber-400 font-black shrink-0 text-base sm:text-lg">2. Scoring:</span>
-                              <span className="text-slate-100 font-medium leading-relaxed">{simpleRule.payoff}</span>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    {/* Big Action Button (Step 1 -> Step 2) */}
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={() => scrollToStep(2)}
-                        className="w-full min-h-[56px] py-4 px-6 text-lg sm:text-xl font-black bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-950/60 flex items-center justify-center gap-2 cursor-pointer transition-all ring-1 ring-blue-400/40"
-                      >
-                        <span>Got it! Make Your Choice (Step 2) →</span>
-                      </button>
-                    </div>
-
-                    <div className="text-center pt-1">
-                      <button
-                        type="button"
-                        onClick={() => toggleBriefingMode('expert')}
-                        className="text-xs text-slate-400 hover:text-blue-300 font-medium cursor-pointer inline-flex items-center gap-1.5 transition-colors"
-                      >
-                        <span>Need full strategy profiles, archetype backstory, and matrix tables?</span>
-                        <span className="text-blue-400 font-bold underline">Switch to Expert Mode</span>
-                      </button>
-                    </div>
-                  </div>
+                    );
+                  })()
                 ) : (
                   /* ========================================================================= */
                   /* EXPERT BRIEFING: Full Pre-Match Intelligence, Backstory, & Matrix Tables   */
@@ -2253,6 +2696,17 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           pieDemand={pieDemand}
                           signalingType={signalingType}
                           signalingChoice={signalingChoice}
+                          cournotQuantity={cournotQuantity}
+                          botCournotQuantity={activeBot.id === 'cournot_cartel' ? 22.5 : activeBot.id === 'cournot_aggressive' ? 35 : 30}
+                          hotellingLocation={hotellingLocation}
+                          botHotellingLocation={activeBot.id === 'hotelling_pier' ? 15 : activeBot.id === 'hotelling_flank' ? (hotellingLocation < 50 ? 80 : 20) : 50}
+                          blottoAllocations={{ a: blottoA, b: blottoB, c: blottoC }}
+                          botBlottoAllocations={activeBot.id === 'blotto_clausewitz' ? { a: 50, b: 50, c: 0 } : activeBot.id === 'blotto_feint' ? { a: 60, b: 0, c: 40 } : { a: 34, b: 33, c: 33 }}
+                          cvBid={cvBid}
+                          botCvBid={activeBot.id === 'cv_naive' ? cvBotSignal : activeBot.id === 'cv_hubris' ? cvBotSignal + 2 : Math.max(10, cvBotSignal - 6)}
+                          cvTrueValue={cvTrueValue}
+                          cvPlayerSignal={cvPlayerSignal}
+                          cvBotSignal={cvBotSignal}
                         />
                       )}
                     </div>
@@ -2287,7 +2741,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             {/* STEP 2: MAKE YOUR CHOICE (DECISION CONSOLE)                                */}
             {/* ========================================================================= */}
             <div className="w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-5 text-slate-100 max-w-4xl mx-auto">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 lg:p-6 shadow-xl space-y-4 lg:space-y-5 text-slate-100 max-w-4xl lg:max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
                   <div>
                     <span className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider block">
@@ -2326,29 +2780,111 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   )}
                 </div>
 
-                {/* Bot Thought Stream */}
-                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 shadow-md">
-                  <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-900">
-                    <span className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-blue-400 animate-ping"></span>
-                      <span>💭 {activeBot.name}'s Anticipation Stream</span>
-                    </span>
-                    <span className="text-xs font-mono text-slate-500">Live Reaction</span>
+                {/* Desktop Cockpit Grid (Zero-Scroll on Desktop, Natural Touch Flow on Mobile) */}
+                <div className="lg:grid lg:grid-cols-12 lg:gap-6 lg:items-start space-y-4 lg:space-y-0">
+                  {/* LEFT COLUMN: Bot Opponent Intelligence & Quick Rules Context */}
+                  <div className="lg:col-span-5 space-y-3.5">
+                    {/* Bot Thought Stream & Opponent Identity Card */}
+                    <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 shadow-md space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-900">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-2xl p-1.5 rounded-xl bg-slate-900 border border-slate-800 shrink-0">
+                            {activeBot.avatar}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-black text-white truncate">{activeBot.name}</span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-950/80 text-blue-300 border border-blue-800/80 shrink-0">
+                                Opponent
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-400 truncate">{activeBot.tagline}</div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-mono text-emerald-400 flex items-center gap-1.5 shrink-0 bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-800/50">
+                          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
+                          Live
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider block mb-1">
+                          💭 Anticipation Stream
+                        </span>
+                        <p className="text-sm sm:text-base text-slate-200 italic leading-relaxed">
+                          "{activeBot.getAnticipationThought(
+                            currentRound,
+                            history.map(h => ({
+                              round: h.round,
+                              playerAction: h.playerAction,
+                              botAction: h.botAction,
+                              playerPayoff: h.playerPayoff,
+                              botPayoff: h.botPayoff,
+                              playerValuation: h.playerValuation,
+                              botValuation: h.botValuation
+                            }))
+                          )}"
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Quick Rules & Objective Reference Card */}
+                    <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <span>🎯</span> Quick Rules & Context
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => scrollToStep(1)}
+                          className="text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
+                        >
+                          Full Rules →
+                        </button>
+                      </div>
+                      <div className="text-xs sm:text-sm text-slate-300 space-y-2 leading-relaxed">
+                        <p>
+                          <strong className="text-white">Goal: </strong>
+                          {activeModule?.description || "Select your best strategic action to maximize your points."}
+                        </p>
+                        <div className="text-[11px] text-slate-400 pt-1.5 border-t border-slate-900 flex items-center justify-between">
+                          <span>Type: <strong className="text-slate-200">{totalRounds > 1 ? `Repeated (${totalRounds} Rounds)` : 'One-Shot Match'}</strong></span>
+                          <span>Difficulty: <strong className="text-slate-200">{activeModule?.difficulty}</strong></span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-base text-slate-200 italic leading-relaxed">
-                    "{activeBot.getAnticipationThought(
-                      currentRound,
-                      history.map(h => ({
-                        round: h.round,
-                        playerAction: h.playerAction,
-                        botAction: h.botAction,
-                        playerPayoff: h.playerPayoff,
-                        botPayoff: h.botPayoff,
-                        playerValuation: h.playerValuation,
-                        botValuation: h.botValuation
-                      }))
-                    )}"
-                  </p>
+
+                  {/* RIGHT COLUMN: Expert Toggle, Action Cards, Payoff Matrix, and Primary Confirm Button */}
+                  <div className="lg:col-span-7 space-y-3.5">
+
+                {/* Single Compact Payoff Matrix Switch (Aligned Inline with Action Title) */}
+                <div className="flex items-center justify-between gap-2 pb-0.5">
+                  <div className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                    <span>Select your strategic action:</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800">
+                    <span className="text-xs font-semibold text-slate-300">
+                      {showExpertMatrix ? '📐 Full Matrix' : '⚡ Simple View'}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={showExpertMatrix}
+                      onClick={() => setShowExpertMatrix(prev => !prev)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        showExpertMatrix ? 'bg-indigo-600' : 'bg-slate-700'
+                      }`}
+                      title={showExpertMatrix ? 'Switch to simplified decision view' : 'Reveal full payoff matrix'}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          showExpertMatrix ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Interactive Controls per Game */}
@@ -2356,44 +2892,53 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   {/* Module 1 & 6: Prisoner's Dilemma */}
                   {(selectedModuleId === 1 || selectedModuleId === 6) && (
                     <div className="space-y-3">
-                      <div className="text-base font-bold text-white">Select your strategic action:</div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <button
                           type="button"
                           onClick={() => setPdChoice('Cooperate')}
-                          className={`min-h-[64px] sm:min-h-[72px] p-4 rounded-2xl border-2 text-left sm:text-center transition-all cursor-pointer flex items-center justify-between sm:justify-center gap-3 ${
+                          className={`min-h-[72px] sm:min-h-[80px] p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             pdChoice === 'Cooperate'
                               ? 'bg-emerald-950/70 border-emerald-500 text-white shadow-xl ring-2 ring-emerald-400/50'
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl">🤝</span>
+                          <div className="flex items-center gap-3.5">
+                            <span className="text-3xl shrink-0">🤝</span>
                             <div>
-                              <div className="font-black text-lg sm:text-xl">Cooperate</div>
-                              <div className="text-xs sm:text-sm text-emerald-300 font-semibold">+2 pts if both cooperate</div>
+                              <div className="font-black text-lg sm:text-xl text-white">Cooperate</div>
+                              <div className="text-xs sm:text-sm text-emerald-300 font-bold mt-0.5">
+                                {selectedModuleId === 6 ? '+$2.00 if both coop · $0.00 if bot defects' : '+2 pts if both coop · 0 pts if bot defects'}
+                              </div>
+                              <div className="text-[11px] text-emerald-400/70 font-medium mt-0.5">
+                                Mutual win if trusted · Sucker's payoff if betrayed
+                              </div>
                             </div>
                           </div>
-                          {pdChoice === 'Cooperate' && <span className="text-emerald-400 font-bold text-sm">✓ Selected</span>}
+                          {pdChoice === 'Cooperate' && <span className="text-emerald-400 font-bold text-sm shrink-0">✓ Selected</span>}
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setPdChoice('Defect')}
-                          className={`min-h-[64px] sm:min-h-[72px] p-4 rounded-2xl border-2 text-left sm:text-center transition-all cursor-pointer flex items-center justify-between sm:justify-center gap-3 ${
+                          className={`min-h-[72px] sm:min-h-[80px] p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             pdChoice === 'Defect'
                               ? 'bg-rose-950/70 border-rose-500 text-white shadow-xl ring-2 ring-rose-400/50'
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl">⚔️</span>
+                          <div className="flex items-center gap-3.5">
+                            <span className="text-3xl shrink-0">⚔️</span>
                             <div>
-                              <div className="font-black text-lg sm:text-xl">Defect</div>
-                              <div className="text-xs sm:text-sm text-rose-300 font-semibold">+3 if bot coops / +1 if both defect</div>
+                              <div className="font-black text-lg sm:text-xl text-white">Defect</div>
+                              <div className="text-xs sm:text-sm text-rose-300 font-bold mt-0.5">
+                                {selectedModuleId === 6 ? '+$3.00 if bot coops · +$1.00 if both defect' : '+3 pts if bot coops · +1 pt if both defect'}
+                              </div>
+                              <div className="text-[11px] text-rose-400/70 font-medium mt-0.5">
+                                Dominant choice (+1 pt higher against any bot move)
+                              </div>
                             </div>
                           </div>
-                          {pdChoice === 'Defect' && <span className="text-rose-400 font-bold text-sm">✓ Selected</span>}
+                          {pdChoice === 'Defect' && <span className="text-rose-400 font-bold text-sm shrink-0">✓ Selected</span>}
                         </button>
                       </div>
                     </div>
@@ -2407,39 +2952,49 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                         <button
                           type="button"
                           onClick={() => setStagChoice('Stag')}
-                          className={`min-h-[64px] sm:min-h-[72px] p-4 rounded-2xl border-2 text-left sm:text-center transition-all cursor-pointer flex items-center justify-between sm:justify-center gap-3 ${
+                          className={`min-h-[72px] sm:min-h-[80px] p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             stagChoice === 'Stag'
                               ? 'bg-emerald-950/70 border-emerald-500 text-white shadow-xl ring-2 ring-emerald-400/50'
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl">🦌</span>
+                          <div className="flex items-center gap-3.5">
+                            <span className="text-3xl shrink-0">🦌</span>
                             <div>
-                              <div className="font-black text-lg sm:text-xl">Hunt Stag</div>
-                              <div className="text-xs sm:text-sm text-emerald-300 font-semibold">+10 pts (needs mutual trust)</div>
+                              <div className="font-black text-lg sm:text-xl text-white">Hunt Stag</div>
+                              <div className="text-xs sm:text-sm text-emerald-300 font-bold mt-0.5">
+                                +10 pts if both hunt Stag · 0 pts if bot hunts Hare
+                              </div>
+                              <div className="text-[11px] text-emerald-400/70 font-medium mt-0.5">
+                                Payoff-dominant · Requires mutual trust
+                              </div>
                             </div>
                           </div>
-                          {stagChoice === 'Stag' && <span className="text-emerald-400 font-bold text-sm">✓ Selected</span>}
+                          {stagChoice === 'Stag' && <span className="text-emerald-400 font-bold text-sm shrink-0">✓ Selected</span>}
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setStagChoice('Hare')}
-                          className={`min-h-[64px] sm:min-h-[72px] p-4 rounded-2xl border-2 text-left sm:text-center transition-all cursor-pointer flex items-center justify-between sm:justify-center gap-3 ${
+                          className={`min-h-[72px] sm:min-h-[80px] p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             stagChoice === 'Hare'
                               ? 'bg-amber-950/70 border-amber-500 text-white shadow-xl ring-2 ring-amber-400/50'
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl">🐇</span>
+                          <div className="flex items-center gap-3.5">
+                            <span className="text-3xl shrink-0">🐇</span>
                             <div>
-                              <div className="font-black text-lg sm:text-xl">Hunt Hare</div>
-                              <div className="text-xs sm:text-sm text-amber-300 font-semibold">+4 pts guaranteed (safe)</div>
+                              <div className="font-black text-lg sm:text-xl text-white">Hunt Hare</div>
+                              <div className="text-xs sm:text-sm text-amber-300 font-bold mt-0.5">
+                                +4 pts guaranteed (regardless of bot move)
+                              </div>
+                              <div className="text-[11px] text-amber-400/70 font-medium mt-0.5">
+                                Risk-dominant · Zero coordination risk
+                              </div>
                             </div>
                           </div>
-                          {stagChoice === 'Hare' && <span className="text-amber-400 font-bold text-sm">✓ Selected</span>}
+                          {stagChoice === 'Hare' && <span className="text-amber-400 font-bold text-sm shrink-0">✓ Selected</span>}
                         </button>
                       </div>
                     </div>
@@ -2505,33 +3060,43 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl">🎭</span>
+                          <div className="flex items-center gap-3.5">
+                            <span className="text-3xl shrink-0">🎭</span>
                             <div>
-                              <div className="font-black text-lg sm:text-xl">Opera</div>
-                              <div className="text-xs sm:text-sm text-purple-300 font-semibold">Your favorite (+3 pts if coordinate)</div>
+                              <div className="font-black text-lg sm:text-xl text-white">Opera</div>
+                              <div className="text-xs sm:text-sm text-purple-300 font-bold mt-0.5">
+                                +3 pts if bot picks Opera · 0 pts if split
+                              </div>
+                              <div className="text-[11px] text-purple-400/70 font-medium mt-0.5">
+                                Your preferred event · Mutual coordination required
+                              </div>
                             </div>
                           </div>
-                          {battleChoice === 'Opera' && <span className="text-purple-400 font-bold text-sm">✓ Selected</span>}
+                          {battleChoice === 'Opera' && <span className="text-purple-400 font-bold text-sm shrink-0">✓ Selected</span>}
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setBattleChoice('Football')}
-                          className={`min-h-[64px] sm:min-h-[72px] p-4 rounded-2xl border-2 text-left sm:text-center transition-all cursor-pointer flex items-center justify-between sm:justify-center gap-3 ${
+                          className={`min-h-[72px] sm:min-h-[80px] p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             battleChoice === 'Football'
                               ? 'bg-amber-950/70 border-amber-500 text-white shadow-xl ring-2 ring-amber-400/50'
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl">⚽</span>
+                          <div className="flex items-center gap-3.5">
+                            <span className="text-3xl shrink-0">⚽</span>
                             <div>
-                              <div className="font-black text-lg sm:text-xl">Football</div>
-                              <div className="text-xs sm:text-sm text-amber-300 font-semibold">Bot favorite (+2 pts if coordinate)</div>
+                              <div className="font-black text-lg sm:text-xl text-white">Football</div>
+                              <div className="text-xs sm:text-sm text-amber-300 font-bold mt-0.5">
+                                +2 pts if bot picks Football · 0 pts if split
+                              </div>
+                              <div className="text-[11px] text-amber-400/70 font-medium mt-0.5">
+                                Bot's preferred event · Concession prevents 0 pt clash
+                              </div>
                             </div>
                           </div>
-                          {battleChoice === 'Football' && <span className="text-amber-400 font-bold text-sm">✓ Selected</span>}
+                          {battleChoice === 'Football' && <span className="text-amber-400 font-bold text-sm shrink-0">✓ Selected</span>}
                         </button>
                       </div>
                     </div>
@@ -2545,39 +3110,49 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                         <button
                           type="button"
                           onClick={() => setPenniesChoice('Heads')}
-                          className={`min-h-[64px] sm:min-h-[72px] p-4 rounded-2xl border-2 text-left sm:text-center transition-all cursor-pointer flex items-center justify-between sm:justify-center gap-3 ${
+                          className={`min-h-[72px] sm:min-h-[80px] p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             penniesChoice === 'Heads'
                               ? 'bg-indigo-950/70 border-indigo-500 text-white shadow-xl ring-2 ring-indigo-400/50'
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl">👑</span>
+                          <div className="flex items-center gap-3.5">
+                            <span className="text-3xl shrink-0">👑</span>
                             <div>
-                              <div className="font-black text-lg sm:text-xl">Heads</div>
-                              <div className="text-xs sm:text-sm text-indigo-300 font-semibold">Win +2 pts if coins match</div>
+                              <div className="font-black text-lg sm:text-xl text-white">Heads</div>
+                              <div className="text-xs sm:text-sm text-indigo-300 font-bold mt-0.5">
+                                +2 pts if bot picks Heads · -2 pts if Tails
+                              </div>
+                              <div className="text-[11px] text-indigo-400/70 font-medium mt-0.5">
+                                Pure conflict zero-sum · Matcher wins on agreement
+                              </div>
                             </div>
                           </div>
-                          {penniesChoice === 'Heads' && <span className="text-indigo-400 font-bold text-sm">✓ Selected</span>}
+                          {penniesChoice === 'Heads' && <span className="text-indigo-400 font-bold text-sm shrink-0">✓ Selected</span>}
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setPenniesChoice('Tails')}
-                          className={`min-h-[64px] sm:min-h-[72px] p-4 rounded-2xl border-2 text-left sm:text-center transition-all cursor-pointer flex items-center justify-between sm:justify-center gap-3 ${
+                          className={`min-h-[72px] sm:min-h-[80px] p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             penniesChoice === 'Tails'
                               ? 'bg-indigo-950/70 border-indigo-500 text-white shadow-xl ring-2 ring-indigo-400/50'
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl">🪙</span>
+                          <div className="flex items-center gap-3.5">
+                            <span className="text-3xl shrink-0">🪙</span>
                             <div>
-                              <div className="font-black text-lg sm:text-xl">Tails</div>
-                              <div className="text-xs sm:text-sm text-indigo-300 font-semibold">Win +2 pts if coins match</div>
+                              <div className="font-black text-lg sm:text-xl text-white">Tails</div>
+                              <div className="text-xs sm:text-sm text-indigo-300 font-bold mt-0.5">
+                                +2 pts if bot picks Tails · -2 pts if Heads
+                              </div>
+                              <div className="text-[11px] text-indigo-400/70 font-medium mt-0.5">
+                                Pure conflict zero-sum · Matcher wins on agreement
+                              </div>
                             </div>
                           </div>
-                          {penniesChoice === 'Tails' && <span className="text-indigo-400 font-bold text-sm">✓ Selected</span>}
+                          {penniesChoice === 'Tails' && <span className="text-indigo-400 font-bold text-sm shrink-0">✓ Selected</span>}
                         </button>
                       </div>
                     </div>
@@ -2688,24 +3263,107 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                     onChange: setBeautyGuess
                   })}
 
-                  {/* Module 12: Public Goods Dilemma */}
-                  {selectedModuleId === 12 && renderThumbSlider({
-                    label: "Tokens Contributed to Public Pool (0 to 20):",
-                    value: publicGoodsContr,
-                    min: 0,
-                    max: 20,
-                    step: 1,
-                    displayValue: `${publicGoodsContr} / 20 Tokens`,
-                    benchmarks: [
-                      { label: "0 (Free-Ride)", val: 0 },
-                      { label: "5 (Low)", val: 5 },
-                      { label: "10 (Half)", val: 10 },
-                      { label: "15 (High)", val: 15 },
-                      { label: "20 (Social Max)", val: 20 }
-                    ],
-                    subtext: `💡 Pool returns 0.80 pts/token to each person. You keep ${20 - publicGoodsContr} private tokens (+1 pt each).`,
-                    onChange: setPublicGoodsContr
-                  })}
+                  {/* Module 12: Tragedy of the Commons & Renewable Coastal Fishery */}
+                  {selectedModuleId === 12 && (
+                    <div className="space-y-3.5">
+                      {/* Theme Toggle Strip */}
+                      <div className="flex items-center justify-between bg-slate-950 p-2 rounded-xl border border-slate-800">
+                        <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider pl-1">
+                          Scenario Theme:
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setIsFisheryView(true)}
+                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                              isFisheryView
+                                ? 'bg-cyan-600 text-white shadow-sm'
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            <span>🐟</span>
+                            <span>Coastal Fishery (Ecology)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsFisheryView(false)}
+                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                              !isFisheryView
+                                ? 'bg-indigo-600 text-white shadow-sm'
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            <span>🪙</span>
+                            <span>Tokens View (Abstract)</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {isFisheryView ? (
+                        <div className="space-y-3 bg-slate-950/90 p-4 sm:p-5 rounded-2xl border border-cyan-900/60 shadow-lg">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+                            <div>
+                              <span className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider block">
+                                🌊 Common Pool Fishery Stock Simulator
+                              </span>
+                              <div className="text-sm font-semibold text-slate-200 mt-0.5">
+                                Assigned Conservation Fleet: <strong className="text-cyan-300">{publicGoodsContr} / 20 trawlers</strong>
+                              </div>
+                            </div>
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border self-start sm:self-auto ${
+                              publicGoodsContr < 6
+                                ? 'bg-rose-950/80 text-rose-300 border-rose-800'
+                                : publicGoodsContr < 15
+                                ? 'bg-amber-950/80 text-amber-300 border-amber-800'
+                                : 'bg-emerald-950/80 text-emerald-300 border-emerald-800'
+                            }`}>
+                              {publicGoodsContr < 6
+                                ? '⚠️ Overfished Biomass'
+                                : publicGoodsContr < 15
+                                ? '⚖️ Moderately Harvested'
+                                : '🌿 Thriving Marine Reserve'}
+                            </span>
+                          </div>
+
+                          {renderThumbSlider({
+                            label: "Trawlers Assigned to Conservation Reserve (0 to 20):",
+                            value: publicGoodsContr,
+                            min: 0,
+                            max: 20,
+                            step: 1,
+                            displayValue: `${publicGoodsContr} Boats Conserving (${20 - publicGoodsContr} Harvested Privately)`,
+                            benchmarks: [
+                              { label: "0 (Deplete Stock)", val: 0 },
+                              { label: "5 (Heavy Catch)", val: 5 },
+                              { label: "10 (Quota)", val: 10 },
+                              { label: "15 (Protective)", val: 15 },
+                              { label: "20 (Max Sustainable)", val: 20 }
+                            ],
+                            subtext: "💡 Marine Stock Dynamics: Conserved breeding fish multiply by 1.6x, producing +0.80 pts of seafood for both fleets per boat conserved. Privatizing trawlers keeps +1.00 pt of private catch for yourself, but drives aggregate fishery stock toward extinction.",
+                            onChange: setPublicGoodsContr
+                          })}
+                        </div>
+                      ) : (
+                        renderThumbSlider({
+                          label: "Tokens Contributed to Public Pool (0 to 20):",
+                          value: publicGoodsContr,
+                          min: 0,
+                          max: 20,
+                          step: 1,
+                          displayValue: `${publicGoodsContr} / 20 Tokens`,
+                          benchmarks: [
+                            { label: "0 (Free-Ride)", val: 0 },
+                            { label: "5 (Low)", val: 5 },
+                            { label: "10 (Half)", val: 10 },
+                            { label: "15 (High)", val: 15 },
+                            { label: "20 (Social Max)", val: 20 }
+                          ],
+                          subtext: `💡 Pool returns 0.80 pts/token to each person. You keep ${20 - publicGoodsContr} private tokens (+1 pt each).`,
+                          onChange: setPublicGoodsContr
+                        })
+                      )}
+                    </div>
+                  )}
 
                   {/* Module 2: Launch-or-Wait (Sequential Entry) */}
                   {selectedModuleId === 2 && (
@@ -3011,39 +3669,379 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                     subtext: `💡 Transferred points triple (3x). You keep ${10 - trustInvestment} pts in your private vault plus whatever the trustee returns.`,
                     onChange: setTrustInvestment
                   })}
+
+                  {/* Module 21: Cournot Duopoly Competition */}
+                  {selectedModuleId === 21 && renderThumbSlider({
+                    label: "Choose Production Output (q):",
+                    value: cournotQuantity,
+                    min: 10,
+                    max: 45,
+                    step: 0.5,
+                    unitSuffix: " units",
+                    displayValue: `${cournotQuantity.toFixed(1)} units`,
+                    benchmarks: [
+                      { label: "22.5 (Cartel)", val: 22.5 },
+                      { label: "30.0 (Nash)", val: 30.0 },
+                      { label: "33.8 (Defect)", val: 33.8 },
+                      { label: "45.0 (Comp)", val: 45.0 }
+                    ],
+                    subtext: `💡 Cournot Duopoly Economics: Market demand price is P = max(0, 100 - (q_you + q_bot)) with $10 marginal cost. Symmetrical Nash equilibrium is 30 units each (Market P = $40, Profit = $9.00). Collusive Cartel output is 22.5 units each (Market P = $55, Profit = $10.13). Producing above 30 drives down market price for both sellers.`,
+                    onChange: setCournotQuantity
+                  })}
+
+                  {/* Module 22: Hotelling's Spatial Competition */}
+                  {selectedModuleId === 22 && (
+                    <div className="space-y-4 bg-slate-950/80 p-4 sm:p-5 rounded-2xl border border-slate-800">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <div>
+                          <span className="text-base sm:text-lg font-bold text-white block">
+                            Boardwalk Stand Placement (0 to 100):
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            100 beachgoers distributed uniformly along the boardwalk
+                          </span>
+                        </div>
+                        <span className="font-mono text-3xl sm:text-4xl font-black text-amber-400">
+                          Pos {hotellingLocation}
+                        </span>
+                      </div>
+
+                      {/* Visual Boardwalk Beach Graphic */}
+                      <div className="relative pt-6 pb-2">
+                        {/* Track Bar */}
+                        <div className="h-6 w-full bg-gradient-to-r from-amber-700 via-amber-200 to-amber-700 rounded-xl relative overflow-hidden border border-amber-600/60 shadow-inner flex items-center justify-between px-3 text-[10px] font-mono font-bold text-amber-950 select-none">
+                          <span>0 Pier West</span>
+                          <span>25</span>
+                          <span>50 Center</span>
+                          <span>75</span>
+                          <span>100 Pier East</span>
+                        </div>
+
+                        {/* Stand Pin Indicator */}
+                        <div
+                          className="absolute top-0 transform -translate-x-1/2 flex flex-col items-center transition-all duration-100 pointer-events-none"
+                          style={{ left: `${Math.max(4, Math.min(96, hotellingLocation))}%` }}
+                        >
+                          <span className="text-2xl drop-shadow-md animate-bounce">🏖️</span>
+                          <span className="text-[10px] font-mono font-black bg-blue-600 text-white px-1.5 py-0.2 rounded-full shadow border border-blue-400">
+                            You: {hotellingLocation}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Stepper + Slider Row */}
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setHotellingLocation(prev => Math.max(0, prev - 1))}
+                          disabled={hotellingLocation <= 0}
+                          aria-label="Move stand west"
+                          className="w-14 h-14 min-w-[56px] min-h-[56px] text-3xl font-black bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-2xl border border-slate-700 flex items-center justify-center cursor-pointer transition-all select-none shadow-md"
+                        >
+                          ←
+                        </button>
+
+                        <div className="flex-1 relative flex items-center py-2">
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={hotellingLocation}
+                            onChange={(e) => setHotellingLocation(parseInt(e.target.value, 10))}
+                            aria-label="Boardwalk Stand Placement"
+                            className="w-full h-3 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setHotellingLocation(prev => Math.min(100, prev + 1))}
+                          disabled={hotellingLocation >= 100}
+                          aria-label="Move stand east"
+                          className="w-14 h-14 min-w-[56px] min-h-[56px] text-3xl font-black bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-2xl border border-slate-700 flex items-center justify-center cursor-pointer transition-all select-none shadow-md"
+                        >
+                          →
+                        </button>
+                      </div>
+
+                      {/* Strategic Benchmarks */}
+                      <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-800/80">
+                        <span className="text-[11px] font-mono text-slate-400 self-center">Presets:</span>
+                        {[
+                          { label: "Pos 25 (Quartile)", val: 25 },
+                          { label: "Pos 50 (Median Nash)", val: 50 },
+                          { label: "Pos 75 (Quartile)", val: 75 }
+                        ].map((b, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setHotellingLocation(b.val)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer ${
+                              hotellingLocation === b.val
+                                ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
+                                : 'bg-slate-900 text-slate-300 border-slate-700 hover:text-white hover:border-slate-600'
+                            }`}
+                          >
+                            {b.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <p className="text-xs text-slate-300 leading-relaxed font-normal bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                        💡 <strong className="text-amber-300">Hotelling's Law:</strong> Bathers patronize the vendor closest to their beach towel. If your rival is at Pos 40, placing your stand at Pos 41 captures 59% of the beach. In equilibrium, both vendors cluster at the median center (Pos 50).
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Module 23: Colonel Blotto Resource War */}
+                  {selectedModuleId === 23 && (() => {
+                    const blottoSum = blottoA + blottoB + blottoC;
+                    const diff = 100 - blottoSum;
+
+                    const handleBlottoPreset = (a: number, b: number, c: number) => {
+                      setBlottoA(a);
+                      setBlottoB(b);
+                      setBlottoC(c);
+                    };
+
+                    const handleAutoBalance = () => {
+                      if (blottoA + blottoB > 100) {
+                        setBlottoA(50);
+                        setBlottoB(50);
+                        setBlottoC(0);
+                      } else {
+                        setBlottoC(Math.max(0, 100 - blottoA - blottoB));
+                      }
+                    };
+
+                    return (
+                      <div className="space-y-4 bg-slate-950/80 p-4 sm:p-5 rounded-2xl border border-slate-800">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <div>
+                            <span className="text-base sm:text-lg font-bold text-white block">
+                              Allocate 100 Battalions Across 3 Fronts:
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              Win at least 2 of 3 battlefront passes to conquer territory
+                            </span>
+                          </div>
+                          <div className={`font-mono text-xl sm:text-2xl font-black px-3 py-1 rounded-xl border flex items-center gap-2 ${
+                            blottoSum === 100
+                              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700'
+                              : 'bg-rose-950/60 text-rose-300 border-rose-700'
+                          }`}>
+                            <span>{blottoSum}/100</span>
+                            {blottoSum === 100 ? (
+                              <span className="text-xs text-emerald-400 font-bold">✓ Ready</span>
+                            ) : (
+                              <span className="text-xs text-rose-400 font-bold">{diff > 0 ? `${diff} unassigned` : `${Math.abs(diff)} over`}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Front 3 Sliders */}
+                        <div className="space-y-3 pt-1">
+                          {/* Front A */}
+                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                <span>🏔️</span> Pass A (Northern Defile):
+                              </span>
+                              <span className="font-mono text-sm font-black text-blue-400">{blottoA} Battalions</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={blottoA}
+                              onChange={(e) => setBlottoA(parseInt(e.target.value, 10))}
+                              aria-label="Battalions for Pass A"
+                              className="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500 focus:outline-none"
+                            />
+                          </div>
+
+                          {/* Front B */}
+                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                <span>🌊</span> Pass B (Central River Valley):
+                              </span>
+                              <span className="font-mono text-sm font-black text-amber-400">{blottoB} Battalions</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={blottoB}
+                              onChange={(e) => setBlottoB(parseInt(e.target.value, 10))}
+                              aria-label="Battalions for Pass B"
+                              className="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500 focus:outline-none"
+                            />
+                          </div>
+
+                          {/* Front C */}
+                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                <span>🏰</span> Pass C (Southern Fortress):
+                              </span>
+                              <span className="font-mono text-sm font-black text-purple-400">{blottoC} Battalions</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={blottoC}
+                              onChange={(e) => setBlottoC(parseInt(e.target.value, 10))}
+                              aria-label="Battalions for Pass C"
+                              className="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Presets & Auto-Balance Bar */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+                          <div className="flex flex-wrap gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleBlottoPreset(34, 33, 33)}
+                              className="px-2.5 py-1 text-xs font-mono font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700 cursor-pointer"
+                            >
+                              Symmetric (34/33/33)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleBlottoPreset(50, 50, 0)}
+                              className="px-2.5 py-1 text-xs font-mono font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700 cursor-pointer"
+                            >
+                              Blitzkrieg (50/50/0)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleBlottoPreset(60, 0, 40)}
+                              className="px-2.5 py-1 text-xs font-mono font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700 cursor-pointer"
+                            >
+                              Flank Feint (60/0/40)
+                            </button>
+                          </div>
+
+                          {blottoSum !== 100 && (
+                            <button
+                              type="button"
+                              onClick={handleAutoBalance}
+                              className="px-3 py-1 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg cursor-pointer shadow-sm"
+                            >
+                              Auto-Balance to 100
+                            </button>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-slate-300 leading-relaxed font-normal bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                          💡 <strong className="text-amber-300">Blotto Zero-Sum Paradox:</strong> There is no pure-strategy equilibrium. Symmetrically defending (34/33/33) is crushed by an opponent sacrificing one pass (0 troops) to overwhelm the other two with 50 battalions each.
+                        </p>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Module 24: Common-Value Oil Lease Auction & Winner's Curse */}
+                  {selectedModuleId === 24 && (
+                    <div className="space-y-4">
+                      {/* Private Acoustic Survey Report Box */}
+                      <div className="bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-amber-600/50 shadow-lg space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>📡</span> Seismic Exploration Sonar Report
+                          </span>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            True Value V ~ Uniform[$20, $80]
+                          </span>
+                        </div>
+                        <div className="p-3 bg-amber-950/40 rounded-xl border border-amber-800/40 flex items-center justify-between">
+                          <div>
+                            <span className="text-xs text-amber-200/80 block">Your Private Acoustic Signal (Estimate):</span>
+                            <span className="font-mono text-2xl sm:text-3xl font-black text-amber-300">
+                              ${cvPlayerSignal.toFixed(2)} / barrel
+                            </span>
+                          </div>
+                          <span className="text-xs font-mono text-slate-300 text-right max-w-[140px]">
+                            Signal noise error: ±$10.00 from true unknown reserve value
+                          </span>
+                        </div>
+                      </div>
+
+                      {renderThumbSlider({
+                        label: "Submit Your Sealed Bid for the Lease:",
+                        value: cvBid,
+                        min: 10,
+                        max: 90,
+                        step: 0.5,
+                        unitPrefix: "$",
+                        unitSuffix: ".00",
+                        benchmarks: [
+                          { label: `Deep Shade ($${Math.max(10, cvPlayerSignal - 10)})`, val: Math.max(10, cvPlayerSignal - 10) },
+                          { label: `Bayesian ($${Math.max(10, cvPlayerSignal - 6)})`, val: Math.max(10, cvPlayerSignal - 6) },
+                          { label: `Naive ($${cvPlayerSignal})`, val: cvPlayerSignal }
+                        ],
+                        subtext: `💡 The Winner's Curse: In common-value auctions, the highest bidder usually had the most optimistic error! If you bid your signal of $${cvPlayerSignal.toFixed(2)}, winning proves your survey was higher than your rival's, almost guaranteeing a financial loss. Shading downward by at least $6.00 ($${Math.max(10, cvPlayerSignal - 6)}.00) protects your expected margin.`,
+                        onChange: setCvBid
+                      })}
+                    </div>
+                  )}
                 </div>
 
-                {/* Live Interactive Payoff Matrix / Visualizer for Selected Move */}
+                {/* Live Interactive Payoff Matrix / Visualizer for Selected Move (Expert Mode) */}
                 <div className="pt-1">
-                  {[1, 3, 4, 6, 13, 15, 17, 18].includes(selectedModuleId) ? (
-                    <InteractiveMatrixVisualizer
-                      gameId={selectedModuleId}
-                      botName={activeBot.name}
-                      botAvatar={activeBot.avatar}
-                      selectedPlayerAction={getSelectedActionForGame()}
-                      isDollarGame={isDollarGame}
-                    />
-                  ) : (
-                    <SequentialVisualizer
-                      gameId={selectedModuleId}
-                      botName={activeBot.name}
-                      botAvatar={activeBot.avatar}
-                      studentValuation={studentValuation}
-                      botValuation={botValuation}
-                      ultimatumOffer={ultimatumOffer}
-                      trustInvestment={trustInvestment}
-                      auctionBid={selectedModuleId === 8 ? fpAuctionBid : auctionBid}
-                      bertrandPrice={bertrandPrice}
-                      beautyGuess={beautyGuess}
-                      publicGoodsContr={publicGoodsContr}
-                      centipedeNode={centipedeNode}
-                      launchChoice={launchChoice}
-                      deterrenceChoice={deterrenceChoice}
-                      pieDemand={pieDemand}
-                      signalingType={signalingType}
-                      signalingChoice={signalingChoice}
-                    />
-                  )}
+                  {showExpertMatrix ? (
+                    <div className="bg-slate-950/90 rounded-2xl border border-indigo-900/50 overflow-hidden shadow-xl shadow-indigo-950/20 animate-in fade-in duration-200">
+                      {/* Full Matrix / Visualizer */}
+                      <div className="p-3 sm:p-4 bg-slate-950/60">
+                        {[1, 3, 4, 6, 13, 15, 17, 18].includes(selectedModuleId) ? (
+                          <InteractiveMatrixVisualizer
+                            gameId={selectedModuleId}
+                            botName={activeBot.name}
+                            botAvatar={activeBot.avatar}
+                            selectedPlayerAction={getSelectedActionForGame()}
+                            isDollarGame={isDollarGame}
+                          />
+                        ) : (
+                          <SequentialVisualizer
+                            gameId={selectedModuleId}
+                            botName={activeBot.name}
+                            botAvatar={activeBot.avatar}
+                            studentValuation={studentValuation}
+                            botValuation={botValuation}
+                            ultimatumOffer={ultimatumOffer}
+                            trustInvestment={trustInvestment}
+                            auctionBid={selectedModuleId === 8 ? fpAuctionBid : auctionBid}
+                            bertrandPrice={bertrandPrice}
+                            beautyGuess={beautyGuess}
+                            publicGoodsContr={publicGoodsContr}
+                            centipedeNode={centipedeNode}
+                            launchChoice={launchChoice}
+                            deterrenceChoice={deterrenceChoice}
+                            pieDemand={pieDemand}
+                            signalingType={signalingType}
+                            signalingChoice={signalingChoice}
+                            cournotQuantity={cournotQuantity}
+                            botCournotQuantity={activeBot.id === 'cournot_cartel' ? 22.5 : activeBot.id === 'cournot_aggressive' ? 35 : 30}
+                            hotellingLocation={hotellingLocation}
+                            botHotellingLocation={activeBot.id === 'hotelling_pier' ? 15 : activeBot.id === 'hotelling_flank' ? (hotellingLocation < 50 ? 80 : 20) : 50}
+                            blottoAllocations={{ a: blottoA, b: blottoB, c: blottoC }}
+                            botBlottoAllocations={activeBot.id === 'blotto_clausewitz' ? { a: 50, b: 50, c: 0 } : activeBot.id === 'blotto_feint' ? { a: 60, b: 0, c: 40 } : { a: 34, b: 33, c: 33 }}
+                            cvBid={cvBid}
+                            botCvBid={activeBot.id === 'cv_naive' ? cvBotSignal : activeBot.id === 'cv_hubris' ? cvBotSignal + 2 : Math.max(10, cvBotSignal - 6)}
+                            cvTrueValue={cvTrueValue}
+                            cvPlayerSignal={cvPlayerSignal}
+                            cvBotSignal={cvBotSignal}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* Big Main Confirm Button (at least 56px tall, full width on phone) */}
@@ -3076,10 +4074,12 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <button
                     type="button"
                     onClick={() => scrollToStep(1)}
-                    className="w-full min-h-[56px] py-4 px-6 text-base sm:text-lg font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl border border-slate-700 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                    className="w-full min-h-[48px] py-3 px-6 text-sm sm:text-base font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl border border-slate-700 flex items-center justify-center gap-2 cursor-pointer transition-all"
                   >
                     <span>← Review Game Rules & Payoffs (Step 1)</span>
                   </button>
+                </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3119,7 +4119,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                     const matchRounds = history.length;
                     const playerTotal = Math.round(history.reduce((sum, h) => sum + h.playerPayoff, 0) * 10) / 10;
                     const botTotal = Math.round(history.reduce((sum, h) => sum + h.botPayoff, 0) * 10) / 10;
-                    const isDollarGame = selectedModuleId === 6 || selectedModuleId === 14 || selectedModuleId === 7 || selectedModuleId === 16 || selectedModuleId === 9;
+                    const isDollarGame = selectedModuleId === 6 || selectedModuleId === 14 || selectedModuleId === 7 || selectedModuleId === 8 || selectedModuleId === 16 || selectedModuleId === 9 || selectedModuleId === 21 || selectedModuleId === 24;
 
                     const getScoreCmp = (p: number, b: number, isDollar: boolean = false) => {
                       const pStr = isDollar ? (p >= 0 ? `$${Number(p.toFixed(2))}` : `-$${Number(Math.abs(p).toFixed(2))}`) : `${p}`;
@@ -3178,6 +4178,14 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                       keyTakeawaySentence = "Handing resources to another person creates new value, but it requires taking a leap of faith that they will not keep everything. Real partnerships flourish when early goodwill is rewarded with fair sharing, expanding the pie for everyone involved.";
                     } else if (selectedModuleId === 20) {
                       keyTakeawaySentence = "Passing the turn back and forth lets the shared reward grow to its maximum potential. However, holding out for the grand prize requires mutual patience so neither player panics and grabs the pot prematurely.";
+                    } else if (selectedModuleId === 21) {
+                      keyTakeawaySentence = "Deciding production quantity allows firms to sustain positive profit margins above marginal cost, avoiding the complete price collapse of price wars. However, individual temptations to overproduce beyond cartel quotas make collusive agreements notoriously unstable.";
+                    } else if (selectedModuleId === 22) {
+                      keyTakeawaySentence = "Competing sellers naturally cluster together right at the center of the market to avoid losing captive customers on either side. Harold Hotelling's Principle of Minimum Differentiation explains why rival gas stations, fast-food chains, and political candidates often mirror each other's positions.";
+                    } else if (selectedModuleId === 23) {
+                      keyTakeawaySentence = "Spreading your resources evenly across every front leaves you vulnerable to an opponent who sacrifices one border to overwhelm the others. In high-stakes multi-front contests, unpredictability and focused force concentration are essential to victory.";
+                    } else if (selectedModuleId === 24) {
+                      keyTakeawaySentence = "Winning an auction where nobody knows the true value often means you had the most overly optimistic estimate in the room. Sophisticated bidders survive by shading their bids significantly downward to protect themselves from this Winner's Curse.";
                     }
 
                     // Result line formatting: signed payoffs, negative points show as '-10 pts' (never '+-10 pts')
@@ -3256,6 +4264,17 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                               signalingType={signalingType}
                               signalingChoice={signalingChoice}
                               buyerTrustChoice={lastRoundResult ? (lastRoundResult.botAction === 'Trust' ? 'Trust' : "Don't Trust") : undefined}
+                              cournotQuantity={cournotQuantity}
+                              botCournotQuantity={activeBot.id === 'cournot_cartel' ? 22.5 : activeBot.id === 'cournot_aggressive' ? 35 : 30}
+                              hotellingLocation={hotellingLocation}
+                              botHotellingLocation={activeBot.id === 'hotelling_pier' ? 15 : activeBot.id === 'hotelling_flank' ? (hotellingLocation < 50 ? 80 : 20) : 50}
+                              blottoAllocations={{ a: blottoA, b: blottoB, c: blottoC }}
+                              botBlottoAllocations={activeBot.id === 'blotto_clausewitz' ? { a: 50, b: 50, c: 0 } : activeBot.id === 'blotto_feint' ? { a: 60, b: 0, c: 40 } : { a: 34, b: 33, c: 33 }}
+                              cvBid={cvBid}
+                              botCvBid={activeBot.id === 'cv_naive' ? cvBotSignal : activeBot.id === 'cv_hubris' ? cvBotSignal + 2 : Math.max(10, cvBotSignal - 6)}
+                              cvTrueValue={cvTrueValue}
+                              cvPlayerSignal={cvPlayerSignal}
+                              cvBotSignal={cvBotSignal}
                               playedOutcome={{
                                 playerAction: String(lastRoundResult.playerAction),
                                 botAction: String(lastRoundResult.botAction),
@@ -3278,6 +4297,79 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                             </p>
                           </div>
                         </div>
+
+                        {/* 3. Counterfactual Opponent Analysis: What if you had faced the other bot archetypes? */}
+                        {activeGameBots.length > 1 && (() => {
+                          const otherBots = activeGameBots.filter(b => b.id !== activeBot.id);
+                          if (otherBots.length === 0) return null;
+
+                          return (
+                            <div className="bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-indigo-900/50 shadow-lg space-y-3">
+                              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                                <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                                  <span>🧠</span>
+                                  <span>Counterfactual Matchup Intelligence</span>
+                                </span>
+                                <span className="text-[11px] font-mono text-slate-400">
+                                  Tested against your move: {String(lastRoundResult.playerAction)}
+                                </span>
+                              </div>
+
+                              <p className="text-xs text-slate-300 leading-relaxed">
+                                How would your decision of <strong className="text-white">{String(lastRoundResult.playerAction)}</strong> have performed if you had faced the other bot archetypes in this scenario?
+                              </p>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                {otherBots.map(bot => {
+                                  const altDecision = bot.decide({
+                                    round: currentRound,
+                                    totalRounds,
+                                    history: history.map(h => ({
+                                      round: h.round,
+                                      playerAction: h.playerAction,
+                                      botAction: h.botAction,
+                                      playerPayoff: h.playerPayoff,
+                                      botPayoff: h.botPayoff,
+                                      playerValuation: h.playerValuation,
+                                      botValuation: h.botValuation
+                                    })),
+                                    botValuation: selectedModuleId === 24 ? cvBotSignal : botValuation,
+                                    studentValuation: selectedModuleId === 24 ? cvPlayerSignal : studentValuation
+                                  });
+
+                                  // Format alt action string
+                                  const altActionStr = typeof altDecision.action === 'object'
+                                    ? JSON.stringify(altDecision.action)
+                                    : String(altDecision.action);
+
+                                  return (
+                                    <div key={bot.id} className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between space-y-2">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span className="text-xl p-1 rounded-lg bg-slate-950 border border-slate-800 shrink-0">{bot.avatar}</span>
+                                          <div className="min-w-0">
+                                            <div className="text-xs font-bold text-white truncate">{bot.name}</div>
+                                            <div className={`text-[10px] font-medium truncate ${bot.color}`}>{bot.title}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="p-2 rounded-lg bg-slate-950/80 border border-slate-800 text-xs space-y-1">
+                                        <div className="flex justify-between items-center text-[11px]">
+                                          <span className="text-slate-400">Would have chosen:</span>
+                                          <span className="font-mono font-bold text-amber-300 truncate max-w-[140px]">{altActionStr}</span>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 italic line-clamp-2">
+                                          "{altDecision.rationale}"
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* Standings Summary Card */}
                         {matchRounds > 1 && (

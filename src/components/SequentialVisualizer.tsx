@@ -24,6 +24,18 @@ export interface SequentialVisualizerProps {
   signalingType?: 'High Quality' | 'Low Quality';
   signalingChoice?: 'Yes (Costly)' | 'No';
   buyerTrustChoice?: 'Trust' | "Don't Trust";
+  // Games 21, 22, 23, 24
+  cournotQuantity?: number;
+  botCournotQuantity?: number;
+  hotellingLocation?: number;
+  botHotellingLocation?: number;
+  blottoAllocations?: { a: number; b: number; c: number };
+  botBlottoAllocations?: { a: number; b: number; c: number };
+  cvBid?: number;
+  botCvBid?: number;
+  cvTrueValue?: number;
+  cvPlayerSignal?: number;
+  cvBotSignal?: number;
   playedOutcome?: {
     playerAction: any;
     botAction: any;
@@ -52,6 +64,17 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
   botPieDemand = 5,
   signalingType = 'High Quality',
   signalingChoice = 'Yes (Costly)',
+  cournotQuantity = 30,
+  botCournotQuantity = 30,
+  hotellingLocation = 50,
+  botHotellingLocation = 50,
+  blottoAllocations = { a: 34, b: 33, c: 33 },
+  botBlottoAllocations = { a: 50, b: 50, c: 0 },
+  cvBid = 44,
+  botCvBid = 42,
+  cvTrueValue = 50,
+  cvPlayerSignal = 52,
+  cvBotSignal = 48,
   playedOutcome
 }) => {
   // Game 16: Ultimatum Bargaining Split Bar
@@ -926,6 +949,301 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
               </span>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Game 21: Cournot Duopoly Best Response & Market Clearing
+  if (gameId === 21) {
+    const pQ = playedOutcome ? (typeof playedOutcome.playerAction === 'number' ? playedOutcome.playerAction : parseFloat(String(playedOutcome.playerAction)) || cournotQuantity) : cournotQuantity;
+    const bQ = playedOutcome ? (typeof playedOutcome.botAction === 'number' ? playedOutcome.botAction : parseFloat(String(playedOutcome.botAction)) || botCournotQuantity) : botCournotQuantity;
+    const totalQ = pQ + bQ;
+    const marketP = Math.max(0, 100 - totalQ);
+    const pProfit = (pQ * (marketP - 10)) / 100;
+    const bProfit = (bQ * (marketP - 10)) / 100;
+    const bestReply = Math.max(0, Math.round(((90 - bQ) / 2) * 10) / 10);
+
+    return (
+      <div className="w-full bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4 shadow-lg select-none">
+        <div className="flex items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-800/80 pb-2">
+          <span className="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🏭</span>
+            <span>Cournot Market Equilibrium & Best-Response Analysis</span>
+          </span>
+          <span className="text-xs font-bold text-indigo-400">
+            Market P = ${marketP.toFixed(1)} / unit
+          </span>
+        </div>
+
+        {/* Aggregate Output & Price Bar */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs font-bold">
+            <span className="text-blue-400">Your Output: {pQ.toFixed(1)}u</span>
+            <span className="text-amber-400">{botName}: {bQ.toFixed(1)}u</span>
+            <span className="text-emerald-400">Total Market Q: {totalQ.toFixed(1)} / 100u</span>
+          </div>
+
+          <div className="h-4 w-full bg-slate-900 rounded-full overflow-hidden flex border border-slate-800">
+            <div style={{ width: `${Math.min(100, (pQ / 90) * 100)}%` }} className="bg-blue-600 transition-all" />
+            <div style={{ width: `${Math.min(100, (bQ / 90) * 100)}%` }} className="bg-amber-500 transition-all" />
+          </div>
+        </div>
+
+        {/* Reaction Curve & Strategic Benchmarks */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Your Best Response to Bot:</span>
+            <span className="font-mono text-sm font-black text-blue-300 mt-0.5 block">
+              q1* = (90 - {bQ.toFixed(1)}) / 2 = {bestReply}u
+            </span>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Cournot-Nash Equilibrium:</span>
+            <span className="font-mono text-sm font-black text-indigo-300 mt-0.5 block">
+              q1 = q2 = 30u · P = $40 (+$9.00 each)
+            </span>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Cartel Joint Monopoly:</span>
+            <span className="font-mono text-sm font-black text-amber-300 mt-0.5 block">
+              q1 = q2 = 22.5u · P = $55 (+$10.13 each)
+            </span>
+          </div>
+        </div>
+
+        {playedOutcome && (
+          <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between text-xs">
+            <span className="text-slate-300">Profit Payoffs (scaled /100):</span>
+            <span className="font-mono font-bold text-white">
+              You: <strong className="text-emerald-400">+${pProfit.toFixed(2)}</strong> · {botName}: <strong className="text-amber-400">+${bProfit.toFixed(2)}</strong>
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Game 22: Hotelling's Spatial Competition Boardwalk Beach Territory Map
+  if (gameId === 22) {
+    const pLoc = playedOutcome ? (parseFloat(String(playedOutcome.playerAction).replace(/\D+/g, '')) || hotellingLocation) : hotellingLocation;
+    const bLoc = playedOutcome ? (parseFloat(String(playedOutcome.botAction).replace(/\D+/g, '')) || botHotellingLocation) : botHotellingLocation;
+    const midpoint = (pLoc + bLoc) / 2;
+    let pShare = 50;
+    let bShare = 50;
+    if (pLoc < bLoc) {
+      pShare = Math.round(midpoint * 10) / 10;
+      bShare = Math.round((100 - midpoint) * 10) / 10;
+    } else if (pLoc > bLoc) {
+      bShare = Math.round(midpoint * 10) / 10;
+      pShare = Math.round((100 - midpoint) * 10) / 10;
+    }
+
+    return (
+      <div className="w-full bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4 shadow-lg select-none">
+        <div className="flex items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-800/80 pb-2">
+          <span className="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🏖️</span>
+            <span>Hotelling Boardwalk Beach Catchment Map</span>
+          </span>
+          <span className="text-xs font-bold text-amber-400">
+            Midpoint Boundary: Yard {midpoint.toFixed(1)}
+          </span>
+        </div>
+
+        {/* Territory Catchment Bar */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs font-bold">
+            <span className="text-blue-400">You (Pos {pLoc}): {pShare}% Beachgoers</span>
+            <span className="text-amber-400">{botName} (Pos {bLoc}): {bShare}% Beachgoers</span>
+          </div>
+
+          <div className="h-6 w-full rounded-xl overflow-hidden flex border border-slate-800 relative shadow-inner">
+            <div
+              style={{ width: `${pLoc <= bLoc ? pShare : bShare}%` }}
+              className={`${pLoc <= bLoc ? 'bg-blue-600/90' : 'bg-amber-600/90'} flex items-center justify-center text-[10px] font-mono font-bold text-white transition-all`}
+            >
+              {pLoc <= bLoc ? `You (${pShare}%)` : `${botName} (${bShare}%)`}
+            </div>
+            <div
+              style={{ width: `${pLoc <= bLoc ? bShare : pShare}%` }}
+              className={`${pLoc <= bLoc ? 'bg-amber-600/90' : 'bg-blue-600/90'} flex items-center justify-center text-[10px] font-mono font-bold text-white transition-all`}
+            >
+              {pLoc <= bLoc ? `${botName} (${bShare}%)` : `You (${pShare}%)`}
+            </div>
+          </div>
+        </div>
+
+        {/* Principle of Minimum Differentiation Insights */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+            <span className="text-slate-400 block text-[10px] font-bold uppercase">Principle of Minimum Differentiation:</span>
+            <span className="text-slate-200 mt-0.5 block leading-relaxed">
+              If your competitor sets up at Pos 40, placing your cart at Pos 41 gives you 59% of the beach. Both sellers gravitate to Pos 50.
+            </span>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+            <span className="text-slate-400 block text-[10px] font-bold uppercase">Socially Optimal Quartiles:</span>
+            <span className="text-slate-200 mt-0.5 block leading-relaxed">
+              To minimize total customer walking distance, stands should locate at Pos 25 and Pos 75. But competitive pressure pulls both to the center.
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Game 23: Colonel Blotto 3-Front Battlefield Clash
+  if (gameId === 23) {
+    const pAlloc = blottoAllocations;
+    const bAlloc = botBlottoAllocations;
+    const frontResults = [
+      { name: "Pass A (North)", p: pAlloc.a, b: bAlloc.a, winner: pAlloc.a > bAlloc.a ? 'Player' : bAlloc.a > pAlloc.a ? 'Bot' : 'Tie' },
+      { name: "Pass B (Center)", p: pAlloc.b, b: bAlloc.b, winner: pAlloc.b > bAlloc.b ? 'Player' : bAlloc.b > pAlloc.b ? 'Bot' : 'Tie' },
+      { name: "Pass C (South)", p: pAlloc.c, b: bAlloc.c, winner: pAlloc.c > bAlloc.c ? 'Player' : bAlloc.c > pAlloc.c ? 'Bot' : 'Tie' },
+    ];
+    const pWins = frontResults.filter(f => f.winner === 'Player').length;
+    const bWins = frontResults.filter(f => f.winner === 'Bot').length;
+
+    return (
+      <div className="w-full bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4 shadow-lg select-none">
+        <div className="flex items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-800/80 pb-2">
+          <span className="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span>⚔️</span>
+            <span>Colonel Blotto 3-Front Battlefield Matchup</span>
+          </span>
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+            pWins > bWins
+              ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+              : bWins > pWins
+              ? 'bg-rose-950 text-rose-300 border-rose-700'
+              : 'bg-slate-900 text-slate-300 border-slate-700'
+          }`}>
+            Campaign Tally: {pWins} - {bWins} {pWins > bWins ? '(Victory)' : bWins > pWins ? '(Defeat)' : '(Tie)'}
+          </span>
+        </div>
+
+        {/* 3 Front Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          {frontResults.map((f, idx) => (
+            <div key={idx} className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-white">{f.name}</span>
+                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                  f.winner === 'Player'
+                    ? 'bg-blue-950 text-blue-300 border border-blue-700'
+                    : f.winner === 'Bot'
+                    ? 'bg-amber-950 text-amber-300 border border-amber-700'
+                    : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {f.winner === 'Player' ? '✓ Won' : f.winner === 'Bot' ? '✗ Lost' : '= Tie'}
+                </span>
+              </div>
+
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-blue-400 font-medium">You: {f.p} battalions</span>
+                  <span className="text-amber-400 font-medium">{botName}: {f.b} battalions</span>
+                </div>
+                <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden flex border border-slate-800">
+                  <div style={{ width: `${Math.min(100, (f.p / (f.p + f.b || 1)) * 100)}%` }} className="bg-blue-500" />
+                  <div style={{ width: `${Math.min(100, (f.b / (f.p + f.b || 1)) * 100)}%` }} className="bg-amber-500" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="text-[11px] text-slate-400 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 leading-relaxed">
+          💡 <strong className="text-amber-300">Blotto Insight:</strong> Symmetrically guarding all passes (34/33/33) leaves every front vulnerable to a rival who concentrates 50 battalions on two passes and sacrifices the third with 0.
+        </div>
+      </div>
+    );
+  }
+
+  // Game 24: Common-Value Oil Lease Auction & Winner's Curse Spectrum
+  if (gameId === 24) {
+    const trueVal = cvTrueValue;
+    const pSig = cvPlayerSignal;
+    const bSig = cvBotSignal;
+    const pBid = cvBid;
+    const bBid = botCvBid;
+    const isWinnerCurse = pBid > trueVal && pBid > bBid;
+
+    return (
+      <div className="w-full bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4 shadow-lg select-none">
+        <div className="flex items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-800/80 pb-2">
+          <span className="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🛢️</span>
+            <span>Common-Value Spectrum & Winner's Curse Danger Zone</span>
+          </span>
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+            isWinnerCurse
+              ? 'bg-rose-950 text-rose-300 border-rose-700 animate-pulse'
+              : 'bg-emerald-950 text-emerald-300 border-emerald-700'
+          }`}>
+            {isWinnerCurse ? '⚠️ Winner\'s Curse Triggered!' : '✓ Safe Margin'}
+          </span>
+        </div>
+
+        {/* Valuation Spectrum Line */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs font-mono text-slate-400">
+            <span>$20 Min Value</span>
+            <span className="font-bold text-emerald-400">True Reserve Value V: ${trueVal.toFixed(1)}</span>
+            <span>$80 Max Value</span>
+          </div>
+
+          <div className="h-6 w-full bg-slate-900 rounded-xl relative overflow-hidden border border-slate-800 shadow-inner flex items-center">
+            {/* Danger Zone: Any bid higher than True Value */}
+            <div
+              style={{ left: `${Math.max(0, ((trueVal - 20) / 60) * 100)}%`, width: `${Math.max(0, 100 - ((trueVal - 20) / 60) * 100)}%` }}
+              className="absolute h-full bg-rose-950/40 border-l-2 border-rose-500 flex items-center justify-end pr-2 text-[10px] font-mono text-rose-400 font-bold pointer-events-none"
+            >
+              Overpayment Loss Zone (Bid &gt; V)
+            </div>
+
+            {/* True Value Pin */}
+            <div
+              style={{ left: `${Math.max(0, Math.min(100, ((trueVal - 20) / 60) * 100))}%` }}
+              className="absolute top-0 bottom-0 w-1 bg-emerald-400 z-10"
+              title={`True Value: $${trueVal}`}
+            />
+
+            {/* Player Bid Pin */}
+            <div
+              style={{ left: `${Math.max(0, Math.min(100, ((pBid - 20) / 60) * 100))}%` }}
+              className="absolute top-0 bottom-0 w-1.5 bg-blue-500 z-20"
+              title={`Your Bid: $${pBid}`}
+            />
+          </div>
+        </div>
+
+        {/* Signals and Bids Readout */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+          <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span className="text-slate-400 block text-[10px]">Your Signal:</span>
+            <span className="font-bold text-blue-300">${pSig.toFixed(2)}</span>
+          </div>
+          <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span className="text-slate-400 block text-[10px]">Your Bid:</span>
+            <span className={`font-bold ${pBid > trueVal ? 'text-rose-400' : 'text-emerald-400'}`}>${pBid.toFixed(2)}</span>
+          </div>
+          <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span className="text-slate-400 block text-[10px]">{botName} Signal:</span>
+            <span className="font-bold text-amber-300">${bSig.toFixed(2)}</span>
+          </div>
+          <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span className="text-slate-400 block text-[10px]">{botName} Bid:</span>
+            <span className="font-bold text-amber-400">${bBid.toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 leading-relaxed">
+          💡 <strong className="text-amber-300">Bayesian Updating:</strong> In common-value auctions, winning is informative bad news: it proves your private estimate was the highest among all bidders. Shading bids by at least $6 protects positive profit upon winning.
         </div>
       </div>
     );

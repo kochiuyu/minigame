@@ -25,6 +25,7 @@ export default function App() {
   const [soloGameIndex, setSoloGameIndex] = useState<number>(1);
   const [totalSoloGames, setTotalSoloGames] = useState<number>(13);
   const [completedSoloGamesCount, setCompletedSoloGamesCount] = useState<number>(0);
+  const [isLiveSignInOpen, setIsLiveSignInOpen] = useState<boolean>(false);
 
   // Load data from safeStorage on mount
   useEffect(() => {
@@ -107,6 +108,7 @@ export default function App() {
 
   const handleSignOut = () => {
     setAuthSession(null);
+    setPlatformMode('solo');
   };
 
   const handleFillFreshTrial = (newRounds: { [roundNum: number]: RoundData }) => {
@@ -273,22 +275,13 @@ export default function App() {
     }
   };
 
-  // If user is not signed in, show the Entry Portal
-  if (!authSession) {
-    return (
-      <SignInPortal
-        onSignIn={handleSignIn}
-        initialStudentInfo={studentInfo}
-      />
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 selection:bg-blue-600 selection:text-white overflow-x-hidden max-w-full">
       {/* Global Header */}
       <Header
         authSession={authSession}
         onSignOut={handleSignOut}
+        onOpenSignIn={() => setIsLiveSignInOpen(true)}
         completedRoundsCount={completedRoundsCount}
         totalRounds={totalRounds}
         currentWeek={currentWeek}
@@ -298,7 +291,13 @@ export default function App() {
           setActiveRoundNum(1);
         }}
         currentMode={platformMode}
-        onSelectMode={setPlatformMode}
+        onSelectMode={(mode) => {
+          if (mode === 'live' && (!authSession || authSession.role === 'guest')) {
+            setIsLiveSignInOpen(true);
+            return;
+          }
+          setPlatformMode(mode);
+        }}
         soloModuleId={soloModuleId}
         soloNodeLabel={soloNodeLabel}
         soloGameIndex={soloGameIndex}
@@ -306,7 +305,8 @@ export default function App() {
         completedSoloGamesCount={completedSoloGamesCount}
       />
 
-      <main className="max-w-7xl mx-auto px-2.5 sm:px-6 mt-2 sm:mt-3 max-w-full">
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 mt-1 sm:mt-1.5 max-w-full">
+
         {platformMode === 'solo' ? (
           <SoloLabView
             allGames={WEEKS}
@@ -314,7 +314,13 @@ export default function App() {
               setSandboxGameId(id);
               setPlatformMode('sandbox');
             }}
-            onSwitchToLiveClass={() => setPlatformMode('live')}
+            onSwitchToLiveClass={() => {
+              if (!authSession || authSession.role === 'guest') {
+                setIsLiveSignInOpen(true);
+              } else {
+                setPlatformMode('live');
+              }
+            }}
             onModuleChange={(id, label, gameIndex, totalGames, completedCount) => {
               setSoloModuleId(id);
               if (label) setSoloNodeLabel(label);
@@ -370,6 +376,33 @@ export default function App() {
               game={WEEKS.find(w => w.id === sandboxGameId) || WEEKS[0]}
             />
           </div>
+        ) : !authSession || authSession.role === 'guest' ? (
+          /* Guest attempted to enter Live Class without Room Session */
+          <div className="max-w-md mx-auto my-12 bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 text-center shadow-2xl space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-600/20 border border-blue-500/40 text-blue-400 flex items-center justify-center text-2xl font-bold font-mono">
+              Γ
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-white">Join Live Classroom Session</h2>
+            <p className="text-sm text-slate-300">
+              To participate in synchronized multiplayer rounds with your instructor and classmates, please enter your room PIN and student name.
+            </p>
+            <div className="pt-2 flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsLiveSignInOpen(true)}
+                className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-sm rounded-xl shadow-lg transition-all cursor-pointer"
+              >
+                🎓 Enter Room PIN & Join Class
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlatformMode('solo')}
+                className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer"
+              >
+                🧪 Return to Solo Practice Lab (No Sign-In Needed)
+              </button>
+            </div>
+          </div>
         ) : authSession.role === 'instructor' ? (
           /* Instructor Console View */
           <InstructorDashboard
@@ -408,6 +441,21 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Live Classroom Sign-In Modal */}
+      {isLiveSignInOpen && (
+        <SignInPortal
+          isModal={true}
+          initialStudentInfo={studentInfo}
+          onClose={() => setIsLiveSignInOpen(false)}
+          onEnterAsGuest={() => setIsLiveSignInOpen(false)}
+          onSignIn={(session) => {
+            handleSignIn(session);
+            setPlatformMode('live');
+            setIsLiveSignInOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
