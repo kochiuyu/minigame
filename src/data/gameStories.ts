@@ -274,6 +274,50 @@ export const GAME_STORIES: Record<number, GameStory> = {
     yourRole: "Chief Petroleum Geologist & Bidder",
     counterpartRole: "Global Energy Exploration Giant",
     stakes: "Extracting Commercial Oil Reserves vs. The Winner's Curse"
+  },
+  25: {
+    moduleId: 25,
+    title: "The Escalating Dollar Auction",
+    hook: "An auctioneer holds up a crisp $1.00 bill. The highest bidder wins the dollar—but the critical catch is that the second-highest bidder must ALSO pay their full bid while walking away with nothing. What begins as an innocent bargain quickly escalates into a ruthless war of attrition where both players bid well beyond $1.00 just to minimize catastrophic losses.",
+    setup: "A $1.00 bill is auctioned to the highest bidder. Both the winner AND the 2nd-place bidder must forfeit their bids.",
+    choices: "Enter a bid between $0.10 and $2.50 or fold early to cut sunk cost losses.",
+    stakesDetail: "Winning bidder receives $1.00 minus bid. Second bidder loses their entire bid. Bidding above $1.00 is common as players escalate to avoid losing 100% of their investment.",
+    yourRole: "Auction Participant",
+    counterpartRole: "Rival Escalating Bidder",
+    stakes: "Capturing the $1 Bill vs. Sunk Cost Bankruptcy"
+  },
+  26: {
+    moduleId: 26,
+    title: "The Lost Antiques of Faraway Lands",
+    hook: "You and a fellow traveler lost identical rare handmade souvenirs on an international flight. The airline claims manager agrees to reimburse both of you: you each secretly write an integer claim from $2 to $100. If your claims match, you both receive that amount. But if one claims less, the lower claim is recognized as true value—the airline awards the lower claimant a +$2 reward bonus and penalizes the greedy higher claimant with a -$2 deduction.",
+    setup: "Two travelers submit claims between $2 and $100 for identical lost baggage with a ±$2 bonus/penalty.",
+    choices: "Claim any integer value between $2 and $100.",
+    stakesDetail: "Iterated elimination of weakly dominated strategies collapses the unique Nash equilibrium to ($2, $2). Yet empirical humans coordinate around $98–$100 to earn nearly $100!",
+    yourRole: "Claiming Airline Passenger",
+    counterpartRole: "Fellow Airline Traveler",
+    stakes: "High Baggage Reimbursement vs. Dominance Collapse"
+  },
+  27: {
+    moduleId: 27,
+    title: "The Grand Banks Cod Fishery",
+    hook: "You and a rival commercial trawler fleet share open access to a productive ocean fishery. If both fleets observe sustainable harvesting quotas, the marine stock naturally regenerates and yields consistent high profits every season. But if one or both fleets overfish with aggressive industrial trawlers, the breeding population crashes below its tipping point, triggering an irreversible ecological and economic collapse.",
+    setup: "Two commercial fishing fleets choose seasonal harvest effort (0 to 10 trawlers) on a renewable fish biomass.",
+    choices: "Deploy between 0 and 10 trawler vessels to the ocean fishery.",
+    stakesDetail: "Cooperative quota harvest (3–4 boats each) yields maximum sustainable biomass yield; overharvesting (8–10 boats) depletes the breeding stock and causes fishery collapse.",
+    yourRole: "Fleet Operations Admiral",
+    counterpartRole: "Rival Commercial Fishing Fleet",
+    stakes: "Sustainable Ocean Yield vs. Fishery Depletion"
+  },
+  28: {
+    moduleId: 28,
+    title: "The Shady Dealership of Used Cars",
+    hook: "You are shopping for a pre-owned vehicle in a market where car qualities range from $2,000 clunkers ('lemons') to $8,000 pristine gems ('peaches'). Sellers know the exact condition of their vehicles, but you cannot inspect the engine before making an offer. If your offer price is low, owners of high-quality peaches refuse to sell—leaving you bidding on a pool of certified lemons.",
+    setup: "Buyers make purchase offers for vehicles whose true quality is known only to the seller (asymmetric information).",
+    choices: "Submit a purchase offer price between $1,000 and $9,000.",
+    stakesDetail: "Offering a price below seller valuations causes sellers of good cars to withdraw (adverse selection), collapsing the entire market down to low-value lemons.",
+    yourRole: "Car Buyer Negotiator",
+    counterpartRole: "Informed Vehicle Dealership",
+    stakes: "Fair Vehicle Purchase vs. Adverse Selection Collapse"
   }
 };
 

@@ -2972,6 +2972,338 @@ export const COMMON_VALUE_AUCTION_BOTS: GameSpecificBot[] = [
   }
 ];
 
+// -------------------------------------------------------------
+// GAME 25: THE ESCALATING DOLLAR AUCTION (Shubik 1971)
+// -------------------------------------------------------------
+export const DOLLAR_AUCTION_BOTS: GameSpecificBot[] = [
+  {
+    id: 'dollar_escalator',
+    gameId: 25,
+    name: 'Escalator Eric (Sunk Cost Trap)',
+    avatar: '💸',
+    title: 'Relentless Escalator',
+    tagline: 'Refuses to accept a total loss; escalates bids up to $1.80 to avoid leaving empty-handed!',
+    strategySummary: 'Fails to ignore sunk costs. Whenever outbid, bids $0.10 higher up to $1.80 before capitulating.',
+    backstory: 'An auction participant trapped by cognitive commitment, willing to pay $1.50 for a $1 bill rather than forfeit $0.90.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Sunk Cost Trap', value: 95, color: 'bg-rose-500' },
+      { label: 'Loss Aversion', value: 90, color: 'bg-amber-500' },
+      { label: 'Rational Exit Discipline', value: 10, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'I have already committed money! If I fold now, my past bid is completely lost.',
+    decide: ({ studentValuation: playerBid }) => {
+      const pBid = playerBid !== undefined ? playerBid : 0.5;
+      const myBid = Math.min(2.0, Math.round((pBid + 0.1) * 100) / 100);
+      return {
+        action: myBid,
+        rationale: `Escalation heuristic: Outbid by $${pBid.toFixed(2)}, counter-bidding $${myBid.toFixed(2)} to minimize loss.`
+      };
+    }
+  },
+  {
+    id: 'dollar_rational',
+    gameId: 25,
+    name: 'Disciplined Diana (Strict Exit)',
+    avatar: '🛡️',
+    title: 'Disciplined Capitalist',
+    tagline: 'Hard cut-off at $0.60. Folds the instant bids exceed positive expected margin.',
+    strategySummary: 'Recognizes the war of attrition early. Bids moderately (up to $0.60) and exits cleanly when challenged.',
+    backstory: 'A seasoned hedge fund manager who ignores sunk costs and cuts losing positions before they compound.',
+    color: 'text-emerald-400',
+    badgeBg: 'bg-emerald-950/40',
+    badgeBorder: 'border-emerald-700/60',
+    gauges: [
+      { label: 'Capital Preservation', value: 95, color: 'bg-emerald-500' },
+      { label: 'Sunk Cost Immunity', value: 90, color: 'bg-blue-500' },
+      { label: 'Emotional Stubbornness', value: 5, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'A $1 bill is worth at most $1.00. I will not pay more than $0.60 under any circumstances.',
+    decide: ({ studentValuation: playerBid }) => {
+      const pBid = playerBid !== undefined ? playerBid : 0.5;
+      const myBid = pBid < 0.6 ? Math.round((pBid + 0.1) * 100) / 100 : 0.5;
+      return {
+        action: myBid,
+        rationale: pBid < 0.6
+          ? `Bidding $${myBid.toFixed(2)} with positive margin.`
+          : `Ceiling reached ($0.60 cap). Refusing to escalate against $${pBid.toFixed(2)}.`
+      };
+    }
+  },
+  {
+    id: 'dollar_bargain',
+    gameId: 25,
+    name: 'Opportunistic Ollie (Lowballer)',
+    avatar: '🎣',
+    title: 'Bargain Fisher',
+    tagline: 'Enters with a cheap initial bid ($0.20 to $0.40) and folds immediately if anyone contests.',
+    strategySummary: 'Tries to pick up an uncontested dollar for pocket change; exits at the first sign of competition.',
+    backstory: 'A casual flea-market browser hoping everyone else is sleeping.',
+    color: 'text-cyan-400',
+    badgeBg: 'bg-cyan-950/40',
+    badgeBorder: 'border-cyan-700/60',
+    gauges: [
+      { label: 'Bargain Hunting', value: 85, color: 'bg-cyan-500' },
+      { label: 'Risk Aversion', value: 80, color: 'bg-amber-500' },
+      { label: 'Escalation Willingness', value: 15, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'Maybe nobody else noticed this auction. Let me test the waters cheaply.',
+    decide: () => ({
+      action: 0.3,
+      rationale: 'Submitting a conservative lowball bid of $0.30.'
+    })
+  }
+];
+
+// -------------------------------------------------------------
+// GAME 26: TRAVELER'S DILEMMA (Basu 1994)
+// -------------------------------------------------------------
+export const TRAVELERS_DILEMMA_BOTS: GameSpecificBot[] = [
+  {
+    id: 'traveler_undercutter',
+    gameId: 26,
+    name: 'Slick Stewart (Level-1 Undercutter)',
+    avatar: '🦊',
+    title: 'Bonus Hunter ($98)',
+    tagline: 'Anticipates high human claims ($100) and claims $98 to trigger the +$2 bonus ($100 total payout)!',
+    strategySummary: 'Predicts high social cooperation and strategically claims $97-$98 to capture the +$2 bonus reward.',
+    backstory: 'A clever traveler who understands empirical focal points and shaves off two dollars to win the airline bonus.',
+    color: 'text-amber-400',
+    badgeBg: 'bg-amber-950/40',
+    badgeBorder: 'border-amber-700/60',
+    gauges: [
+      { label: 'Empirical Heuristic', value: 92, color: 'bg-amber-500' },
+      { label: 'Bonus Seeking', value: 90, color: 'bg-emerald-500' },
+      { label: 'Game Theory Dogma', value: 20, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'Most humans claim $100. If I claim $98, I win the +$2 reward and leave with $100!',
+    decide: () => ({
+      action: 98,
+      rationale: 'Level-1 thinking: Claiming $98 to undercut $100 and receive $98 + $2 = $100.'
+    })
+  },
+  {
+    id: 'traveler_cooperative',
+    gameId: 26,
+    name: 'Trusting Tara (Maximum Claim)',
+    avatar: '🕊️',
+    title: 'High-Focal Cooperator ($100)',
+    tagline: 'Claims the full $100. Relies on mutual trust so both passengers walk away with maximum reimbursement.',
+    strategySummary: 'Plays the Pareto-optimal empirical focal point ($100), aiming for mutual 100 pt payouts.',
+    backstory: 'An ethical traveler who believes in fair shared compensation rather than petty nickel-and-diming.',
+    color: 'text-emerald-400',
+    badgeBg: 'bg-emerald-950/40',
+    badgeBorder: 'border-emerald-700/60',
+    gauges: [
+      { label: 'Mutual Trust', value: 95, color: 'bg-emerald-500' },
+      { label: 'Social Welfare', value: 90, color: 'bg-cyan-500' },
+      { label: 'Greed / Undercutting', value: 5, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'If we both claim $100, we both get $100. Let us coordinate on abundance.',
+    decide: () => ({
+      action: 100,
+      rationale: 'Cooperative focal point: Claiming maximum $100 for mutual maximum gain.'
+    })
+  },
+  {
+    id: 'traveler_rational',
+    gameId: 26,
+    name: 'Dogmatic Dan (Strict Nash $2)',
+    avatar: '📐',
+    title: 'Hyper-Rationalist ($2 SPNE)',
+    tagline: 'Follows iterated elimination of weakly dominated strategies all the way down to $2.00!',
+    strategySummary: 'Strictly plays the unique game-theoretic Nash equilibrium ($2). Illustrates the Basu paradox.',
+    backstory: 'A theoretical purist who would rather earn $2 by flawless backward induction than $98 via irrational trust.',
+    color: 'text-indigo-400',
+    badgeBg: 'bg-indigo-950/40',
+    badgeBorder: 'border-indigo-700/60',
+    gauges: [
+      { label: 'Mathematical Purity', value: 100, color: 'bg-indigo-500' },
+      { label: 'Iterated Dominance', value: 98, color: 'bg-blue-500' },
+      { label: 'Practical Street Sense', value: 2, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'For any X > 2, X-1 dominates X. The only unassailable Nash equilibrium is $2.',
+    decide: () => ({
+      action: 2,
+      rationale: 'Iterated strict dominance: Unique Nash equilibrium is min claim ($2).'
+    })
+  }
+];
+
+// -------------------------------------------------------------
+// GAME 27: TRAGEDY OF THE COMMONS RENEWABLE FISHERY (Hardin / Ostrom)
+// -------------------------------------------------------------
+export const FISHERY_COMMONS_BOTS: GameSpecificBot[] = [
+  {
+    id: 'fishery_steward',
+    gameId: 27,
+    name: 'Captain Coral (Quota Steward)',
+    avatar: '🐋',
+    title: 'Sustainable Fishery Guardian',
+    tagline: 'Deploys exactly 3 trawlers (MSY Quota). Protects spawning stock so the fishery regenerates year after year.',
+    strategySummary: 'Maintains optimal bioeconomic harvest quota (3 boats), maximizing long-term sustainable biomass.',
+    backstory: 'A veteran maritime biologist captain who has witnessed fishery collapses and strictly obeys sustainable quotas.',
+    color: 'text-emerald-400',
+    badgeBg: 'bg-emerald-950/40',
+    badgeBorder: 'border-emerald-700/60',
+    gauges: [
+      { label: 'Ecological Stewardship', value: 95, color: 'bg-emerald-500' },
+      { label: 'Quota Discipline', value: 92, color: 'bg-cyan-500' },
+      { label: 'Short-Term Greed', value: 8, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'If we keep collective boats under 8, the breeding stock reproduces at maximum speed.',
+    decide: () => ({
+      action: 3,
+      rationale: 'Deploying sustainable MSY quota: 3 trawlers to safeguard breeding biomass.'
+    })
+  },
+  {
+    id: 'fishery_industrialist',
+    gameId: 27,
+    name: 'Baron Brine (Industrial Trawler)',
+    avatar: '🚢',
+    title: 'Aggressive Fleeter (8 Boats)',
+    tagline: 'Floods the waters with 8 trawlers! Captures 100% private revenue while socializing biomass depletion.',
+    strategySummary: 'Exploits the open access tragedy: maximizes short-term private catch regardless of environmental tipping points.',
+    backstory: 'A corporate seafood tycoon driven by quarterly tonnage metrics and vessel debt covenants.',
+    color: 'text-rose-400',
+    badgeBg: 'bg-rose-950/40',
+    badgeBorder: 'border-rose-700/60',
+    gauges: [
+      { label: 'Harvest Aggression', value: 95, color: 'bg-rose-500' },
+      { label: 'Short-Term Margin', value: 90, color: 'bg-amber-500' },
+      { label: 'Ecological Concern', value: 5, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'The fish are out there in open waters. If I do not catch them, someone else will!',
+    decide: () => ({
+      action: 8,
+      rationale: 'Aggressive industrial deployment: 8 trawlers to maximize private catch share.'
+    })
+  },
+  {
+    id: 'fishery_adaptive',
+    gameId: 27,
+    name: 'Skipper Sam (Tit-for-Tat Harvester)',
+    avatar: '⚓',
+    title: 'Reciprocal Ocean Harvester',
+    tagline: 'Starts at 3 boats. If peers conserve, maintains quotas; if peers overharvest, ramps up to 6 boats.',
+    strategySummary: 'Conditional cooperator in common pool resources: rewards conservation, punishes overharvesting.',
+    backstory: 'A pragmatic cooperative union leader who believes in Ostrom-style mutual monitoring.',
+    color: 'text-blue-400',
+    badgeBg: 'bg-blue-950/40',
+    badgeBorder: 'border-blue-700/60',
+    gauges: [
+      { label: 'Reciprocity', value: 90, color: 'bg-blue-500' },
+      { label: 'Adaptability', value: 85, color: 'bg-cyan-500' },
+      { label: 'Exploitation Defense', value: 80, color: 'bg-amber-500' }
+    ],
+    getAnticipationThought: () => 'I will start with a fair quota, but I will not allow my fleet to be squeezed out.',
+    decide: ({ history }) => {
+      const lastPlayerBoats = history.length > 0 ? Number(history[history.length - 1].playerAction) : 4;
+      const boats = lastPlayerBoats > 5 ? 6 : 4;
+      return {
+        action: boats,
+        rationale: `Adaptive effort: Deploying ${boats} trawlers based on observed peer harvesting intensity.`
+      };
+    }
+  }
+];
+
+// -------------------------------------------------------------
+// GAME 28: MARKET FOR LEMONS & ASYMMETRIC QUALITY (Akerlof 1970)
+// -------------------------------------------------------------
+export const LEMONS_MARKET_BOTS: GameSpecificBot[] = [
+  {
+    id: 'lemon_peach',
+    gameId: 28,
+    name: 'Honest Hank (Peach Owner)',
+    avatar: '💎',
+    title: 'Pristine Vehicle Custodian',
+    tagline: 'Holds a pristine $7,500 peach vehicle. Strictly refuses to sell if buyer offers less than $7,500!',
+    strategySummary: 'Informed seller of genuine high-quality asset. Exits the market if offer price falls below true valuation.',
+    backstory: 'A meticulous owner with full service records who would rather keep the car than sell it for an average price.',
+    color: 'text-emerald-400',
+    badgeBg: 'bg-emerald-950/40',
+    badgeBorder: 'border-emerald-700/60',
+    gauges: [
+      { label: 'Asset Quality', value: 95, color: 'bg-emerald-500' },
+      { label: 'Reservation Integrity', value: 92, color: 'bg-blue-500' },
+      { label: 'Desperation to Sell', value: 5, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'My car is flawless. I know its worth and will not accept a discounted lemon price.',
+    decide: ({ studentValuation: buyerOffer }) => {
+      const offer = buyerOffer !== undefined ? buyerOffer : 5000;
+      const accept = offer >= 7500;
+      return {
+        action: accept ? 'Accept ($7,500 Peach Sold)' : 'Reject (Withdrew Peach from Market)',
+        rationale: accept
+          ? `Offer of $${offer.toLocaleString()} meets reservation value ($7,500). Peach sold!`
+          : `Offer of $${offer.toLocaleString()} is below peach value ($7,500). Withdrew car from market (Adverse Selection)!`
+      };
+    }
+  },
+  {
+    id: 'lemon_clunker',
+    gameId: 28,
+    name: 'Slick Sal (Lemon Purveyor)',
+    avatar: '🍋',
+    title: 'Defective Clunker Dealer',
+    tagline: 'Holds a $2,200 lemon with a cracked block. Eagerly accepts any offer above $2,500 with a smile!',
+    strategySummary: 'Informed seller of low-quality asset. Profits by masquerading in the market pool and selling above cost.',
+    backstory: 'A fast-talking lot owner who buys salvaged cars at auction and relies on buyer ignorance to cash out.',
+    color: 'text-amber-400',
+    badgeBg: 'bg-amber-950/40',
+    badgeBorder: 'border-amber-700/60',
+    gauges: [
+      { label: 'Information Asymmetry Exploitation', value: 98, color: 'bg-amber-500' },
+      { label: 'Profit from Lemons', value: 92, color: 'bg-rose-500' },
+      { label: 'Warranty Credibility', value: 4, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'As long as buyers do not inspect the engine, I will happily offload this clunker.',
+    decide: ({ studentValuation: buyerOffer }) => {
+      const offer = buyerOffer !== undefined ? buyerOffer : 5000;
+      const accept = offer >= 2500;
+      return {
+        action: accept ? 'Accept ($2,200 Lemon Dumped)' : 'Reject',
+        rationale: accept
+          ? `Offer of $${offer.toLocaleString()} easily exceeds $2,200 clunker cost. Profit secured!`
+          : 'Offer below minimum scrap value.'
+      };
+    }
+  },
+  {
+    id: 'lemon_certified',
+    gameId: 28,
+    name: 'Certified Clara (Warranty Specialist)',
+    avatar: '📜',
+    title: 'Certified Inspection Dealer',
+    tagline: 'Provides verifiable 150-point inspection and warranty. Solves adverse selection through costly certification.',
+    strategySummary: 'Overcomes Akerlof market collapse by signaling quality through certified pre-owned warranties.',
+    backstory: 'A forward-thinking dealership manager using Spence signaling and Carfax audits to protect quality premiums.',
+    color: 'text-cyan-400',
+    badgeBg: 'bg-cyan-950/40',
+    badgeBorder: 'border-cyan-700/60',
+    gauges: [
+      { label: 'Signaling Quality', value: 90, color: 'bg-cyan-500' },
+      { label: 'Market Reliability', value: 88, color: 'bg-emerald-500' },
+      { label: 'Lemon Risk', value: 10, color: 'bg-slate-600' }
+    ],
+    getAnticipationThought: () => 'A credible warranty separates genuine quality from defective inventory.',
+    decide: ({ studentValuation: buyerOffer }) => {
+      const offer = buyerOffer !== undefined ? buyerOffer : 5000;
+      const accept = offer >= 6000;
+      return {
+        action: accept ? 'Accept (Certified Peach with Warranty)' : 'Reject',
+        rationale: accept
+          ? `Fair market deal at $${offer.toLocaleString()} with certified guarantee.`
+          : `Offer $${offer.toLocaleString()} insufficient for certified high-quality inventory.`
+      };
+    }
+  }
+];
+
 // Helper to retrieve the custom bot roster for any game
 export function getBotsForGame(gameId: number): GameSpecificBot[] {
   switch (gameId) {
@@ -3023,6 +3355,14 @@ export function getBotsForGame(gameId: number): GameSpecificBot[] {
       return BLOTTO_BOTS;
     case 24:
       return COMMON_VALUE_AUCTION_BOTS;
+    case 25:
+      return DOLLAR_AUCTION_BOTS;
+    case 26:
+      return TRAVELERS_DILEMMA_BOTS;
+    case 27:
+      return FISHERY_COMMONS_BOTS;
+    case 28:
+      return LEMONS_MARKET_BOTS;
     default:
       return PD_BOTS;
   }

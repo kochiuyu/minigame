@@ -201,6 +201,15 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       difficulty: 'Medium',
       description: "Manage common pool resources: conserve breeding stock to let marine life regenerate at 1.6x, or overharvest and collapse the fishery."
     },
+    {
+      id: 27,
+      title: "Renewable Ocean Fishery (Ostrom Commons)",
+      shortTitle: "Renewable Fishery",
+      icon: "🌊",
+      category: "Repeated Games & Reciprocity",
+      difficulty: 'Hard',
+      description: "Balance fleet harvest effort with biological regeneration. Overharvesting triggers irreversible collapse; quota coordination maximizes sustainable yield."
+    },
 
     // TIER 6: Behavioral Bargaining & Fairness
     {
@@ -220,6 +229,15 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       category: "Bargaining & Behavioral Fairness",
       difficulty: 'Medium',
       description: "Simultaneously demand your share of 10 points. If total demands exceed 10, deal collapses to outside options (1 pt)!"
+    },
+    {
+      id: 26,
+      title: "Traveler's Dilemma (Basu Paradox)",
+      shortTitle: "Traveler's Dilemma",
+      icon: "🧳",
+      category: "Bargaining & Behavioral Fairness",
+      difficulty: 'Medium',
+      description: "Claim $2 to $100 for lost luggage with ±$2 bonus/penalty. Backward induction collapses to $2, yet humans earn ~50x more near $100!"
     },
 
     // TIER 7: Industrial Organization & Market Competition
@@ -296,6 +314,24 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       category: "Information, Levels & Auctions",
       difficulty: 'Hard',
       description: "Bid on an unknown common oil reservoir with noisy seismic estimates. Beware the Winner's Curse: winning often means you overpaid!"
+    },
+    {
+      id: 25,
+      title: "The Escalating Dollar Auction",
+      shortTitle: "Dollar Auction",
+      icon: "💸",
+      category: "Information, Levels & Auctions",
+      difficulty: 'Hard',
+      description: "Bid on a $1.00 bill where the 2nd-place bidder also forfeits their bid! Watch how sunk costs drive rational players into catastrophic escalation traps."
+    },
+    {
+      id: 28,
+      title: "Market for Lemons (Akerlof Adverse Selection)",
+      shortTitle: "Lemons Market",
+      icon: "🍋",
+      category: "Information, Levels & Auctions",
+      difficulty: 'Hard',
+      description: "Negotiate purchase prices for cars with unobservable quality. Low offers drive high-quality peaches away, causing the entire market to unravel."
     }
   ];
 
@@ -759,6 +795,18 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   const [cvBotSignal, setCvBotSignal] = useState<number>(() => Math.max(10, Math.min(90, Math.round(50 + (Math.random() * 20 - 10)))));
   const [cvBid, setCvBid] = useState<number>(44);
 
+  // Dollar Auction (ID 25)
+  const [dollarBid, setDollarBid] = useState<number>(0.8);
+
+  // Traveler's Dilemma (ID 26)
+  const [travelerClaim, setTravelerClaim] = useState<number>(98);
+
+  // Renewable Fishery Commons (ID 27)
+  const [fisheryEffort, setFisheryEffort] = useState<number>(4);
+
+  // Market for Lemons (ID 28)
+  const [lemonPrice, setLemonPrice] = useState<number>(5000);
+
   // Game 12: Tragedy of the Commons Fishery View Toggle (Fishery vs Token View)
   const [isFisheryView, setIsFisheryView] = useState<boolean>(true);
 
@@ -768,7 +816,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   // Compact Game Picker toggle (default false so game selection collapses once selected)
   const [isGamePickerExpanded, setIsGamePickerExpanded] = useState<boolean>(false);
 
-  const isDollarGame = selectedModuleId === 6 || selectedModuleId === 14 || selectedModuleId === 7 || selectedModuleId === 8 || selectedModuleId === 16 || selectedModuleId === 9 || selectedModuleId === 21 || selectedModuleId === 24;
+  const isDollarGame = selectedModuleId === 6 || selectedModuleId === 14 || selectedModuleId === 7 || selectedModuleId === 8 || selectedModuleId === 16 || selectedModuleId === 9 || selectedModuleId === 21 || selectedModuleId === 24 || selectedModuleId === 25 || selectedModuleId === 26 || selectedModuleId === 28;
 
   const getSelectedActionForGame = (): string | undefined => {
     switch (selectedModuleId) {
@@ -801,6 +849,14 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         return `Passes (${blottoA}, ${blottoB}, ${blottoC})`;
       case 24:
         return `$${cvBid.toFixed(2)}`;
+      case 25:
+        return `$${dollarBid.toFixed(2)}`;
+      case 26:
+        return `$${travelerClaim}`;
+      case 27:
+        return `${fisheryEffort} boats`;
+      case 28:
+        return `$${lemonPrice.toLocaleString()}`;
       default:
         return undefined;
     }
@@ -864,6 +920,10 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
     setBlottoA(34);
     setBlottoB(33);
     setBlottoC(33);
+    setDollarBid(0.8);
+    setTravelerClaim(98);
+    setFisheryEffort(4);
+    setLemonPrice(5000);
 
     const freshTrue = Math.floor(Math.random() * 41) + 30;
     const freshPlayerNoise = Math.floor(Math.random() * 21) - 10;
@@ -1305,6 +1365,73 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         playerPayoff = Math.round(((cvTrueValue - cvBid) / 2) * 100) / 100;
         botPayoff = Math.round(((cvTrueValue - botBidVal) / 2) * 100) / 100;
         botDecision.action = `$${botBidVal.toFixed(2)} (Tie split! True Value: $${cvTrueValue.toFixed(2)})`;
+      }
+    } else if (selectedModuleId === 25) {
+      // The Escalating Dollar Auction (Shubik 1971)
+      playerAction = `$${dollarBid.toFixed(2)}`;
+      const botBidVal = Number(botDecision.action);
+      if (dollarBid > botBidVal) {
+        playerPayoff = Math.round((1.0 - dollarBid) * 100) / 100;
+        botPayoff = -botBidVal;
+        botDecision.action = `$${botBidVal.toFixed(2)} (You won $1 bill!)`;
+      } else if (botBidVal > dollarBid) {
+        playerPayoff = -dollarBid;
+        botPayoff = Math.round((1.0 - botBidVal) * 100) / 100;
+        botDecision.action = `$${botBidVal.toFixed(2)} (Bot won $1 bill!)`;
+      } else {
+        playerPayoff = Math.round((0.5 - dollarBid) * 100) / 100;
+        botPayoff = Math.round((0.5 - botBidVal) * 100) / 100;
+        botDecision.action = `$${botBidVal.toFixed(2)} (Tied split!)`;
+      }
+    } else if (selectedModuleId === 26) {
+      // Traveler's Dilemma (Basu 1994)
+      playerAction = `$${travelerClaim}`;
+      const botClaimVal = Number(botDecision.action);
+      if (travelerClaim < botClaimVal) {
+        playerPayoff = travelerClaim + 2;
+        botPayoff = travelerClaim - 2;
+        botDecision.action = `$${botClaimVal} (You won +$2 reward!)`;
+      } else if (botClaimVal < travelerClaim) {
+        playerPayoff = botClaimVal - 2;
+        botPayoff = botClaimVal + 2;
+        botDecision.action = `$${botClaimVal} (Bot won +$2 reward!)`;
+      } else {
+        playerPayoff = travelerClaim;
+        botPayoff = botClaimVal;
+        botDecision.action = `$${botClaimVal} (Equal claims)`;
+      }
+    } else if (selectedModuleId === 27) {
+      // Tragedy of the Commons Renewable Fishery (Hardin / Ostrom)
+      playerAction = `${fisheryEffort} trawlers`;
+      const botEffortVal = Number(botDecision.action);
+      const totalEffort = fisheryEffort + botEffortVal;
+      let revenuePerBoat = 3.5;
+      if (totalEffort > 12) {
+        revenuePerBoat = 1.0; // severe overfishing collapse
+      } else if (totalEffort > 8) {
+        revenuePerBoat = 2.4; // moderate depletion
+      }
+      playerPayoff = Math.round(fisheryEffort * (revenuePerBoat - 1.5) * 10) / 10;
+      botPayoff = Math.round(botEffortVal * (revenuePerBoat - 1.5) * 10) / 10;
+      botDecision.action = `${botEffortVal} trawlers (Total Fleet: ${totalEffort} boats · ${totalEffort > 12 ? 'Overfished!' : 'Stock Healthy'})`;
+    } else if (selectedModuleId === 28) {
+      // Market for Lemons & Asymmetric Quality (Akerlof 1970)
+      playerAction = `$${lemonPrice.toLocaleString()}`;
+      const isAccepted = String(botDecision.action).includes('Accept');
+      if (isAccepted) {
+        let buyerCarWorth = 6000;
+        if (activeBot.id === 'lemon_peach') {
+          buyerCarWorth = 9000; // 1.2 * 7500
+        } else if (activeBot.id === 'lemon_clunker') {
+          buyerCarWorth = 2640; // 1.2 * 2200
+        } else if (activeBot.id === 'lemon_certified') {
+          buyerCarWorth = 7800; // 1.2 * 6500
+        }
+        playerPayoff = Math.round(((buyerCarWorth - lemonPrice) / 100) * 100) / 100;
+        botPayoff = Math.round(((lemonPrice - (buyerCarWorth / 1.2)) / 100) * 100) / 100;
+      } else {
+        playerPayoff = 0;
+        botPayoff = 0;
       }
     }
 
@@ -1800,6 +1927,38 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             <li><strong className="text-white">Action:</strong> Submit sealed bid for common oil tract given noisy seismic signal <strong className="text-white">s = V ± $10</strong>.</li>
             <li><strong className="text-amber-300">Payoffs:</strong> Highest bidder wins and pays own bid: Profit = <strong className="text-emerald-400">True Value - Your Bid</strong> (Loser gets $0).</li>
             <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="To avoid the Winner's Curse (winning because your survey had the largest positive error), shade bids by at least $6 below signal." /></li>
+          </>
+        );
+      case 25:
+        return (
+          <>
+            <li><strong className="text-white">Action:</strong> Submit a bid ($0.10 to $2.50) for a $1.00 bill.</li>
+            <li><strong className="text-amber-300">Payoffs:</strong> Highest bidder gets $1.00 bill minus bid; <strong className="text-rose-400">second-highest bidder must ALSO pay their full bid</strong> and receives $0.</li>
+            <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="Beware the sunk cost trap: once bids pass $0.50, escalating to minimize losses causes catastrophic bankruptcy." /></li>
+          </>
+        );
+      case 26:
+        return (
+          <>
+            <li><strong className="text-white">Action:</strong> Claim an integer reimbursement from <strong className="text-white">$2 to $100</strong> for identical lost luggage.</li>
+            <li><strong className="text-amber-300">Payoffs:</strong> Lower claim is recognized: lower claimant gets <strong className="text-emerald-400">Claim + $2 bonus</strong>; higher claimant gets <strong className="text-rose-400">Lower Claim - $2 penalty</strong>. Equal claims get face value.</li>
+            <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="Iterated dominance predicts ($2, $2), but real human players coordinate near $100 for maximum payout." /></li>
+          </>
+        );
+      case 27:
+        return (
+          <>
+            <li><strong className="text-white">Action:</strong> Deploy between <strong className="text-white">0 and 10 trawlers</strong> to harvest the common ocean fishery.</li>
+            <li><strong className="text-amber-300">Payoffs:</strong> Total fleet size determines stock health: ≤8 boats = sustainable (+3.5 pts/boat); &gt;12 boats = overfishing collapse (+1.0 pt/boat). Operating cost: 1.5 pts/boat.</li>
+            <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="Observe Elinor Ostrom's quota stewardship to prevent collective tragedy of the commons." /></li>
+          </>
+        );
+      case 28:
+        return (
+          <>
+            <li><strong className="text-white">Action:</strong> Submit a purchase offer price ($1,000 to $9,000) for a used vehicle with unobservable quality.</li>
+            <li><strong className="text-amber-300">Payoffs:</strong> Sellers only sell if offer ≥ car quality ($2,000 to $8,000). Buyer values quality at 1.2x. Profit = <strong className="text-emerald-400">1.2 × True Quality - Offer Price</strong>.</li>
+            <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="Akerlof's Adverse Selection: Offering too little drives high-quality peaches away, leaving you with lemons." /></li>
           </>
         );
       default:
@@ -2707,6 +2866,13 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           cvTrueValue={cvTrueValue}
                           cvPlayerSignal={cvPlayerSignal}
                           cvBotSignal={cvBotSignal}
+                          dollarBid={dollarBid}
+                          botDollarBid={activeBot.id === 'dollar_escalator' ? Math.min(2.0, dollarBid + 0.1) : 0.5}
+                          travelerClaim={travelerClaim}
+                          botTravelerClaim={activeBot.id === 'traveler_undercutter' ? 98 : activeBot.id === 'traveler_rational' ? 2 : 100}
+                          fisheryEffort={fisheryEffort}
+                          botFisheryEffort={activeBot.id === 'fishery_industrialist' ? 8 : activeBot.id === 'fishery_steward' ? 3 : 4}
+                          lemonPrice={lemonPrice}
                         />
                       )}
                     </div>
@@ -3991,6 +4157,96 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                       })}
                     </div>
                   )}
+
+                  {/* Module 25: The Escalating Dollar Auction */}
+                  {selectedModuleId === 25 && (
+                    <div className="space-y-4">
+                      {renderThumbSlider({
+                        label: "Submit Your Bid for the $1.00 Bill ($0.10 to $2.50):",
+                        value: dollarBid,
+                        min: 0.10,
+                        max: 2.50,
+                        step: 0.10,
+                        unitPrefix: "$",
+                        benchmarks: [
+                          { label: "$0.20 (Penny)", val: 0.20 },
+                          { label: "$0.60 (Disciplined)", val: 0.60 },
+                          { label: "$1.00 (Break-Even)", val: 1.00 },
+                          { label: "$1.50 (Escalated)", val: 1.50 },
+                          { label: "$2.50 (Max Loss)", val: 2.50 }
+                        ],
+                        subtext: "💡 Sunk Cost Trap Rule: The highest bidder wins the $1 bill, but BOTH 1st and 2nd place bidders must pay their bids! If rival bids $0.90, folding loses your past bid while bidding $1.00 breaks even. Once bids cross $1.00, bidders escalate to minimize losses.",
+                        onChange: setDollarBid
+                      })}
+                    </div>
+                  )}
+
+                  {/* Module 26: Traveler's Dilemma */}
+                  {selectedModuleId === 26 && (
+                    <div className="space-y-4">
+                      {renderThumbSlider({
+                        label: "Write Your Baggage Claim ($2 to $100):",
+                        value: travelerClaim,
+                        min: 2,
+                        max: 100,
+                        step: 1,
+                        unitPrefix: "$",
+                        benchmarks: [
+                          { label: "$2 (Strict SPNE)", val: 2 },
+                          { label: "$50 (Mid)", val: 50 },
+                          { label: "$98 (Bonus Hunter)", val: 98 },
+                          { label: "$100 (Cooperative Max)", val: 100 }
+                        ],
+                        subtext: "💡 Basu Reimbursement Rule: Airline reimburses min(claim1, claim2). Lower claim receives a +$2 reward bonus; higher claim receives a -$2 penalty. Iterated elimination of dominated strategies collapses to $2, yet humans coordinate on $98-$100!",
+                        onChange: setTravelerClaim
+                      })}
+                    </div>
+                  )}
+
+                  {/* Module 27: Renewable Ocean Fishery (Ostrom Commons) */}
+                  {selectedModuleId === 27 && (
+                    <div className="space-y-4">
+                      {renderThumbSlider({
+                        label: "Deploy Trawlers to Ocean Fishery (0 to 10 boats):",
+                        value: fisheryEffort,
+                        min: 0,
+                        max: 10,
+                        step: 1,
+                        displayValue: `${fisheryEffort} Trawlers`,
+                        benchmarks: [
+                          { label: "0 (Rest)", val: 0 },
+                          { label: "3 (MSY Steward)", val: 3 },
+                          { label: "4 (Fair Quota)", val: 4 },
+                          { label: "7 (Intensive)", val: 7 },
+                          { label: "10 (Deplete Stock)", val: 10 }
+                        ],
+                        subtext: "💡 Bioeconomic Commons Rule: Ocean fish reproduce naturally, but total effort above 12 boats crashes breeding biomass, collapsing catch profit from +3.5 to +1.0 pt/boat. Optimal sustainable quota is 3-4 boats each.",
+                        onChange: setFisheryEffort
+                      })}
+                    </div>
+                  )}
+
+                  {/* Module 28: Market for Lemons (Akerlof Adverse Selection) */}
+                  {selectedModuleId === 28 && (
+                    <div className="space-y-4">
+                      {renderThumbSlider({
+                        label: "Submit Purchase Offer for Used Car ($1,000 to $9,000):",
+                        value: lemonPrice,
+                        min: 1000,
+                        max: 9000,
+                        step: 250,
+                        unitPrefix: "$",
+                        benchmarks: [
+                          { label: "$2,500 (Lemon Floor)", val: 2500 },
+                          { label: "$5,000 (Average Pool)", val: 5000 },
+                          { label: "$7,500 (Peach Price)", val: 7500 },
+                          { label: "$9,000 (Premium)", val: 9000 }
+                        ],
+                        subtext: "💡 Akerlof Adverse Selection Rule: Sellers know whether their car is a $2,200 lemon or a $7,500 peach. If you offer less than $7,500, peach owners withdraw from the market, leaving you with only defective lemons!",
+                        onChange: setLemonPrice
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Live Interactive Payoff Matrix / Visualizer for Selected Move (Expert Mode) */}
@@ -4037,6 +4293,13 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                             cvTrueValue={cvTrueValue}
                             cvPlayerSignal={cvPlayerSignal}
                             cvBotSignal={cvBotSignal}
+                            dollarBid={dollarBid}
+                            botDollarBid={activeBot.id === 'dollar_escalator' ? Math.min(2.0, dollarBid + 0.1) : 0.5}
+                            travelerClaim={travelerClaim}
+                            botTravelerClaim={activeBot.id === 'traveler_undercutter' ? 98 : activeBot.id === 'traveler_rational' ? 2 : 100}
+                            fisheryEffort={fisheryEffort}
+                            botFisheryEffort={activeBot.id === 'fishery_industrialist' ? 8 : activeBot.id === 'fishery_steward' ? 3 : 4}
+                            lemonPrice={lemonPrice}
                           />
                         )}
                       </div>
@@ -4186,6 +4449,14 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                       keyTakeawaySentence = "Spreading your resources evenly across every front leaves you vulnerable to an opponent who sacrifices one border to overwhelm the others. In high-stakes multi-front contests, unpredictability and focused force concentration are essential to victory.";
                     } else if (selectedModuleId === 24) {
                       keyTakeawaySentence = "Winning an auction where nobody knows the true value often means you had the most overly optimistic estimate in the room. Sophisticated bidders survive by shading their bids significantly downward to protect themselves from this Winner's Curse.";
+                    } else if (selectedModuleId === 25) {
+                      keyTakeawaySentence = "Entering an escalating war of attrition where the loser also forfeits their money traps both sides in the sunk cost fallacy. The only winning move is to recognize the trap immediately and refuse to bid at all.";
+                    } else if (selectedModuleId === 26) {
+                      keyTakeawaySentence = "Strict backward induction can produce paradoxical results that leave everyone deeply impoverished compared to real-world social cooperation. While game theory predicts both travelers will claim only $2, human players coordinate near $100 to maximize their shared payout.";
+                    } else if (selectedModuleId === 27) {
+                      keyTakeawaySentence = "Without shared harvest rules, open-access resources get overharvested until the entire fishery collapses. Long-term prosperity requires mutual quota stewardship to let renewable breeding stocks reproduce.";
+                    } else if (selectedModuleId === 28) {
+                      keyTakeawaySentence = "When buyers cannot verify product quality beforehand, low offer prices cause owners of high-quality goods to withdraw from the market. Unless sellers provide credible warranties or certifications, adverse selection collapses the market into low-value lemons.";
                     }
 
                     // Result line formatting: signed payoffs, negative points show as '-10 pts' (never '+-10 pts')
@@ -4437,6 +4708,15 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                             className="w-full min-h-[56px] py-4 px-6 text-base sm:text-lg font-bold bg-indigo-950/70 hover:bg-indigo-900/80 text-indigo-200 border border-indigo-700/60 rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow"
                           >
                             <span>🔍 Explore Deeper Analysis (Step 4) →</span>
+                          </button>
+
+                          {/* Open What-If Laboratory Button */}
+                          <button
+                            type="button"
+                            onClick={() => onOpenWhatIfSandbox && onOpenWhatIfSandbox(selectedModuleId)}
+                            className="w-full min-h-[56px] py-4 px-6 text-base sm:text-lg font-bold bg-blue-950/70 hover:bg-blue-900/80 text-blue-200 border border-blue-700/60 rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow"
+                          >
+                            <span>∫ Launch What-If Sandbox (Game {currentModuleIndex}: {activeModule.shortTitle}) →</span>
                           </button>
 
                           {/* Skip to Game N Button */}
@@ -5230,6 +5510,15 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                               <span>🔄 Play Again (Test Another Choice)</span>
                             </button>
                           )}
+
+                          {/* Launch What-If Sandbox Button */}
+                          <button
+                            type="button"
+                            onClick={() => onOpenWhatIfSandbox && onOpenWhatIfSandbox(selectedModuleId)}
+                            className="w-full min-h-[56px] py-4 px-6 text-base sm:text-lg font-bold bg-blue-950/70 hover:bg-blue-900/80 text-blue-200 border border-blue-700/60 rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow"
+                          >
+                            <span>∫ Test Strategic Curves in What-If Sandbox (Game {currentModuleIndex}: {activeModule.shortTitle}) →</span>
+                          </button>
                         </div>
                       </div>
                     );

@@ -36,6 +36,14 @@ export interface SequentialVisualizerProps {
   cvTrueValue?: number;
   cvPlayerSignal?: number;
   cvBotSignal?: number;
+  dollarBid?: number;
+  botDollarBid?: number;
+  travelerClaim?: number;
+  botTravelerClaim?: number;
+  fisheryEffort?: number;
+  botFisheryEffort?: number;
+  lemonPrice?: number;
+  botLemonAction?: string;
   playedOutcome?: {
     playerAction: any;
     botAction: any;
@@ -75,6 +83,14 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
   cvTrueValue = 50,
   cvPlayerSignal = 52,
   cvBotSignal = 48,
+  dollarBid = 0.8,
+  botDollarBid = 0.9,
+  travelerClaim = 98,
+  botTravelerClaim = 100,
+  fisheryEffort = 4,
+  botFisheryEffort = 4,
+  lemonPrice = 5000,
+  botLemonAction: _botLemonAction,
   playedOutcome
 }) => {
   // Game 16: Ultimatum Bargaining Split Bar
@@ -1244,6 +1260,239 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
 
         <div className="text-[11px] text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 leading-relaxed">
           💡 <strong className="text-amber-300">Bayesian Updating:</strong> In common-value auctions, winning is informative bad news: it proves your private estimate was the highest among all bidders. Shading bids by at least $6 protects positive profit upon winning.
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // GAME 25: THE ESCALATING DOLLAR AUCTION (Shubik 1971)
+  // -------------------------------------------------------------
+  if (gameId === 25) {
+    const pBid = dollarBid ?? 0.8;
+    const bBid = botDollarBid ?? 0.9;
+    const isPlayerWinning = pBid > bBid;
+    const isTied = pBid === bBid;
+    const pNet = isPlayerWinning ? 1.0 - pBid : isTied ? 0.5 - pBid : -pBid;
+    const bNet = bBid > pBid ? 1.0 - bBid : isTied ? 0.5 - bBid : -bBid;
+
+    return (
+      <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3 font-sans">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">💸</span>
+            <div>
+              <h4 className="text-sm font-bold text-white">Dollar Auction Sunk Cost Ladder</h4>
+              <p className="text-[10px] text-slate-400">War of attrition for a $1.00 bill (Second-place forfeits full bid)</p>
+            </div>
+          </div>
+          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+            pBid > 1.0 ? 'bg-rose-950 text-rose-300 border-rose-800' : 'bg-emerald-950 text-emerald-300 border-emerald-800'
+          }`}>
+            {pBid > 1.0 ? '⚠️ Sunk Cost Escalation Phase' : 'Bargain Hunting Phase'}
+          </span>
+        </div>
+
+        {/* Bid Ladder Visual */}
+        <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+          <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+            <div className="flex justify-between text-slate-400 text-[10px]">
+              <span>Your Bid:</span>
+              <span className="font-bold text-blue-400">${pBid.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-slate-400 text-[10px]">
+              <span>Status:</span>
+              <span className={`font-bold ${isPlayerWinning ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {isPlayerWinning ? 'Leading Bidder ($1 Award)' : 'Trailing (Forfeit Bid)'}
+              </span>
+            </div>
+            <div className="flex justify-between text-white font-bold pt-1 border-t border-slate-800">
+              <span>Net Payoff:</span>
+              <span className={pNet >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                {pNet >= 0 ? `+$${pNet.toFixed(2)}` : `-$${Math.abs(pNet).toFixed(2)}`}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+            <div className="flex justify-between text-slate-400 text-[10px]">
+              <span>{botName} Bid:</span>
+              <span className="font-bold text-amber-400">${bBid.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-slate-400 text-[10px]">
+              <span>Status:</span>
+              <span className={`font-bold ${bBid > pBid ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {bBid > pBid ? 'Leading Bidder ($1 Award)' : 'Trailing (Forfeit Bid)'}
+              </span>
+            </div>
+            <div className="flex justify-between text-white font-bold pt-1 border-t border-slate-800">
+              <span>Net Payoff:</span>
+              <span className={bNet >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                {bNet >= 0 ? `+$${bNet.toFixed(2)}` : `-$${Math.abs(bNet).toFixed(2)}`}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 leading-relaxed">
+          💡 <strong className="text-amber-300">Backward Induction Lesson:</strong> Rational agents recognize that entering a second bid sparks an escalatory duel with negative expected returns. The only winning move is not to bid at all!
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // GAME 26: TRAVELER'S DILEMMA (Basu 1994)
+  // -------------------------------------------------------------
+  if (gameId === 26) {
+    const c1 = travelerClaim ?? 98;
+    const c2 = botTravelerClaim ?? 100;
+    let pPay = c1;
+    let bPay = c2;
+    if (c1 < c2) {
+      pPay = c1 + 2;
+      bPay = c1 - 2;
+    } else if (c2 < c1) {
+      pPay = c2 - 2;
+      bPay = c2 + 2;
+    }
+
+    return (
+      <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3 font-sans">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🧳</span>
+            <div>
+              <h4 className="text-sm font-bold text-white">Traveler's Dilemma Claim Inspector</h4>
+              <p className="text-[10px] text-slate-400">Claims $2 to $100 with ±$2 Airline Adjustment</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border bg-blue-950 text-blue-300 border-blue-800">
+            Min Claim Recognized
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+          <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+            <span className="text-slate-400 text-[10px] block">Your Claim:</span>
+            <span className="text-xl font-black text-blue-400">${c1}</span>
+            <div className="text-[11px] text-emerald-400 font-bold pt-1 border-t border-slate-800">
+              Payout: ${pPay}
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+            <span className="text-slate-400 text-[10px] block">{botName} Claim:</span>
+            <span className="text-xl font-black text-amber-400">${c2}</span>
+            <div className="text-[11px] text-emerald-400 font-bold pt-1 border-t border-slate-800">
+              Payout: ${bPay}
+            </div>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 leading-relaxed">
+          💡 <strong className="text-amber-300">The Basu Paradox:</strong> Strict iterated dominance reduces claims to ($2, $2). In real life, humans coordinate near $100 and achieve ~50x higher payoffs than game-theoretic hyper-rationalists.
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // GAME 27: TRAGEDY OF THE COMMONS RENEWABLE FISHERY (Hardin / Ostrom)
+  // -------------------------------------------------------------
+  if (gameId === 27) {
+    const e1 = fisheryEffort ?? 4;
+    const e2 = botFisheryEffort ?? 4;
+    const totalFleet = e1 + e2;
+    const isOverfished = totalFleet > 12;
+    const isSustainable = totalFleet <= 8;
+
+    return (
+      <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3 font-sans">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🐟</span>
+            <div>
+              <h4 className="text-sm font-bold text-white">Fishery Stock Regeneration & Harvest Effort</h4>
+              <p className="text-[10px] text-slate-400">Total Fleet: {totalFleet} trawlers deployed</p>
+            </div>
+          </div>
+          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+            isOverfished
+              ? 'bg-rose-950 text-rose-300 border-rose-800'
+              : isSustainable
+              ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+              : 'bg-amber-950 text-amber-300 border-amber-800'
+          }`}>
+            {isOverfished ? '⚠️ Stock Depletion Risk' : isSustainable ? '🌿 Sustainable Quota' : '⚖️ Heavy Harvesting'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-mono">
+          <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <span className="text-[10px] text-slate-400 block font-sans">Your Fleet:</span>
+            <span className="text-base font-bold text-blue-400">{e1} boats</span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <span className="text-[10px] text-slate-400 block font-sans">{botName} Fleet:</span>
+            <span className="text-base font-bold text-amber-400">{e2} boats</span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <span className="text-[10px] text-slate-400 block font-sans">MSY Target:</span>
+            <span className="text-base font-bold text-emerald-400">6–8 total boats</span>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 leading-relaxed">
+          💡 <strong className="text-cyan-300">Bioeconomic Stock Dynamics:</strong> Breeding stocks reproduce via surplus growth. When total harvest effort exceeds reproductive capacity, the fishery crashes. Elinor Ostrom showed that community-based quota covenants can sustain maximum long-term yield without top-down privatization.
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // GAME 28: MARKET FOR LEMONS & ASYMMETRIC QUALITY (Akerlof 1970)
+  // -------------------------------------------------------------
+  if (gameId === 28) {
+    const offer = lemonPrice ?? 5000;
+    const maxQuality = Math.min(8000, Math.max(2000, offer));
+    const avgQuality = (2000 + maxQuality) / 2;
+    const pctPeaches = Math.max(0, Math.min(100, Math.round(((maxQuality - 2000) / 6000) * 100)));
+
+    return (
+      <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3 font-sans">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🍋</span>
+            <div>
+              <h4 className="text-sm font-bold text-white">Lemons Adverse Selection Gauge</h4>
+              <p className="text-[10px] text-slate-400">Asymmetric Quality Unraveling Threshold</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border bg-amber-950 text-amber-300 border-amber-800">
+            {pctPeaches}% High Quality Available
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+          <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <span className="text-[10px] text-slate-400 block font-sans">Your Offer:</span>
+            <span className="text-base font-bold text-blue-400">${offer.toLocaleString()}</span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <span className="text-[10px] text-slate-400 block font-sans">Avg Pool Quality:</span>
+            <span className="text-base font-bold text-white">${avgQuality.toFixed(0)}</span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <span className="text-[10px] text-slate-400 block font-sans">Quality Pool:</span>
+            <span className={`text-base font-bold ${pctPeaches < 40 ? 'text-rose-400' : 'text-emerald-400'}`}>
+              {pctPeaches < 40 ? 'Lemon Dominant' : 'Mixed Quality'}
+            </span>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 leading-relaxed">
+          💡 <strong className="text-amber-300">Adverse Selection:</strong> When buyers cannot inspect vehicle quality, offering lower prices excludes the highest-quality sellers first. Only warranties, certified inspections, or brand reputations prevent the market from collapsing entirely.
         </div>
       </div>
     );

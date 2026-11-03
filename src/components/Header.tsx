@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AuthSession, GameConfig } from '../types';
+import { getCurriculumNumber } from '../data/curriculumOrder';
 
 interface HeaderProps {
   authSession: AuthSession | null;
@@ -17,6 +18,7 @@ interface HeaderProps {
   soloGameIndex?: number;
   totalSoloGames?: number;
   completedSoloGamesCount?: number;
+  sandboxGameId?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,7 +36,8 @@ export const Header: React.FC<HeaderProps> = ({
   soloNodeLabel,
   soloGameIndex,
   totalSoloGames,
-  completedSoloGamesCount
+  completedSoloGamesCount,
+  sandboxGameId
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
@@ -61,17 +64,24 @@ export const Header: React.FC<HeaderProps> = ({
               {currentMode === 'solo' ? (
                 <>
                   <span>·</span>
-                  <span className="text-sky-300 font-semibold truncate max-w-[120px] sm:max-w-none">
-                    Game {soloGameIndex || 1} of {totalSoloGames || 13}
+                  <span className="text-sky-300 font-semibold truncate max-w-[140px] sm:max-w-none">
+                    Game {soloGameIndex || 1} of {totalSoloGames || 28}
+                  </span>
+                </>
+              ) : currentMode === 'sandbox' ? (
+                <>
+                  <span>·</span>
+                  <span className="text-emerald-300 font-semibold truncate max-w-[140px] sm:max-w-none">
+                    {sandboxGameId === 999
+                      ? 'Custom 2×2 Solver'
+                      : `Game ${getCurriculumNumber(sandboxGameId || 1)} of 28`}
                   </span>
                 </>
               ) : currentWeek && currentMode === 'live' ? (
                 <>
                   <span>·</span>
-                  <span className="text-amber-300 font-semibold truncate max-w-[120px] sm:max-w-none">
-                    {currentWeek.id === 20
-                      ? 'Game 13 of 13'
-                      : `${currentWeek.icon} ${currentWeek.shortTitle || currentWeek.title}`}
+                  <span className="text-amber-300 font-semibold truncate max-w-[140px] sm:max-w-none">
+                    Game {getCurriculumNumber(currentWeek.id)}: {currentWeek.shortTitle || currentWeek.title}
                   </span>
                 </>
               ) : null}
@@ -185,7 +195,7 @@ export const Header: React.FC<HeaderProps> = ({
                               <span className="text-base shrink-0 mt-0.5">{game.icon}</span>
                               <div className="min-w-0 flex-1">
                                 <div className="text-xs font-semibold leading-tight flex items-center justify-between">
-                                  <span>{game.shortTitle || game.title}</span>
+                                  <span>Game {getCurriculumNumber(game.id)}: {game.shortTitle || game.title}</span>
                                   {isCurrent && (
                                     <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.2 rounded font-mono font-bold">
                                       Active

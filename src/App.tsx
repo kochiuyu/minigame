@@ -6,6 +6,7 @@ import { InstructorDashboard } from './components/InstructorDashboard';
 import { SoloLabView } from './components/SoloLabView';
 import { WhatIfSandbox } from './components/WhatIfSandbox';
 import { WEEKS } from './data/weeks';
+import { CURRICULUM_TIERS } from './data/curriculumOrder';
 import { StudentInfo, RoundsState, ReflectionsState, RoundData, AuthSession } from './types';
 import { safeStorage } from './utils/safeStorage';
 
@@ -303,6 +304,7 @@ export default function App() {
         soloGameIndex={soloGameIndex}
         totalSoloGames={totalSoloGames}
         completedSoloGamesCount={completedSoloGamesCount}
+        sandboxGameId={sandboxGameId}
       />
 
       <main className="max-w-7xl mx-auto px-2 sm:px-4 mt-1 sm:mt-1.5 max-w-full">
@@ -331,49 +333,71 @@ export default function App() {
           />
         ) : platformMode === 'sandbox' ? (
           <div className="space-y-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="h-6 w-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs border border-blue-500/30">
+            <div className="bg-slate-900/95 border border-slate-800/80 rounded-2xl p-3.5 sm:p-4 shadow-xl backdrop-blur-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-blue-400 flex items-center justify-center font-bold text-lg border border-blue-500/30 shadow-xs shrink-0">
                   ∫
-                </span>
+                </div>
                 <div>
-                  <h2 className="text-base font-black text-white">Interactive What-If Curves Lab</h2>
-                  <p className="text-xs text-slate-400">Dynamically adjust parameters to observe equilibrium shifts and counterfactual payoffs</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">What-If Lab</h2>
+                    <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-950/70 text-emerald-300 border border-emerald-800/60 flex items-center gap-1.5 shadow-xs">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      28 Models
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Live parameter calibration, continuous best-response curves, and real-time Nash equilibrium solver
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {[
-                  { id: 1, label: "🤝 One-Shot Dilemma" },
-                  { id: 13, label: '🦌 Stag Hunt' },
-                  { id: 15, label: '🦅 Hawk-Dove' },
-                  { id: 18, label: '🎭 Battle of the Sexes' },
-                  { id: 17, label: '🪙 Matching Pennies' },
-                  { id: 16, label: '🍰 Ultimatum Bargaining' },
-                  { id: 19, label: '🏦 The Trust Game' },
-                  { id: 12, label: '🌍 Public Goods' },
-                  { id: 6, label: '🔁 Repeated Dilemma' },
-                  { id: 7, label: '⚖️ Vickrey Auction' },
-                  { id: 14, label: '🏷️ Bertrand Duopoly' },
-                  { id: 11, label: '💭 Beauty Contest' },
-                  { id: 20, label: '🐛 Centipede Game' }
-                ].map(item => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setSandboxGameId(item.id)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      sandboxGameId === item.id
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+
+              <div className="flex items-center gap-2.5 self-stretch lg:self-auto w-full lg:w-auto">
+                <label htmlFor="sandbox-model-select" className="text-xs font-medium text-slate-400 shrink-0 hidden sm:inline">
+                  Select Game:
+                </label>
+                <select
+                  id="sandbox-model-select"
+                  value={sandboxGameId}
+                  onChange={(e) => setSandboxGameId(parseInt(e.target.value, 10))}
+                  className="w-full sm:w-80 md:w-96 bg-slate-800 hover:bg-slate-700/60 text-white font-semibold text-xs px-3.5 py-2.5 rounded-xl border border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-colors"
+                  aria-label="Select Game Model"
+                >
+                  {CURRICULUM_TIERS.map(tier => (
+                    <optgroup key={tier.tierTitle} label={tier.tierTitle}>
+                      {tier.entries.map(e => (
+                        <option key={e.internalId} value={e.internalId}>
+                          Game {e.curriculumNumber}: {e.shortTitle}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                  <optgroup label="General Tools & Scratchpads">
+                    <option value={999}>⚖️ Universal 2×2 Matrix Solver (Custom Homework / Scratchpad)</option>
+                  </optgroup>
+                </select>
               </div>
             </div>
             <WhatIfSandbox
-              game={WEEKS.find(w => w.id === sandboxGameId) || WEEKS[0]}
+              key={sandboxGameId}
+              game={
+                sandboxGameId === 999
+                  ? {
+                      id: 999,
+                      title: "Universal 2×2 Matrix & Mixed Nash Solver",
+                      shortTitle: "2×2 Matrix Solver",
+                      category: "General Tool",
+                      icon: "⚖️",
+                      keyTakeaway: "Analyze any arbitrary 2x2 normal-form payoff matrix with real-time pure and mixed strategy Nash equilibrium solvers.",
+                      purpose: "Analyze any arbitrary 2x2 normal-form payoff matrix with real-time pure and mixed strategy Nash equilibrium solvers.",
+                      strategies: "Player 1 (Row) and Player 2 (Col) binary choices.",
+                      payoffs: "Custom numerical payoffs.",
+                      instructions: ["Drag the sliders or select a preset to analyze any custom 2x2 game."],
+                      fields: [],
+                      calculate: () => null
+                    }
+                  : WEEKS.find(w => w.id === sandboxGameId) || WEEKS[0]
+              }
             />
           </div>
         ) : !authSession || authSession.role === 'guest' ? (

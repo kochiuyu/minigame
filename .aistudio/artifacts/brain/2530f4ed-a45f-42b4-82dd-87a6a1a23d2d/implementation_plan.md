@@ -1,42 +1,122 @@
-# Implementation Plan: Deepening Gameplay Depth Across the 24-Game Curriculum
+# Implementation Plan: Canonical 1-to-28 Game Numbering & Curriculum Unification
 
-The user confirmed keeping the curriculum focused at **24 authoritative games** and dedicating development to **deepening gameplay depth**, with priority on **Tragedy of the Commons Renewable Fishery dynamics**.
+Align and unify game numbering across the entire platform so that Solo Lab, What-If Lab, and all navigation dropdowns follow the exact same authoritative 8-tier progression from **Game 1 to Game 28**.
 
-## Proposed Enhancements
+---
 
-### 1. Deepen Game 12: Renewable Fishery & Tragedy of the Commons Mode
-* **Context**: Module 12 is currently the Public Goods Dilemma. We will deepen it into an immersive dual-view simulation:
-  * **Tokens vs. Ocean Fishery Toggle**: Allow students to toggle between abstract tokens and a tangible **Renewable Coastal Fishery**.
-  * **Stock Regeneration Dynamics**: Each round, remaining fish stock regenerates by $1.6\times$ (up to environmental carrying capacity). Overharvesting depletes the breeding stock and causes environmental collapse; cooperative quota management sustains maximum sustainable yield (MSY).
-  * **Visual Fishery Health Bar**: Live ecological indicator showing fish population health (Overfished, Healthy, Abundant).
+## User Review & Critical Decisions
 
-### 2. Specialized Interactive Visualizers for Tier 7 & 8 Games
-* **Game 21 (Cournot Duopoly)**:
-  * Interactive Best-Response Diagram: Displays the downward-sloping reaction curves $q_1^*(q_2) = (90 - q_2)/2$ and $q_2^*(q_1)$, highlighting the intersection at Cournot-Nash $(30, 30)$ vs. Cartel Collusion $(22.5, 22.5)$.
-* **Game 22 (Hotelling Beach)**:
-  * Live Beach Territory Heatmap: Displays both vendor locations on the boardwalk beach with color-coded customer catchment zones (Blue for Player, Amber for Bot) and the exact dividing midpoint.
-* **Game 23 (Colonel Blotto)**:
-  * 3-Front Side-by-Side Battlefield Clash: Visual battalion comparison for Pass A, Pass B, and Pass C showing troop counts, front victor flags, and strategic surplus/deficit.
-* **Game 24 (Common-Value Oil Lease Auction)**:
-  * Winner's Curse Distribution Chart: Visualizes the true reservoir value $V$, the two noisy signals, and the bids on a value line, explicitly shading the "Winner's Curse Danger Zone" ($Bid > V$).
+> [!IMPORTANT]
+> The following decisions were confirmed by the user during the Phase 1 clarification interview:
 
-### 3. Counterfactual Bot Intelligence in Step 3/4 Debrief
-* **"What Would Other Bots Have Done?" Analysis**:
-  * In Step 3 (Result) and Step 4 (Theory Debrief), show a compact comparison card showing what payoff the player would have achieved if facing each of the other two bot archetypes for that game with the same decision.
-* **Marginal Sensitivity Gauge**:
-  * Shows how the player's payoff would have changed with a slight adjustment (e.g. $\pm 1$ bid, $\pm 5$ units, or alternate coin face).
+- **Confirmed Sequence Source**: All views (Solo Lab, What-If Lab, and navigation dropdowns) strictly align with the **Solo Lab 8-tier pedagogical progression**.
+- **Confirmed Numbering Convention**: Unified sequential numbering (**Game 1 to Game 28**) is displayed uniformly across all page headers, badges, card labels, and dropdown menus. Internal database IDs are mapped via an authoritative lookup (`src/data/curriculumOrder.ts`) so existing game logic, scoring, and calculations remain 100% stable without breaking backwards compatibility.
 
-## Files to Modify
-1. `src/components/SoloLabView.tsx`:
-   - Add Fishery visual mode & ecological status for Game 12.
-   - Integrate visualizers for Games 21, 22, 23, and 24 into Step 2 / Step 3.
-   - Add counterfactual bot comparison card to the result debrief.
-2. `src/components/SequentialVisualizer.tsx`:
-   - Expand rendering support for Cournot, Hotelling, Blotto, and Common-Value Auction diagrams.
-3. `src/data/gameStories.ts`:
-   - Add enhanced ecological fishery context and quota stewardship detail to Game 12 story.
+---
 
-## Verification Plan
-1. Run `compile_applet` (`npm run build`) to ensure build passes without syntax errors.
-2. Run `lint_applet` (`tsc --noEmit`) to verify strict TypeScript adherence.
-3. Test all 24 games in the UI, especially Game 12 Fishery mode and Games 21–24 visualizers.
+## 1. Overview & Root Cause Analysis
+
+### The Problem
+Previously, games were referenced using inconsistent numbering schemes:
+1. **Random Internal IDs**: Games were created with arbitrary legacy IDs (`id: 1, 6, 12, 7, 13, 18, 15, 4, 17, 23, 21, 22, 2, 5, 20...`).
+2. **Conflicting What-If Dropdown Labels**: In `App.tsx`, games were manually given sequential labels that contradicted their internal IDs (e.g., `id: 6` was labeled "Game 2", but the What-If header rendered `Game 6`).
+3. **Mismatched Solo Lab Sequence**: In Solo Lab, `id: 3` (Price Competition) was the second game, while in What-If Lab it was listed as Game 17.
+
+### The Solution
+Established a single source of truth (`src/data/curriculumOrder.ts`) that maps internal game IDs to an authoritative **Curriculum Number (1 to 28)** and organizes them into the 8 canonical tiers.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ MASTER CURRICULUM SEQUENCE (GAMES 1 TO 28 ACROSS 8 TIERS)                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ TIER 1: Foundations & Dominance                                             │
+│   • Game 1  (id: 1)  🤝 One-Shot Prisoner's Dilemma                         │
+│   • Game 2  (id: 3)  ⚡ Simultaneous Price Competition (Bertrand 2x2)       │
+│                                                                             │
+│ TIER 2: Coordination & Conflict                                             │
+│   • Game 3  (id: 13) 🦌 Stag Hunt Coordination                              │
+│   • Game 4  (id: 18) 🎭 Battle of the Sexes                                 │
+│   • Game 5  (id: 15) 🦅 Hawk-Dove Brinkmanship                              │
+│                                                                             │
+│ TIER 3: Zero-Sum & Mixed Strategies                                         │
+│   • Game 6  (id: 17) 🪙 Matching Pennies                                    │
+│   • Game 7  (id: 4)  📅 Promotion Timing (3x3 Mixed)                        │
+│   • Game 8  (id: 23) ⚔️ Colonel Blotto Resource War                         │
+│                                                                             │
+│ TIER 4: Extensive Form & Backward Induction                                 │
+│   • Game 9  (id: 2)  🚀 Launch-or-Wait (Sequential Entry)                   │
+│   • Game 10 (id: 5)  🏰 Entry Deterrence & Commitment                       │
+│   • Game 11 (id: 20) 🐛 Centipede Game (Backward Induction)                 │
+│                                                                             │
+│ TIER 5: Repeated Games & Reciprocity                                        │
+│   • Game 12 (id: 6)  🔁 Repeated Prisoner's Dilemma                         │
+│   • Game 13 (id: 19) 🏦 The Trust Game (Investment)                         │
+│   • Game 14 (id: 12) 🐟 Tragedy of the Commons & Coastal Fishery            │
+│   • Game 15 (id: 27) 🌊 Renewable Ocean Fishery (Ostrom Commons)            │
+│                                                                             │
+│ TIER 6: Behavioral Bargaining & Fairness                                    │
+│   • Game 16 (id: 16) 🍰 Ultimatum Bargaining & Fairness                     │
+│   • Game 17 (id: 9)  🥧 Split-the-Pie (Outside Options)                     │
+│   • Game 18 (id: 26) 🧳 Traveler's Dilemma (Basu Paradox)                   │
+│                                                                             │
+│ TIER 7: Industrial Organization & Markets                                   │
+│   • Game 19 (id: 14) 🏷️ Bertrand Continuous Duopoly Price War              │
+│   • Game 20 (id: 21) 🏭 Cournot Duopoly Competition (Quantity)              │
+│   • Game 21 (id: 22) 🏖️ Hotelling's Spatial Competition (Beachfront)        │
+│                                                                             │
+│ TIER 8: Information Economics, Cognitive Levels & Auctions                  │
+│   • Game 22 (id: 11) 💭 Keynesian Beauty Contest (2/3 of Average)           │
+│   • Game 23 (id: 10) 📜 Costly Signaling & Adverse Selection (Spence)       │
+│   • Game 24 (id: 7)  ⚖️ Second-Price Vickrey Auction                       │
+│   • Game 25 (id: 8)  🎯 First-Price Sealed-Bid Auction                      │
+│   • Game 26 (id: 24) 🛢️ Common-Value Oil Lease Auction (Winner's Curse)     │
+│   • Game 27 (id: 25) 💸 The Escalating Dollar Auction                       │
+│   • Game 28 (id: 28) 🍋 Market for Lemons (Akerlof Adverse Selection)       │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Technical Architecture & File Modifications
+
+### A. Authoritative Curriculum Mapping (`src/data/curriculumOrder.ts`) [COMPLETED]
+Created a single shared utility module exporting:
+- `CURRICULUM_ENTRIES`: Ordered array of all 28 games with their `curriculumNumber` (1–28), `internalId`, `tierNumber`, `tierTitle`, `title`, and `icon`.
+- `CURRICULUM_TIERS`: Grouped tiers for easy dropdown rendering.
+- Helper functions:
+  - `getCurriculumNumber(internalId: number): number`
+  - `getInternalId(curriculumNumber: number): number`
+
+### B. What-If Lab Dropdown & App Routing (`src/App.tsx`) [COMPLETED]
+- Replaced the hardcoded `<optgroup>` list in `<select id="sandbox-model-select">` with dynamic tier mapping from `CURRICULUM_TIERS`.
+- Handled `sandboxGameId === 999` cleanly as "Universal 2×2 Matrix Solver (Custom Homework / Scratchpad)".
+- Passed `sandboxGameId` into the `<Header ... />` component.
+
+### C. What-If Sandbox & Pedagogy Presentation [COMPLETED]
+- `src/components/WhatIfSandbox.tsx`: Active Game Context Header now displays `{game.id === 999 ? 'Custom Tool' : `Game ${getCurriculumNumber(game.id)}`}: {game.title}`.
+- Matrix solver tab toggle remains visible strictly for 2×2 matrix games (`id: 1, 3, 13, 15, 17, 18, 999`), preserving clear focus for all 22 other models.
+- `src/components/sandbox/GamePedagogyCard.tsx`: Updated Panel A header badge to render `{gameId === 999 ? 'Custom Tool' : `Game ${getCurriculumNumber(gameId)}`}`.
+
+### D. Solo Lab View & Debrief Sync [COMPLETED]
+- `src/components/SoloLabView.tsx`: Step 3 and Step 4 transition buttons now display `Game ${currentModuleIndex}: {activeModule.shortTitle}`.
+- `src/components/TheoryDebrief.tsx`: What-If button displays `∫ Test in What-If Sandbox (Game {getCurriculumNumber(data.gameId)})`.
+- Clicking from any game in Solo Lab launches What-If Lab directly into the identical game number.
+
+### E. Global Header & Catalog Dropdown [COMPLETED]
+- `src/components/Header.tsx`:
+  - Solo mode indicator: `Game X of 28`.
+  - Sandbox mode indicator: `Game X of 28` (or `Custom 2×2 Solver`).
+  - Live mode indicator: `Game X: Title`.
+  - Catalog dropdown: Prefixed every game title with `Game ${getCurriculumNumber(game.id)}: ${title}`.
+
+---
+
+## 3. Verification & Execution Status
+
+- [x] **Curriculum Map**: Created `src/data/curriculumOrder.ts`.
+- [x] **What-If Dropdown & App State**: Synchronized in `src/App.tsx`.
+- [x] **Sandbox & Pedagogy Headers**: Updated in `WhatIfSandbox.tsx` and `GamePedagogyCard.tsx`.
+- [x] **Solo Lab & Debrief Buttons**: Updated in `SoloLabView.tsx` and `TheoryDebrief.tsx`.
+- [x] **Global Header**: Updated in `Header.tsx`.
+- [x] **Lint Verification**: `tsc --noEmit` passed with 0 errors.
+- [x] **Build Verification**: `npm run build` compiled cleanly.

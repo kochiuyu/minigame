@@ -700,6 +700,209 @@ export const GAMES: GameConfig[] = [
         "Partner Score": `${botScore} points`
       };
     }
+  },
+  {
+    id: 21,
+    title: "Cournot Duopoly (Simultaneous Quantity Competition)",
+    shortTitle: "Cournot Duopoly",
+    category: "Industrial Organization & Markets",
+    icon: "🏭",
+    keyTakeaway: "Unlike Bertrand price wars where profits collapse to zero, simultaneous quantity choices sustain positive equilibrium markups.",
+    purpose: "Analyze strategic quantity competition where total industry output determines market clearing price.",
+    strategies: "Simultaneously choose production quantity q between 10 and 45 units.",
+    payoffs: "Price P = max(0, 100 - (q1 + q2)); Profit = q * (P - 10). Cournot-Nash is 30 units each ($9.00 profit).",
+    partners: 1,
+    instructions: [
+      "Select your production quantity between 10 and 45 units.",
+      "Both firms reveal outputs simultaneously.",
+      "Market price clears based on aggregate industry supply."
+    ],
+    fields: [
+      { id: 'myOutput', label: 'Your Output (q1)', type: 'number', min: 10, max: 45, defaultValue: 30, step: 1 },
+      { id: 'partnerOutput', label: 'Rival Output (q2)', type: 'number', step: 2 }
+    ],
+    calculate: (data) => {
+      const q1 = Number(data.myOutput) || 30;
+      const q2 = Number(data.partnerOutput) || 30;
+      const P = Math.max(0, 100 - (q1 + q2));
+      const profit = Math.round(q1 * (P - 10));
+      return {
+        "Market Price": `$${P}.00`,
+        "Your Profit": `$${(profit / 100).toFixed(2)}`
+      };
+    }
+  },
+  {
+    id: 22,
+    title: "Hotelling's Spatial Competition (Boardwalk Beach)",
+    shortTitle: "Hotelling Beach",
+    category: "Industrial Organization & Markets",
+    icon: "🏖️",
+    keyTakeaway: "The Principle of Minimum Differentiation pulls competitors to the center (median consumer), even when quartile locations minimize consumer travel.",
+    purpose: "Explore spatial clustering and product differentiation along a linear market.",
+    strategies: "Choose your stand position from 0 to 100 along the beach boardwalk.",
+    payoffs: "Customers visit the closest vendor; payoff equals customer market share captured.",
+    partners: 1,
+    instructions: [
+      "Position your cart between Mile 0 and Mile 100.",
+      "Customers are evenly distributed along the boardwalk.",
+      "Both sellers capture half the beach in the median center Nash equilibrium."
+    ],
+    fields: [
+      { id: 'myLocation', label: 'Your Location (0-100)', type: 'number', min: 0, max: 100, defaultValue: 50, step: 1 },
+      { id: 'partnerLocation', label: 'Rival Location (0-100)', type: 'number', step: 2 }
+    ],
+    calculate: (data) => {
+      const loc1 = Number(data.myLocation) || 50;
+      const loc2 = Number(data.partnerLocation) || 50;
+      let share = 50;
+      if (loc1 < loc2) share = (loc1 + loc2) / 2;
+      else if (loc1 > loc2) share = 100 - (loc1 + loc2) / 2;
+      return {
+        "Market Share": `${share.toFixed(1)}%`,
+        "Your Score": `${Math.round(share)} points`
+      };
+    }
+  },
+  {
+    id: 23,
+    title: "Colonel Blotto (Three Strategic Mountain Passes)",
+    shortTitle: "Colonel Blotto",
+    category: "Mixed Strategies & Zero-Sum",
+    icon: "⚔️",
+    keyTakeaway: "No pure strategy equilibrium exists in Blotto. Spreading troops evenly everywhere is defeated by an opponent concentrating force.",
+    purpose: "Understand resource allocation across multiple simultaneous battlefronts.",
+    strategies: "Distribute 100 battalions across Front A, Front B, and Front C (A + B + C = 100).",
+    payoffs: "Win ≥ 2 passes = +1 pt; lose = -1 pt; tie = 0 pts.",
+    partners: 1,
+    instructions: [
+      "Allocate your 100 battalions across 3 passes.",
+      "Higher troop concentration wins each front.",
+      "Win at least 2 of 3 passes to claim victory."
+    ],
+    fields: [
+      { id: 'frontA', label: 'Front A Battalions', type: 'number', min: 0, max: 100, defaultValue: 34, step: 1 },
+      { id: 'frontB', label: 'Front B Battalions', type: 'number', min: 0, max: 100, defaultValue: 33, step: 1 },
+      { id: 'frontC', label: 'Front C Battalions', type: 'number', min: 0, max: 100, defaultValue: 33, step: 1 }
+    ],
+    calculate: (_data) => {
+      return { "Strategic Summary": "Allocations deployed across 3 mountain passes." };
+    }
+  },
+  {
+    id: 24,
+    title: "Common-Value Oil Lease Auction (Winner's Curse)",
+    shortTitle: "Common-Value Auction",
+    category: "Information, Levels & Auctions",
+    icon: "🛢️",
+    keyTakeaway: "In common-value auctions, winning is informative bad news: your estimate was the most optimistic. Downward bid shading prevents catastrophic overpayment.",
+    purpose: "Experience the Winner's Curse in sealed-bid auctions with uncertain common asset values.",
+    strategies: "Submit a sealed bid based on your noisy seismic survey signal.",
+    payoffs: "Highest bidder wins and pays own bid: Profit = True Value - Bid.",
+    partners: 1,
+    instructions: [
+      "Receive a noisy geological estimate of unknown reservoir value V.",
+      "Submit a sealed bid shading downward to protect profit margin.",
+      "Highest bidder wins the oil tract."
+    ],
+    fields: [
+      { id: 'myBid', label: 'Your Sealed Bid ($)', type: 'number', min: 10, max: 90, defaultValue: 44, step: 1 }
+    ],
+    calculate: (_data) => {
+      return { "Status": "Sealed bid submitted for oil tract lease." };
+    }
+  },
+  {
+    id: 25,
+    title: "The Escalating Dollar Auction (Sunk Cost Trap)",
+    shortTitle: "Dollar Auction",
+    category: "Information, Levels & Auctions",
+    icon: "💸",
+    keyTakeaway: "Once players enter a war of attrition where losers forfeit sunk bids, rational escalation drives bids far beyond the value of the prize.",
+    purpose: "Explore Martin Shubik's paradox of escalation of commitment and sunk costs.",
+    strategies: "Bid between $0.10 and $2.50 for a $1.00 bill or fold early.",
+    payoffs: "Winner gets $1.00 minus bid. Second bidder forfeits their full bid with zero return.",
+    partners: 1,
+    instructions: [
+      "Auction for a $1.00 bill.",
+      "Both the highest and second-highest bidders must forfeit their bids.",
+      "Recognize the escalation trap before committing sunk capital."
+    ],
+    fields: [
+      { id: 'myBid', label: 'Your Bid ($)', type: 'number', min: 0.10, max: 2.50, defaultValue: 0.80, step: 0.10 }
+    ],
+    calculate: (_data) => {
+      return { "Status": "Bid entered in Dollar Auction escalation ladder." };
+    }
+  },
+  {
+    id: 26,
+    title: "Traveler's Dilemma (Basu Bounded Rationality Paradox)",
+    shortTitle: "Traveler's Dilemma",
+    category: "Bargaining & Behavioral Fairness",
+    icon: "🧳",
+    keyTakeaway: "Strict iterated elimination of weakly dominated strategies reduces claims to $2.00, yet empirical humans coordinate near $100 and achieve ~50x higher welfare.",
+    purpose: "Illustrate Kaushik Basu's paradox of game-theoretic rationality versus empirical coordination.",
+    strategies: "Submit a lost luggage claim between $2 and $100.",
+    payoffs: "Airline reimburses min(claim1, claim2) with +$2 bonus to lower claim and -$2 penalty to higher claim.",
+    partners: 1,
+    instructions: [
+      "Two travelers submit secret claims for lost identical luggage.",
+      "Airline awards min claim with bonus/penalty adjustment.",
+      "Compare backward induction against human trust."
+    ],
+    fields: [
+      { id: 'myClaim', label: 'Your Claim ($2 to $100)', type: 'number', min: 2, max: 100, defaultValue: 98, step: 1 }
+    ],
+    calculate: (_data) => {
+      return { "Status": "Claim submitted to airline claims manager." };
+    }
+  },
+  {
+    id: 27,
+    title: "Renewable Ocean Fishery (Ostrom Bioeconomic Commons)",
+    shortTitle: "Renewable Fishery",
+    category: "Repeated Games & Reciprocity",
+    icon: "🌊",
+    keyTakeaway: "Unregulated open access drives biological resources to collapse. Elinor Ostrom showed that community quota stewardship sustains maximum yields.",
+    purpose: "Model common pool resource extraction with natural biological stock regeneration.",
+    strategies: "Deploy between 0 and 10 trawler vessels to the shared fishery.",
+    payoffs: "Catch profits depend on aggregate fleet size and breeding biomass health.",
+    partners: 1,
+    instructions: [
+      "Select how many trawlers to send to the ocean fishery.",
+      "Observe reproductive capacity and avoid overharvest collapse.",
+      "Coordinate on sustainable community harvest quotas."
+    ],
+    fields: [
+      { id: 'myBoats', label: 'Trawlers Deployed (0 to 10)', type: 'number', min: 0, max: 10, defaultValue: 4, step: 1 }
+    ],
+    calculate: (_data) => {
+      return { "Status": "Trawler fleet deployed to open ocean commons." };
+    }
+  },
+  {
+    id: 28,
+    title: "Market for Lemons (Akerlof Adverse Selection)",
+    shortTitle: "Lemons Market",
+    category: "Information, Levels & Auctions",
+    icon: "🍋",
+    keyTakeaway: "Asymmetric information causes bad products to drive good products out of the market unless warranties or third-party certifications bridge the gap.",
+    purpose: "Experience George Akerlof's Nobel Prize-winning model of adverse selection and market unraveling.",
+    strategies: "Submit purchase offer prices for vehicles with private unobservable quality.",
+    payoffs: "Buyer profits if car quality exceeds purchase price; sellers withdraw if price is too low.",
+    partners: 1,
+    instructions: [
+      "Offer a purchase price for used inventory.",
+      "Sellers of high-quality peaches refuse low offers.",
+      "Observe market unraveling when information is asymmetric."
+    ],
+    fields: [
+      { id: 'myOffer', label: 'Purchase Offer Price ($)', type: 'number', min: 1000, max: 9000, defaultValue: 5000, step: 250 }
+    ],
+    calculate: (_data) => {
+      return { "Status": "Purchase offer submitted to car dealership." };
+    }
   }
 ];
 

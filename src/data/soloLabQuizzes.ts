@@ -965,6 +965,166 @@ export const SOLO_LAB_QUIZZES: Record<number, QuizQuestion[]> = {
       correctIndex: 0,
       explanation: 'With more bidders, winning implies an even more extreme high-tail estimation error. To prevent catastrophic overpayment, sophisticated bidders shade down even further as competition grows.'
     }
+  ],
+
+  // Game 25: The Escalating Dollar Auction (Shubik 1971)
+  25: [
+    {
+      id: 'dollar-1',
+      question: 'Why does the Dollar Auction frequently result in bids exceeding $1.00 for a $1.00 bill?',
+      options: [
+        'The second-highest bidder must pay their full bid while receiving nothing, creating an escalation trap to minimize losses',
+        'The $1.00 bill is made of rare collectible gold foil',
+        'The auctioneer doubles the prize pool every 30 seconds',
+        'Bidding rules require all bids to exceed the prize value'
+      ],
+      correctIndex: 0,
+      explanation: 'Once a player has bid $0.80 and their rival bids $0.90, the player faces losing $0.80 with certainty versus bidding $1.00 to break even, or bidding $1.10 to lose only $0.10 rather than $0.80.'
+    },
+    {
+      id: 'dollar-2',
+      question: 'What is the game-theoretic backward induction solution for the first player before the Dollar Auction starts?',
+      options: [
+        'Do not bid at all (or bid the minimum only if guaranteed no rival will enter)',
+        'Immediately bid $0.99 to discourage everyone else',
+        'Bid $1.50 right away to assert dominant capital',
+        'Alternate bids between odd and even numbers'
+      ],
+      correctIndex: 0,
+      explanation: 'By backward induction, any second bid triggers an escalatory war of attrition with negative expected value. The only rational choice is not to enter the trap in the first place.'
+    },
+    {
+      id: 'dollar-3',
+      question: 'Which cognitive bias is the core psychological driver of escalating bids in the Dollar Auction?',
+      options: [
+        'The Sunk Cost Fallacy (Escalation of Commitment)',
+        'Confirmation Bias',
+        'Anchoring on Round Numbers',
+        'Availability Heuristic'
+      ],
+      correctIndex: 0,
+      explanation: 'Players treat their prior unrecoverable bids as justifications for making further bids to avoid acknowledging the loss, falling victim to the sunk cost trap.'
+    }
+  ],
+
+  // Game 26: Traveler\'s Dilemma (Basu 1994)
+  26: [
+    {
+      id: 'traveler-1',
+      question: 'In the Traveler\'s Dilemma ($2 to $100 claim with ±$2 bonus/penalty), what is the unique Nash equilibrium?',
+      options: [
+        'Both travelers claim $2 (the minimum possible claim)',
+        'Both travelers claim $100 (the maximum possible claim)',
+        'Both travelers claim $50 (the median claim)',
+        'There is no Nash equilibrium'
+      ],
+      correctIndex: 0,
+      explanation: 'For any claim X > 2, claiming X-1 strictly dominates claiming X due to the +$2 reward bonus and avoidance of the -$2 penalty. Iterated elimination of dominated strategies cascades all the way down to ($2, $2).'
+    },
+    {
+      id: 'traveler-2',
+      question: 'What do laboratory experiments show real human participants actually do in the Traveler\'s Dilemma?',
+      options: [
+        'Overwhelmingly claim near the maximum ($95 to $100), earning vastly more than the ($2, $2) Nash prediction',
+        'Always play the ($2, $2) Nash equilibrium exactly',
+        'Refuse to submit any luggage claims',
+        'Randomly distribute claims evenly between 2 and 100'
+      ],
+      correctIndex: 0,
+      explanation: 'Human players realize that sacrificing up to $98 in luggage reimbursement to win a tiny $2 bonus is ill-conditioned. Mutual high claims ($98-$100) yield far higher empirical payoffs.'
+    },
+    {
+      id: 'traveler-3',
+      question: 'Kaushik Basu designed the Traveler\'s Dilemma primarily to demonstrate what conceptual insight?',
+      options: [
+        'Strict game-theoretic rationality and backward induction can produce paradoxical, deeply inferior real-world outcomes',
+        'Airlines should never reimburse lost passenger baggage',
+        'Monopoly pricing is always more efficient than duopoly',
+        'Higher bonuses always encourage higher honesty'
+      ],
+      correctIndex: 0,
+      explanation: 'Basu designed the game as a paradox of rational choice, proving that hyper-rational agents playing iterated dominance receive $2 while "naive" cooperative players receive almost $100.'
+    }
+  ],
+
+  // Game 27: Tragedy of the Commons Renewable Fishery (Hardin / Ostrom)
+  27: [
+    {
+      id: 'fishery-1',
+      question: 'In a renewable common pool fishery, what does "Maximum Sustainable Yield" (MSY) represent?',
+      options: [
+        'The highest harvest rate that matches the biological regeneration rate without depleting long-term biomass',
+        'Catching every single living fish as quickly as possible',
+        'Banning all fishing activity permanently',
+        'Subsidizing mega-trawler fuel costs'
+      ],
+      correctIndex: 0,
+      explanation: 'MSY is the point on the logistic stock reproduction curve where annual reproduction is maximized, allowing sustainable harvesting year after year.'
+    },
+    {
+      id: 'fishery-2',
+      question: 'Why does an open-access unmanaged fishery inevitably suffer the Tragedy of the Commons?',
+      options: [
+        'Each boat captures 100% of its own catch profit, but the biological depletion cost is shared across all fishers',
+        'Fish prefer migrating away from unpainted boats',
+        'Government regulators mandate overfishing by law',
+        'Marine ecosystems have infinite reproductive capacity'
+      ],
+      correctIndex: 0,
+      explanation: 'Because the resource is non-excludable but rivalrous, individual fishers face private incentives to expand effort even when the collective marginal product of additional boats is negative.'
+    },
+    {
+      id: 'fishery-3',
+      question: 'According to Nobel laureate Elinor Ostrom, how can communities successfully avoid fishery collapse without privatization?',
+      options: [
+        'Community-based self-governance with clear boundaries, shared harvest rules, and graduated peer monitoring',
+        'Complete top-down military enforcement of ocean territories',
+        'Abandoning commercial fishing altogether',
+        'Relying entirely on randomized catch quotas'
+      ],
+      correctIndex: 0,
+      explanation: 'Ostrom proved that real-world commons users can overcome tragedy through self-organized institutions, local norms, participatory rule-making, and monitoring.'
+    }
+  ],
+
+  // Game 28: Market for Lemons & Asymmetric Quality (Akerlof 1970)
+  28: [
+    {
+      id: 'lemons-1',
+      question: 'In George Akerlof\'s "Market for Lemons", what causes high-quality used cars ("peaches") to disappear from the market?',
+      options: [
+        'Buyers, unable to observe individual quality, only offer an average price, which is too low for peach owners to accept',
+        'Car manufacturers deliberately destroy all high-quality engines',
+        'Peach cars are banned by transportation safety boards',
+        'Buyers prefer defective cars because they are easier to repair'
+      ],
+      correctIndex: 0,
+      explanation: 'Because buyers cannot distinguish quality, they will pay at most the expected value of the market pool. Owners of cars worth more than this average withdraw, which lowers the average further until only lemons remain.'
+    },
+    {
+      id: 'lemons-2',
+      question: 'What economic phenomenon describes this collapse where bad products drive out good products due to asymmetric information?',
+      options: [
+        'Adverse Selection',
+        'Moral Hazard',
+        'Price Gouging',
+        'Network Externality'
+      ],
+      correctIndex: 0,
+      explanation: 'Adverse selection occurs before a transaction when private information held by one party causes unobservable low-quality types to be disproportionately selected.'
+    },
+    {
+      id: 'lemons-3',
+      question: 'Which market institution directly addresses the Lemons problem by making high quality credible to buyers?',
+      options: [
+        'Third-party vehicle history certifications, mechanics warranties, and money-back guarantees',
+        'Banning buyers from asking about mileage',
+        'Cash-only anonymous parking lot transactions',
+        'Eliminating all automobile return policies'
+      ],
+      correctIndex: 0,
+      explanation: 'Warranties, certified pre-owned inspections (Carfax), and brand reputations solve adverse selection by providing costly, credible signals of unobservable quality.'
+    }
   ]
 };
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { BotArchetype, BOT_PROFILES, GameSpecificBot } from '../services/botEngine';
 import { MathFormula, FormattedMathText } from './MathFormula';
 import { GlossaryTerm, AnnotateGlossaryText, formatUnit, pluralWord } from './GlossaryTerm';
+import { getCurriculumNumber } from '../data/curriculumOrder';
 
 export interface DebriefData {
   gameTitle: string;
@@ -623,7 +624,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
             onClick={() => onOpenWhatIfSandbox(data.gameId)}
             className="w-full sm:w-auto min-h-[56px] px-5 py-3.5 rounded-2xl text-base font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>∫ Test in What-If Sandbox</span>
+            <span>∫ Test in What-If Sandbox (Game {getCurriculumNumber(data.gameId)})</span>
           </button>
           <button
             type="button"
