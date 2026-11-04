@@ -372,7 +372,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   const [bestQuizScores, setBestQuizScores] = useState<Record<number, number>>(() => {
     try {
       const saved = safeStorage.getItem('sololab_best_quiz_scores');
-      return saved ? JSON.parse(saved) : {};
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed === 'object' && parsed !== null) {
+          const normalized: Record<number, number> = {};
+          Object.entries(parsed).forEach(([k, v]) => {
+            const numKey = Number(k);
+            if (!isNaN(numKey) && typeof v === 'number') {
+              normalized[numKey] = v;
+            }
+          });
+          return normalized;
+        }
+      }
+      return {};
     } catch {
       return {};
     }
@@ -392,18 +405,49 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   const currentQuizQ = currentQuizQuestions[quizQuestionIndex] || currentQuizQuestions[0];
   const quizSelectedOption = quizAnswers[quizQuestionIndex] ?? null;
 
-  const quizScore = quizAnswers.reduce<number>((acc, ans, idx) => {
+  // Running score: answered count and correct count updated immediately after each answer
+  const quizAnsweredCount = quizAnswers.filter(ans => ans !== null).length;
+  const quizCorrectCount = quizAnswers.reduce<number>((acc, ans, idx) => {
     if (ans !== null && currentQuizQuestions[idx] && ans === currentQuizQuestions[idx].correctIndex) {
       return acc + 1;
     }
     return acc;
   }, 0);
+  const quizScore = quizCorrectCount;
+
+  const saveBestQuizScore = (score: number, moduleId: number) => {
+    setBestQuizScores(prev => {
+      const currentBest = prev[moduleId] ?? -1;
+      if (score > currentBest || prev[moduleId] === undefined) {
+        const updated = { ...prev, [moduleId]: Math.max(score, prev[moduleId] ?? 0) };
+        try {
+          safeStorage.setItem('sololab_best_quiz_scores', JSON.stringify(updated));
+        } catch {
+          // ignore storage error
+        }
+        return updated;
+      }
+      return prev;
+    });
+  };
 
   const handleSelectQuizOption = (optIdx: number) => {
     if (quizAnswers[quizQuestionIndex] !== null) return;
     const nextAnswers = [...quizAnswers];
     nextAnswers[quizQuestionIndex] = optIdx;
     setQuizAnswers(nextAnswers);
+
+    // If this choice completes all questions in the quiz, persist best score right away
+    const allAnswered = nextAnswers.filter(a => a !== null).length === currentQuizQuestions.length;
+    if (allAnswered) {
+      const finalScore = nextAnswers.reduce<number>((acc, ans, idx) => {
+        if (ans !== null && currentQuizQuestions[idx] && ans === currentQuizQuestions[idx].correctIndex) {
+          return acc + 1;
+        }
+        return acc;
+      }, 0);
+      saveBestQuizScore(finalScore, selectedModuleId);
+    }
   };
 
   const handleNextQuizQuestion = () => {
@@ -417,18 +461,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         }
         return acc;
       }, 0);
-      const currentBest = bestQuizScores[selectedModuleId] ?? -1;
-      if (finalScore > currentBest) {
-        setBestQuizScores(prev => {
-          const updated = { ...prev, [selectedModuleId]: finalScore };
-          try {
-            safeStorage.setItem('sololab_best_quiz_scores', JSON.stringify(updated));
-          } catch {
-            // ignore
-          }
-          return updated;
-        });
-      }
+      saveBestQuizScore(finalScore, selectedModuleId);
     }
   };
 
@@ -2011,6 +2044,11 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                 {completedGameIds.includes(selectedModuleId) && (
                   <span className="text-[9px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-1 py-0.2 rounded-full hidden md:inline-flex items-center gap-0.5 shrink-0">
                     ✓ Done
+                  </span>
+                )}
+                {bestQuizScores[selectedModuleId] !== undefined && (
+                  <span className="text-[9px] font-bold text-amber-300 bg-amber-950/80 border border-amber-700/60 px-1.5 py-0.2 rounded-full inline-flex items-center gap-0.5 shrink-0">
+                    🎯 Quiz {bestQuizScores[selectedModuleId]}/3
                   </span>
                 )}
               </div>
@@ -5631,8 +5669,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   </div>
                 ) : (
                   /* ACTIVE QUIZ QUESTION SCREEN (ONE QUESTION AT A TIME) */
-                  <div className="space-y-5">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+                  <div className="space-y-5 w-full max-w-full">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                       <div>
                         <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider block">
                           Game {currentModuleIndex} of {totalModulesCount} · Step 5 of 5
@@ -5641,45 +5679,58 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           ⚡ Quick Check: Equilibrium Mastery
                         </h2>
                       </div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xs font-mono text-slate-400">
-                          Score: <strong className="text-amber-400 font-bold">{quizScore}</strong> / {quizQuestionIndex}
-                        </span>
+                      <div className="flex items-center justify-between sm:justify-end gap-2.5 flex-wrap">
+                        <div className="inline-flex items-center gap-2 bg-slate-950 px-3.5 py-1.5 rounded-xl border border-slate-800 shadow-inner">
+                          <span className="text-xs sm:text-sm font-mono font-bold text-amber-400">
+                            Question {quizQuestionIndex + 1} of {currentQuizQuestions.length}
+                          </span>
+                          <span className="text-slate-600">·</span>
+                          <span className="text-xs sm:text-sm font-mono text-slate-300">
+                            Score: <strong className="text-emerald-400 font-bold">{quizCorrectCount}</strong> / {quizAnsweredCount}
+                          </span>
+                        </div>
                         {/* Question indicator pills */}
                         <div className="flex items-center gap-1.5">
-                          {currentQuizQuestions.map((_, qIdx) => (
-                            <div
-                              key={qIdx}
-                              className={`h-2.5 rounded-full transition-all ${
-                                qIdx === quizQuestionIndex
-                                  ? 'w-7 bg-amber-400 animate-pulse'
-                                  : qIdx < quizQuestionIndex
-                                  ? 'w-5 bg-emerald-500'
-                                  : 'w-3 bg-slate-800'
-                              }`}
-                            />
-                          ))}
+                          {currentQuizQuestions.map((_, qIdx) => {
+                            const isAns = quizAnswers[qIdx] !== null;
+                            const isCor = isAns && quizAnswers[qIdx] === currentQuizQuestions[qIdx]?.correctIndex;
+                            return (
+                              <div
+                                key={qIdx}
+                                className={`h-2.5 rounded-full transition-all ${
+                                  qIdx === quizQuestionIndex
+                                    ? 'w-7 bg-amber-400 animate-pulse'
+                                    : isAns
+                                    ? isCor
+                                      ? 'w-5 bg-emerald-500'
+                                      : 'w-5 bg-rose-500'
+                                    : 'w-3 bg-slate-800'
+                                }`}
+                                title={`Question ${qIdx + 1} of ${currentQuizQuestions.length}`}
+                              />
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
 
                     {/* Question Card */}
                     <div className="bg-slate-950/90 rounded-2xl p-4 sm:p-6 border border-slate-800 space-y-3 shadow-md">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">
-                          Question {quizQuestionIndex + 1} of 3
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="text-xs sm:text-sm font-mono font-bold text-amber-400 uppercase tracking-wider bg-amber-950/70 border border-amber-800/80 px-2.5 py-1 rounded-lg">
+                          Question {quizQuestionIndex + 1} of {currentQuizQuestions.length}
                         </span>
-                        <span className="text-xs font-mono text-slate-500">
-                          Tap an answer below
+                        <span className="text-xs font-mono text-slate-400">
+                          {quizSelectedOption === null ? 'Tap an answer below' : 'Answer recorded'}
                         </span>
                       </div>
-                      <h3 className="text-lg sm:text-xl font-bold text-white leading-relaxed">
+                      <h3 className="text-lg sm:text-xl font-bold text-white leading-relaxed break-words">
                         {currentQuizQ.question}
                       </h3>
                     </div>
 
-                    {/* Big Tap Target Options (>=56px, 16-18px text) */}
-                    <div className="space-y-3">
+                    {/* Big Tap Target Options (>=56px, 16-18px text, fully responsive with no horizontal overflow) */}
+                    <div className="space-y-3 w-full">
                       {currentQuizQ.options.map((option, optIdx) => {
                         const isSelected = quizSelectedOption === optIdx;
                         const isAnswered = quizSelectedOption !== null;
@@ -5708,11 +5759,11 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                             onClick={() => handleSelectQuizOption(optIdx)}
                             className={`w-full min-h-[56px] p-4 rounded-2xl text-left text-base sm:text-lg flex items-center justify-between gap-3 border transition-all cursor-pointer active:scale-[0.99] ${buttonStyle}`}
                           >
-                            <div className="flex items-start gap-3 min-w-0">
+                            <div className="flex items-start gap-3 min-w-0 flex-1">
                               <span className="font-mono text-xs font-bold px-2 py-1 rounded bg-slate-900 border border-slate-800 shrink-0 mt-0.5 text-slate-400">
                                 {String.fromCharCode(65 + optIdx)}
                               </span>
-                              <span className="leading-snug">{option}</span>
+                              <span className="leading-snug break-words flex-1 text-sm sm:text-base font-medium">{option}</span>
                             </div>
                             {badgeIcon}
                           </button>
@@ -5723,7 +5774,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                     {/* Instant Feedback Box with One-Sentence Plain Language Explanation */}
                     {quizSelectedOption !== null && (
                       <div
-                        className={`p-4 sm:p-5 rounded-2xl border space-y-2 animate-in fade-in duration-200 ${
+                        className={`p-4 sm:p-5 rounded-2xl border space-y-2 animate-in fade-in duration-200 break-words ${
                           quizSelectedOption === currentQuizQ.correctIndex
                             ? 'bg-emerald-950/60 border-emerald-700/80 text-emerald-200'
                             : 'bg-amber-950/50 border-amber-700/80 text-amber-200'
@@ -5748,7 +5799,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                         >
                           <span>
                             {quizQuestionIndex < currentQuizQuestions.length - 1
-                              ? `Next Question (Question ${quizQuestionIndex + 2} of 3) →`
+                              ? `Next Question (Question ${quizQuestionIndex + 2} of ${currentQuizQuestions.length}) →`
                               : 'See Final Score & Complete Quick Check →'}
                           </span>
                         </button>
