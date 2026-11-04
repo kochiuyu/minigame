@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { WeekConfig } from '../types';
 import { WhatIfSandbox } from './WhatIfSandbox';
+import { getDebriefDistribution } from '../utils/instructorDebriefEngine';
 
 interface InstructorDashboardProps {
   currentWeek: WeekConfig;
@@ -38,6 +39,17 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({
   const [studentSearch, setStudentSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'pending'>('all');
 
+  // Close projector mode on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showProjectorMode) {
+        setShowProjectorMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showProjectorMode]);
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3500);
@@ -51,9 +63,20 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({
   // Simulated active classroom cohort dynamically adjusted by trialSeed
   const totalEnrolled = 32;
   const activeOnline = useMemo(() => {
-    return 26 + ((trialSeed * 7 + currentRound) % 7);
-  }, [trialSeed, currentRound]);
+    return isSessionActive ? 26 + ((trialSeed * 7 + currentRound) % 7) : 0;
+  }, [isSessionActive, trialSeed, currentRound]);
   const pairsMatched = Math.floor(activeOnline / 2);
+
+  // Live dynamic choice distribution & theoretical Nash debrief data
+  const debriefDist = useMemo(() => {
+    return getDebriefDistribution(
+      currentWeek.id,
+      activeOnline,
+      trialSeed,
+      currentRound,
+      isSessionActive
+    );
+  }, [currentWeek.id, activeOnline, trialSeed, currentRound, isSessionActive]);
 
   const handleNextRound = () => {
     if (currentRound < totalRounds) {
@@ -312,478 +335,519 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({
   };
 
   // Helper metrics for selected game
+  // Helper metrics for selected game synchronized 100% with debriefDist
   const gameMetrics = useMemo(() => {
     const id = currentWeek.id;
+    const bars = debriefDist.bars;
+    const total = debriefDist.totalSubmissions;
+
+    if (!debriefDist.hasData || bars.length === 0 || total === 0) {
+      return {
+        metric1Title: 'Primary Choice',
+        metric1Value: '0%',
+        metric1Sub: '0 of 0 submissions',
+        metric2Title: 'Secondary Choice',
+        metric2Value: '0%',
+        metric2Sub: '0 of 0 submissions',
+        metric3Title: 'Equilibrium Play',
+        metric3Value: '0%',
+        metric3Sub: '0 of 0 submissions',
+        nashPrediction: debriefDist.nashPredictionHeadline,
+        nashOutcomeText: debriefDist.nashOutcomeExplanation,
+        humanInsightText: debriefDist.behavioralInsight
+      };
+    }
+
     if (id === 1) {
+      // Prisoner's Dilemma
+      const cBar = bars[0]; // Cooperate
+      const dBar = bars[1]; // Defect
       return {
         metric1Title: 'Cooperation Rate',
-        metric1Value: '64%',
-        metric1Sub: '18 of 28 chose Cooperate',
-        metric2Title: 'Average Payoff',
-        metric2Value: '1.71 pts',
-        metric2Sub: 'Nash (D,D) pays 1.00 pt',
-        metric3Title: 'Defection Rate',
-        metric3Value: '36%',
-        metric3Sub: '10 of 28 chose Defect',
+        metric1Value: `${cBar?.percentage ?? 0}%`,
+        metric1Sub: `${cBar?.count ?? 0} of ${total} chose Cooperate`,
+        metric2Title: 'Defection Rate (Nash)',
+        metric2Value: `${dBar?.percentage ?? 0}%`,
+        metric2Sub: `${dBar?.count ?? 0} of ${total} chose Defect`,
+        metric3Title: 'Dominant Strategy Play',
+        metric3Value: `${dBar?.percentage ?? 0}%`,
+        metric3Sub: `${dBar?.count ?? 0} of ${total} played Nash`,
         nashPrediction: '100% Defection (Strict Dominant Strategy)',
         nashOutcomeText: 'Strict Nash Equilibrium is (Defect, Defect) yielding (1, 1). Rational self-interest drives players into this Pareto-inferior trap.',
         humanInsightText: 'In single-shot play without prior reputation, real human subjects cooperate 40%–65% of the time due to social preferences, warm glow, and altruistic norms.'
       };
     }
+
     if (id === 6) {
+      // Repeated PD
+      const cBar = bars[0]; // Sustained (C,C)
+      const rBar = bars[1]; // Retaliation
+      const dBar = bars[2]; // Persistent Defection
       return {
         metric1Title: 'Mutual Cooperation Rate',
-        metric1Value: '68%',
-        metric1Sub: '19 of 28 pairs played (C,C)',
-        metric2Title: 'Average Dyad Payoff',
-        metric2Value: '3.64 pts/rd',
-        metric2Sub: 'Maximum potential: 4.00 pts',
-        metric3Title: 'Retaliation / Defection Rate',
-        metric3Value: '32%',
-        metric3Sub: '9 pairs triggered punishment',
+        metric1Value: `${cBar?.percentage ?? 0}%`,
+        metric1Sub: `${cBar?.count ?? 0} of ${total} sustained (C,C)`,
+        metric2Title: 'Retaliation / Trigger Rate',
+        metric2Value: `${rBar?.percentage ?? 0}%`,
+        metric2Sub: `${rBar?.count ?? 0} of ${total} disciplined defection`,
+        metric3Title: 'Persistent Defection',
+        metric3Value: `${dBar?.percentage ?? 0}%`,
+        metric3Sub: `${dBar?.count ?? 0} of ${total} pairs triggered trap`,
         nashPrediction: 'Folk Theorem Sustained Cooperation (Tit-for-Tat / Grim Trigger)',
         nashOutcomeText: 'When discount factor delta is sufficiently large, credible retaliatory threats sustain the Pareto-efficient (C,C) profile as a Subgame Perfect Nash Equilibrium.',
         humanInsightText: 'Axelrod proved responsive reciprocity (Tit-for-Tat) dominates unprovoked hostility because it is nice, retaliatory, forgiving, and transparent.'
       };
     }
+
     if (id === 7) {
+      // Vickrey Auction
+      const tBar = bars[0]; // Truthful
+      const sBar = bars[1]; // Shaded
+      const oBar = bars[2]; // Overbidding
       return {
         metric1Title: 'Truthful Bidding Rate (b = v)',
-        metric1Value: '61%',
-        metric1Sub: '17 of 28 bid exact value',
-        metric2Title: 'Average Winner Profit',
-        metric2Value: '+2.1 pts',
-        metric2Sub: 'Clearing price: 2nd highest bid',
-        metric3Title: 'Shading / Underbidding Rate',
-        metric3Value: '25%',
-        metric3Sub: '7 of 28 forewent profit',
+        metric1Value: `${tBar?.percentage ?? 0}%`,
+        metric1Sub: `${tBar?.count ?? 0} of ${total} bid exact valuation`,
+        metric2Title: 'Shading / Underbidding Rate',
+        metric2Value: `${sBar?.percentage ?? 0}%`,
+        metric2Sub: `${sBar?.count ?? 0} of ${total} forewent profit`,
+        metric3Title: 'Overbidding Rate (b > v)',
+        metric3Value: `${oBar?.percentage ?? 0}%`,
+        metric3Sub: `${oBar?.count ?? 0} of ${total} risked winner's curse`,
         nashPrediction: 'b*(v) = v (Weakly Dominant Strategy)',
         nashOutcomeText: 'In a second-price sealed-bid auction, bidding your exact valuation weakly dominates all other bids regardless of competitor beliefs.',
         humanInsightText: 'Human subjects often carry over bid-shading heuristics from first-price auctions, or mistakenly fear that bidding high will force them to pay their own bid.'
       };
     }
+
     if (id === 8) {
+      // First-Price Auction
+      const sBar = bars[0]; // Shading
+      const tBar = bars[1]; // Truthful / Zero-margin
+      const oBar = bars[2]; // Overbidding
       return {
-        metric1Title: 'Shaded Bidding Rate',
-        metric1Value: '71%',
-        metric1Sub: '20 of 28 shaded their bids',
-        metric2Title: 'Average Winning Bid',
-        metric2Value: '6.4 pts',
-        metric2Sub: 'Pays own bid upon winning',
+        metric1Title: 'Shaded Bidding Rate (b < v)',
+        metric1Value: `${sBar?.percentage ?? 0}%`,
+        metric1Sub: `${sBar?.count ?? 0} of ${total} shaded their bids`,
+        metric2Title: 'Zero-Margin Bidding Rate',
+        metric2Value: `${tBar?.percentage ?? 0}%`,
+        metric2Sub: `${tBar?.count ?? 0} of ${total} bid full valuation`,
         metric3Title: 'Winner\'s Curse Rate',
-        metric3Value: '18%',
-        metric3Sub: '5 paid above true item value',
+        metric3Value: `${oBar?.percentage ?? 0}%`,
+        metric3Sub: `${oBar?.count ?? 0} of ${total} paid above valuation`,
         nashPrediction: 'b*(v) = (N-1)/N * v (Bayesian Nash)',
         nashOutcomeText: 'Bidders must shade below private estimate to balance margin against probability of winning. In common value auctions, failing to shade produces Winner\'s Curse.',
         humanInsightText: 'Students frequently fall victim to Winner\'s Curse in early rounds because winning implies you held the most optimistic (overestimated) signal in the room.'
       };
     }
-    if (id === 9) {
+
+    if (id === 9 || id === 13) {
+      // Stag Hunt
+      const sBar = bars[0]; // Stag
+      const hBar = bars[1]; // Hare
       return {
         metric1Title: 'Stag Coordination Rate',
-        metric1Value: '57%',
-        metric1Sub: '16 of 28 hunted Stag',
-        metric2Title: 'Coordination Success',
-        metric2Value: '71%',
-        metric2Sub: 'Matching choices achieved',
-        metric3Title: 'Hare (Safe / Risk-Dominant)',
-        metric3Value: '43%',
-        metric3Sub: '12 picked safe 3 pts',
+        metric1Value: `${sBar?.percentage ?? 0}%`,
+        metric1Sub: `${sBar?.count ?? 0} of ${total} hunted Stag`,
+        metric2Title: 'Hare (Safe / Risk-Dominant)',
+        metric2Value: `${hBar?.percentage ?? 0}%`,
+        metric2Sub: `${hBar?.count ?? 0} of ${total} picked safe 3 pts`,
+        metric3Title: 'Payoff-Dominant Alignment',
+        metric3Value: `${sBar?.percentage ?? 0}%`,
+        metric3Sub: `${sBar?.count ?? 0} of ${total} achieved mutual trust`,
         nashPrediction: 'Two Pure Equilibria: (Stag, Stag) & (Hare, Hare)',
         nashOutcomeText: '(Stag, Stag) is Pareto payoff-dominant (5, 5), while (Hare, Hare) is risk-dominant (3, 3) because Hare guarantees 3 points regardless of partner choice.',
         humanInsightText: 'Strategic uncertainty drives players toward Hare. Assurance mechanisms (pre-play cheap talk, mutual history) are required to coordinate on Stag.'
       };
     }
-    if (id === 10) {
+
+    if (id === 3 || id === 10 || id === 14) {
+      // Price Competition / Bertrand
+      const b0 = bars[0];
+      const b1 = bars[1];
+      const b2 = bars[2] || bars[1];
       return {
-        metric1Title: 'Marginal Cost Pricing Rate',
-        metric1Value: '46%',
-        metric1Sub: '13 firms priced at MC ($2)',
-        metric2Title: 'Average Market Price',
-        metric2Value: '$3.80',
-        metric2Sub: 'Monopoly price: $10',
-        metric3Title: 'Collusive / High Pricing',
-        metric3Value: '21%',
-        metric3Sub: '6 firms undercut colluders',
-        nashPrediction: 'P1 = P2 = MC = $2 (Bertrand Paradox)',
+        metric1Title: b0?.label ? `${b0.label.split('(')[0].trim()} Rate` : 'High Price Rate',
+        metric1Value: `${b0?.percentage ?? 0}%`,
+        metric1Sub: `${b0?.count ?? 0} of ${total} submissions`,
+        metric2Title: b1?.label ? `${b1.label.split('(')[0].trim()} Rate` : 'Undercutting Rate',
+        metric2Value: `${b1?.percentage ?? 0}%`,
+        metric2Sub: `${b1?.count ?? 0} of ${total} submissions`,
+        metric3Title: 'Marginal Cost / Nash Play',
+        metric3Value: `${(bars.find(b => b.isNash) || b2)?.percentage ?? 0}%`,
+        metric3Sub: `${(bars.find(b => b.isNash) || b2)?.count ?? 0} of ${total} in equilibrium`,
+        nashPrediction: 'P1 = P2 = MC (Bertrand Paradox)',
         nashOutcomeText: 'With homogeneous goods and constant marginal cost, intense price competition drives market prices down to marginal cost with only two firms.',
-        humanInsightText: 'Students initially attempt to collude at monopoly prices ($8–$10), but unilateral temptation to undercut by $0.50 rapidly sparks a price war down to MC.'
+        humanInsightText: 'Students initially attempt to collude at monopoly prices, but unilateral temptation to undercut rapidly sparks a price war down to MC.'
       };
     }
+
     if (id === 11) {
+      // Beauty Contest
+      const l0Bar = bars[0];
+      const l1Bar = bars[1];
+      const l2Bar = bars[2];
+      const nashBar = bars[3];
       return {
-        metric1Title: 'Mean Class Guess',
-        metric1Value: '27.4',
-        metric1Sub: 'Target (2/3 of mean): 18.3',
-        metric2Title: 'Level-1 Guessers (~33)',
-        metric2Value: '50%',
-        metric2Sub: '14 of 28 assumed Level-0',
-        metric3Title: 'Nash Guessers (0)',
-        metric3Value: '8%',
-        metric3Sub: '2 of 28 played equilibrium',
+        metric1Title: 'Level-1 Guessers (~33)',
+        metric1Value: `${l1Bar?.percentage ?? 0}%`,
+        metric1Sub: `${l1Bar?.count ?? 0} of ${total} best-responded to L0`,
+        metric2Title: 'Level-0 Guessers (~50)',
+        metric2Value: `${l0Bar?.percentage ?? 0}%`,
+        metric2Sub: `${l0Bar?.count ?? 0} of ${total} unreflective / naive`,
+        metric3Title: 'Depth of Reasoning (L2 + Nash)',
+        metric3Value: `${(l2Bar?.percentage ?? 0) + (nashBar?.percentage ?? 0)}%`,
+        metric3Sub: `${(l2Bar?.count ?? 0) + (nashBar?.count ?? 0)} of ${total} stepped 2+ ahead`,
         nashPrediction: 'Unique Nash Equilibrium: Guess 0',
         nashOutcomeText: 'Iterated elimination of weakly dominated strategies eliminates any guess > 66.7, then > 44.4, unraveling to the unique fixed point of 0.',
         humanInsightText: 'Playing the pure Nash equilibrium (0) loses! Winning requires depth of reasoning: anticipating that peers will reason to Level-1 (~33) or Level-2 (~22).'
       };
     }
+
     if (id === 12) {
+      // Public Goods
+      const highBar = bars[0];
+      const midBar = bars[1];
+      const lowBar = bars[2];
       return {
-        metric1Title: 'Average Contribution Rate',
-        metric1Value: '54%',
-        metric1Sub: '5.4 / 10 tokens contributed',
-        metric2Title: 'Group Pool Multiplier',
-        metric2Value: '1.6x',
-        metric2Sub: '0.4x marginal private return',
-        metric3Title: 'Free-Rider Rate (0–2 pts)',
-        metric3Value: '18%',
-        metric3Sub: '5 free-rode on peers',
+        metric1Title: 'High Contribution Rate',
+        metric1Value: `${highBar?.percentage ?? 0}%`,
+        metric1Sub: `${highBar?.count ?? 0} of ${total} contributed majority`,
+        metric2Title: 'Moderate / Conditional Rate',
+        metric2Value: `${midBar?.percentage ?? 0}%`,
+        metric2Sub: `${midBar?.count ?? 0} of ${total} contributed moderately`,
+        metric3Title: 'Free-Rider Rate (Nash Dominant)',
+        metric3Value: `${lowBar?.percentage ?? 0}%`,
+        metric3Sub: `${lowBar?.count ?? 0} of ${total} free-rode on peers`,
         nashPrediction: 'Zero Contribution (Dominant Strategy)',
         nashOutcomeText: 'Since the marginal per-capita return (0.4x) is less than 1.0x, free-riding is a dominant strategy for self-interested rational players.',
         humanInsightText: 'Empirical contributions start high (~50%) via conditional cooperation, then decay over repeated rounds as cooperators witness free-riding and punish the pool.'
       };
     }
-    if (id === 13) {
+
+    if (id === 2 || id === 15) {
+      // Hawk-Dove
+      const hawkBar = bars[0];
+      const doveBar = bars[1];
       return {
         metric1Title: 'Aggressive (Hawk) Rate',
-        metric1Value: '39%',
-        metric1Sub: '11 of 28 played Hawk',
-        metric2Title: 'Mutual Crash Rate (H, H)',
-        metric2Value: '14%',
-        metric2Sub: 'Severe payoff penalty (-5, -5)',
-        metric3Title: 'Accommodating (Dove) Rate',
-        metric3Value: '61%',
-        metric3Sub: '17 shared the territory',
+        metric1Value: `${hawkBar?.percentage ?? 0}%`,
+        metric1Sub: `${hawkBar?.count ?? 0} of ${total} played Hawk`,
+        metric2Title: 'Accommodating (Dove) Rate',
+        metric2Value: `${doveBar?.percentage ?? 0}%`,
+        metric2Sub: `${doveBar?.count ?? 0} of ${total} shared territory`,
+        metric3Title: 'Aggressive Bias vs ESS',
+        metric3Value: `${hawkBar?.percentage ?? 0}%`,
+        metric3Sub: 'Theoretical ESS: 50% Hawk',
         nashPrediction: 'Two Pure Asymmetric + One Mixed ESS',
         nashOutcomeText: 'Pure equilibria: (Hawk, Dove) and (Dove, Hawk). Symmetric mixed-strategy Nash equilibrium dictates Hawk with probability V/C.',
         humanInsightText: 'Players use asymmetries and commitment signals (swerving first vs throwing away the steering wheel) to establish deterrence without costly crashes.'
       };
     }
-    if (id === 14) {
+
+    if (id === 5 || id === 16) {
+      // Ultimatum / Deterrence
+      const b0 = bars[0];
+      const b1 = bars[1];
+      const b2 = bars[2];
       return {
-        metric1Title: 'Fair Offer Rate (40%–50%)',
-        metric1Value: '72%',
-        metric1Sub: '20 of 28 proposed $4–$5',
-        metric2Title: 'Rejection Rate (< $3)',
-        metric2Value: '68%',
-        metric2Sub: 'Low offers rejected',
-        metric3Title: 'Average Offer Proposed',
-        metric3Value: '$4.20',
-        metric3Sub: 'Out of $10 total pie',
-        nashPrediction: 'Proposer offers $1 (or $0.01); Responder accepts',
-        nashOutcomeText: 'Subgame perfection: since $1 > $0, rational responders accept any positive amount, so the proposer extracts virtually the entire surplus.',
-        humanInsightText: 'Real responders possess strong inequity aversion: they willingly pay money to punish unfair offers (<30%), enforcing social fairness norms.'
+        metric1Title: b0?.label ? `${b0.label.split('(')[0].trim()} Rate` : 'Fair Offer Rate',
+        metric1Value: `${b0?.percentage ?? 0}%`,
+        metric1Sub: `${b0?.count ?? 0} of ${total} submissions`,
+        metric2Title: b1?.label ? `${b1.label.split('(')[0].trim()} Rate` : 'Skewed / Low Rate',
+        metric2Value: `${b1?.percentage ?? 0}%`,
+        metric2Sub: `${b1?.count ?? 0} of ${total} submissions`,
+        metric3Title: b2?.label ? `${b2.label.split('(')[0].trim()} Rate` : 'Subgame Perfect Nash',
+        metric3Value: `${b2?.percentage ?? 0}%`,
+        metric3Sub: `${b2?.count ?? 0} of ${total} played SPNE`,
+        nashPrediction: debriefDist.nashPredictionHeadline,
+        nashOutcomeText: debriefDist.nashOutcomeExplanation,
+        humanInsightText: debriefDist.behavioralInsight
       };
     }
-    if (id === 15) {
-      return {
-        metric1Title: 'Heads Selection Rate',
-        metric1Value: '48%',
-        metric1Sub: 'Near-perfect 50/50 balance',
-        metric2Title: 'Tails Selection Rate',
-        metric2Value: '52%',
-        metric2Sub: 'No exploitable pure bias',
-        metric3Title: 'Matcher Win Rate',
-        metric3Value: '50%',
-        metric3Sub: 'Zero-sum net balance',
-        nashPrediction: 'Mixed Strategy Nash: 50% Heads, 50% Tails',
-        nashOutcomeText: 'No pure Nash equilibrium exists. The unique minimax equilibrium requires each player to randomize uniformly 50/50 to remain unexploitable.',
-        humanInsightText: 'Humans struggle to generate true randomness, exhibiting serial correlation (avoiding streaks of 3+ heads) that algorithmic bots can exploit.'
-      };
-    }
-    if (id === 16) {
-      return {
-        metric1Title: 'Successful Coordination',
-        metric1Value: '64%',
-        metric1Sub: '18 of 28 agreed on venue',
-        metric2Title: 'Miscoordination Rate',
-        metric2Value: '36%',
-        metric2Sub: 'Both earned 0 points',
-        metric3Title: 'Option A (Football) Split',
-        metric3Value: '54%',
-        metric3Sub: 'vs 46% Option B (Opera)',
-        nashPrediction: 'Two Pure Equilibria + Mixed Strategy Nash',
-        nashOutcomeText: 'Both players prefer to coordinate rather than clash, but disagree on which equilibrium is preferred. Mixed strategy yields frequent coordination failure.',
-        humanInsightText: 'Real subjects use focal points (Schelling salience), alternating turns across repeated rounds, or pre-play communication to break deadlock.'
-      };
-    }
+
     if (id === 17) {
+      // Matching Pennies or Trust
+      const b0 = bars[0];
+      const b1 = bars[1];
+      const b2 = bars[2];
       return {
-        metric1Title: 'Average Amount Sent',
-        metric1Value: '5.8 / 10',
-        metric1Sub: 'Tripled upon transfer',
-        metric2Title: 'Average Return Ratio',
-        metric2Value: '1.42x',
-        metric2Sub: 'Reciprocity rewards trust',
-        metric3Title: 'High-Trust Investors ($8+)',
-        metric3Value: '43%',
-        metric3Sub: '12 sent maximum tokens',
-        nashPrediction: 'Backward Induction: Send $0, Return $0',
-        nashOutcomeText: 'In the final stage, a selfish Trustee returns $0. Anticipating this, the rational Investor sends $0 in Stage 1, leaving total surplus at 10.',
-        humanInsightText: 'Trust generates mutual surplus: investors routinely send >50% of endowment, and trustees reciprocate by returning more than the principal.'
+        metric1Title: b0?.label ? `${b0.label.split('(')[0].trim()} Rate` : 'Heads / High Trust',
+        metric1Value: `${b0?.percentage ?? 0}%`,
+        metric1Sub: `${b0?.count ?? 0} of ${total} submissions`,
+        metric2Title: b1?.label ? `${b1.label.split('(')[0].trim()} Rate` : 'Tails / Moderate',
+        metric2Value: `${b1?.percentage ?? 0}%`,
+        metric2Sub: `${b1?.count ?? 0} of ${total} submissions`,
+        metric3Title: b2?.label ? `${b2.label.split('(')[0].trim()} Rate` : 'Minimax Deviation',
+        metric3Value: `${b2 ? b2.percentage : Math.abs((b0?.percentage ?? 50) - 50)}%`,
+        metric3Sub: b2 ? `${b2.count} of ${total} submissions` : 'Deviation from 50/50 minimax',
+        nashPrediction: debriefDist.nashPredictionHeadline,
+        nashOutcomeText: debriefDist.nashOutcomeExplanation,
+        humanInsightText: debriefDist.behavioralInsight
       };
     }
-    // Default to Centipede Game (id 20)
+
+    if (id === 18) {
+      // Battle of the Sexes
+      const aBar = bars[0];
+      const bBar = bars[1];
+      return {
+        metric1Title: 'Option A (Football / Arena)',
+        metric1Value: `${aBar?.percentage ?? 0}%`,
+        metric1Sub: `${aBar?.count ?? 0} of ${total} chose Option A`,
+        metric2Title: 'Option B (Opera / Concert)',
+        metric2Value: `${bBar?.percentage ?? 0}%`,
+        metric2Sub: `${bBar?.count ?? 0} of ${total} chose Option B`,
+        metric3Title: 'Coordination Asymmetry',
+        metric3Value: `${Math.abs((aBar?.percentage ?? 50) - (bBar?.percentage ?? 50))}% delta`,
+        metric3Sub: 'Mixed strategy miscoordinates 50%',
+        nashPrediction: debriefDist.nashPredictionHeadline,
+        nashOutcomeText: debriefDist.nashOutcomeExplanation,
+        humanInsightText: debriefDist.behavioralInsight
+      };
+    }
+
+    // Default handler for all other games (e.g. Blotto, Centipede, Cournot, Hotelling, etc.)
+    const b0 = bars[0];
+    const b1 = bars[1];
+    const b2 = bars[2] || bars.find(b => b.isNash) || bars[1];
     return {
-      metric1Title: 'Node 1 Immediate Take (SPNE)',
-      metric1Value: '7%',
-      metric1Sub: '2 of 28 ended at Node 1',
-      metric2Title: 'Average Chain Depth',
-      metric2Value: 'Node 4.2',
-      metric2Sub: 'Chain reaches 70% depth',
-      metric3Title: 'Deep / Terminal Cooperation',
-      metric3Value: '39%',
-      metric3Sub: '11 reached Nodes 5–6',
-      nashPrediction: 'SPNE: Take Immediately at Node 1 (2, 0)',
-      nashOutcomeText: 'By strict backward induction, Player 2 would Take at Node 6; knowing this, Player 1 Takes at Node 5; cascading backwards to an immediate Node 1 Take.',
-      humanInsightText: 'Real subjects pass because the opportunity cost of trusting is low ($1) while the welfare multiplier is huge ($8 vs $2), demonstrating bounded rationality and altruism.'
+      metric1Title: b0?.label ? `${b0.label.split('(')[0].trim()} Rate` : 'Primary Decision',
+      metric1Value: `${b0?.percentage ?? 0}%`,
+      metric1Sub: `${b0?.count ?? 0} of ${total} submissions`,
+      metric2Title: b1?.label ? `${b1.label.split('(')[0].trim()} Rate` : 'Secondary Decision',
+      metric2Value: `${b1?.percentage ?? 0}%`,
+      metric2Sub: `${b1?.count ?? 0} of ${total} submissions`,
+      metric3Title: b2?.label ? `${b2.label.split('(')[0].trim()} Rate` : 'Equilibrium Benchmark',
+      metric3Value: `${b2?.percentage ?? 0}%`,
+      metric3Sub: `${b2?.count ?? 0} of ${total} in equilibrium`,
+      nashPrediction: debriefDist.nashPredictionHeadline,
+      nashOutcomeText: debriefDist.nashOutcomeExplanation,
+      humanInsightText: debriefDist.behavioralInsight
     };
-  }, [currentWeek.id]);
+  }, [currentWeek.id, debriefDist]);
 
   // ==========================================
   // PROJECTOR FULL-SCREEN PRESENTATION MODE
   // ==========================================
   if (showProjectorMode) {
     return (
-      <div className="fixed inset-0 z-50 bg-[#0B0F17] text-slate-100 overflow-y-auto font-sans p-6 lg:p-10 flex flex-col justify-between">
-        <div>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-            <div>
-              <div className="flex items-center gap-3 text-xs text-slate-400 mb-1">
-                <span className="font-mono text-emerald-400 font-bold uppercase tracking-widest text-[11px]">
-                  ● Live Classroom Projector
-                </span>
-                <span>·</span>
-                <span>DOTE 3090 Experimental Economics</span>
-                <span>·</span>
-                <span className="font-mono tabular-nums text-slate-300">{activeOnline} Students Connected</span>
-              </div>
-              <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tight flex items-center gap-3">
-                <span>{currentWeek.icon}</span>
-                <span>{currentWeek.title}</span>
-              </h1>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2 text-right">
-                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Join Room Code</div>
-                <div className="text-2xl font-mono font-black text-blue-400 tracking-widest leading-none">
-                  {roomCode}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 font-mono text-sm">
-                  <button
-                    onClick={handlePrevRound}
-                    disabled={currentRound <= 1}
-                    className="px-2.5 py-1 text-slate-400 hover:text-white disabled:opacity-30 cursor-pointer"
-                    title="Previous Round"
-                  >
-                    ◀
-                  </button>
-                  <span className="px-2 font-bold text-white tabular-nums">
-                    Round {currentRound} / {totalRounds}
-                  </span>
-                  <button
-                    onClick={handleNextRound}
-                    className="px-2.5 py-1 text-slate-400 hover:text-white cursor-pointer"
-                    title="Next Round"
-                  >
-                    ▶
-                  </button>
-                </div>
-
-                <button
-                  onClick={handleGenerateFreshCohortTrial}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
-                >
-                  <span>🎲</span>
-                  <span>Fresh Trial</span>
-                </button>
-
-                <button
-                  onClick={() => setShowDebriefSandbox(prev => !prev)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                    showDebriefSandbox
-                      ? 'bg-indigo-600 text-white border-indigo-400 shadow-md ring-2 ring-indigo-500/30'
-                      : 'bg-slate-900 text-indigo-300 border-slate-700 hover:bg-slate-800'
-                  }`}
-                >
-                  <span className="font-mono">∫</span>
-                  <span>{showDebriefSandbox ? 'Hide Curves' : 'Debrief Curves'}</span>
-                </button>
-
-                <button
-                  onClick={() => setShowProjectorMode(false)}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
-                >
-                  ✕ Exit Projector
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {activeMessage && (
-            <div className="mt-4 bg-slate-900/90 border border-amber-500/40 rounded-xl px-4 py-2.5 flex items-center justify-between text-sm text-amber-200">
-              <div className="flex items-center gap-2.5">
-                <span className="font-mono font-bold text-amber-400 text-xs px-2 py-0.5 bg-amber-500/20 rounded">
-                  BROADCAST
-                </span>
-                <span>{activeMessage}</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Projector Body Grid */}
-        <div className="my-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">Classroom Action Distribution</h2>
-                <p className="text-xs text-slate-400">Aggregate telemetry across {activeOnline} active participants</p>
-              </div>
-              <span className="text-xs font-mono font-bold px-2.5 py-1 bg-blue-500/15 text-blue-300 rounded border border-blue-500/30">
-                Round {currentRound} Results
+      <div className="fixed inset-0 z-50 bg-[#0B0F17] text-slate-100 overflow-y-auto font-sans p-6 sm:p-8 lg:p-12 flex flex-col justify-between space-y-6 select-none">
+        {/* Projector Top Header */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800/80 pb-5">
+          <div>
+            <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-slate-400 mb-1 font-mono">
+              <span className="text-emerald-400 font-bold uppercase tracking-widest text-[11px] sm:text-xs">
+                ● Live Classroom Projector
               </span>
+              <span>·</span>
+              <span>DOTE 3090 Game Theory</span>
+              <span>·</span>
+              <span className="text-slate-300 font-bold">Room: {roomCode}</span>
+              <span>·</span>
+              <span className="text-sky-300 font-bold">{debriefDist.totalSubmissions} Decisions Tracked</span>
             </div>
-
-            {/* KPI Triad */}
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="p-3 bg-purple-950/40 border border-purple-800/50 rounded-xl">
-                <span className="text-purple-300 text-xs font-medium block mb-1">{gameMetrics.metric1Title}</span>
-                <span className="text-2xl font-black font-mono tabular-nums text-purple-200">{gameMetrics.metric1Value}</span>
-              </div>
-              <div className="p-3 bg-slate-800/50 border border-slate-700 rounded-xl">
-                <span className="text-slate-300 text-xs font-medium block mb-1">{gameMetrics.metric2Title}</span>
-                <span className="text-2xl font-black font-mono tabular-nums text-emerald-300">{gameMetrics.metric2Value}</span>
-              </div>
-              <div className="p-3 bg-slate-800/50 border border-slate-700 rounded-xl">
-                <span className="text-amber-400 text-xs font-medium block mb-1">{gameMetrics.metric3Title}</span>
-                <span className="text-2xl font-black font-mono tabular-nums text-amber-300">{gameMetrics.metric3Value}</span>
-              </div>
-            </div>
-
-            {/* Debrief callout */}
-            <div className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 text-xs text-slate-300 leading-relaxed space-y-2">
-              <div>
-                <span className="text-emerald-400 font-bold uppercase tracking-wider text-[11px] block">
-                  Textbook Theory Prediction:
-                </span>
-                <p className="text-slate-200 font-medium">{gameMetrics.nashOutcomeText}</p>
-              </div>
-              <div className="pt-2 border-t border-slate-800">
-                <span className="text-blue-400 font-bold uppercase tracking-wider text-[11px] block">
-                  Observed Human Student Behavior:
-                </span>
-                <p className="text-slate-300">{gameMetrics.humanInsightText}</p>
-              </div>
-            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight flex items-center gap-3">
+              <span>{currentWeek.icon}</span>
+              <span>{currentWeek.title}</span>
+            </h1>
           </div>
 
-          <div className="space-y-5">
-            {showDebriefSandbox ? (
-              <WhatIfSandbox game={currentWeek} />
-            ) : (
-              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-white tracking-tight">
-                    {currentWeek.id === 7 || currentWeek.id === 8 ? 'Live Market Clearing Ladder' : 'Dyad Interaction Status'}
-                  </h2>
-                  <span className="text-xs text-slate-400 font-mono">
-                    Round {currentRound} Standings
-                  </span>
-                </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Round navigation */}
+            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-2xl p-1.5 font-mono text-sm sm:text-base">
+              <button
+                onClick={handlePrevRound}
+                disabled={currentRound <= 1}
+                className="px-3 py-1.5 text-slate-400 hover:text-white disabled:opacity-30 cursor-pointer font-bold"
+                title="Previous Round"
+              >
+                ◀
+              </button>
+              <span className="px-3 font-bold text-white tabular-nums">
+                Round {currentRound} / {totalRounds}
+              </span>
+              <button
+                onClick={handleNextRound}
+                className="px-3 py-1.5 text-slate-400 hover:text-white cursor-pointer font-bold"
+                title="Next Round"
+              >
+                ▶
+              </button>
+            </div>
 
-                <div className="overflow-x-auto">
-                  {currentWeek.id === 7 || currentWeek.id === 8 ? (
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-slate-400 font-medium">
-                          <th className="pb-2">Bidder</th>
-                          <th className="pb-2">Valuation</th>
-                          <th className="pb-2">Bid</th>
-                          <th className="pb-2">Status</th>
-                          <th className="pb-2 text-right">Profit</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800 text-slate-200">
-                        {auctionStudents.slice(0, 6).map((s, idx) => {
-                          const isWinner = idx === 0;
-                          const isPricePayer = currentWeek.id === 7 ? idx === 1 : idx === 0;
-                          const secondBid = auctionStudents[1]?.bid || 0;
-                          const clearing = currentWeek.id === 7 ? secondBid : (auctionStudents[0]?.bid || 0);
-                          const profit = isWinner ? Math.round((s.val - clearing) * 10) / 10 : 0;
-                          return (
-                            <tr key={s.id}>
-                              <td className="py-2.5 font-bold text-white">{s.name} ({s.alias})</td>
-                              <td className="py-2.5 font-mono tabular-nums text-slate-300">{s.val} pts</td>
-                              <td className="py-2.5 font-mono tabular-nums text-blue-400 font-bold">{s.bid} pts</td>
-                              <td className="py-2.5">
-                                {isWinner ? (
-                                  <span className="text-emerald-400 font-bold">● Won Auction</span>
-                                ) : isPricePayer && currentWeek.id === 7 ? (
-                                  <span className="text-amber-400 font-bold">🏷️ Set 2nd Price</span>
-                                ) : (
-                                  <span className="text-slate-500">○ Outbid</span>
-                                )}
-                              </td>
-                              <td className="py-2.5 text-right font-mono tabular-nums font-bold text-emerald-400">
-                                {profit > 0 ? `+${profit}` : profit} pts
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-slate-400 font-medium">
-                          <th className="pb-2">Dyad</th>
-                          <th className="pb-2">Participants</th>
-                          <th className="pb-2">Trajectory</th>
-                          <th className="pb-2">Status</th>
-                          <th className="pb-2 text-right">Score</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800 text-slate-200">
-                        {dyadPairs.map((p, idx) => (
-                          <tr key={idx}>
-                            <td className="py-2.5 font-bold text-white">{p.table}</td>
-                            <td className="py-2.5">{p.p1.split(' ')[0]} & {p.p2.split(' ')[0]}</td>
-                            <td className="py-2.5">
-                              <span className="font-mono tabular-nums font-bold text-slate-300">
-                                {p.trajectory}
-                              </span>
-                            </td>
-                            <td className="py-2.5">
-                              <span className={p.trustStatus.includes('Intact') ? 'text-emerald-400 font-semibold' : 'text-amber-400 font-semibold'}>
-                                {p.trustStatus}
-                              </span>
-                            </td>
-                            <td className="py-2.5 text-right font-mono tabular-nums font-bold text-white">
-                              {p.score1} : {p.score2}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-            )}
+            <button
+              onClick={handleGenerateFreshCohortTrial}
+              className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
+            >
+              <span>🎲</span>
+              <span>Fresh Trial</span>
+            </button>
+
+            {/* Obvious prominent exit button */}
+            <button
+              onClick={() => setShowProjectorMode(false)}
+              className="px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-sm sm:text-base font-black bg-rose-600 hover:bg-rose-500 text-white border-2 border-rose-400 shadow-2xl transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+              title="Exit Projector View (or press Escape)"
+            >
+              <span>✕</span>
+              <span>Exit Projector View</span>
+            </button>
           </div>
         </div>
 
-        <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
-          <span>MobLab-Style Classroom Experiment Simulator · Dynamic Trial Seed #{trialSeed}</span>
-          <button
-            onClick={() => setShowDebriefSandbox(prev => !prev)}
-            className="text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer"
-          >
-            {showDebriefSandbox ? 'Switch to Live Leaderboard' : 'Switch to Interactive What-If Curves'}
-          </button>
+        {/* Projector Body: Only Chart & Equilibrium Gap Summary */}
+        {!debriefDist.hasData ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-slate-900/60 border-2 border-dashed border-slate-700/80 rounded-3xl space-y-4 my-8">
+            <div className="text-6xl mb-2">📊</div>
+            <h2 className="text-3xl font-black text-white">No Student Decisions Recorded Yet</h2>
+            <p className="text-lg text-slate-300 max-w-xl mx-auto leading-relaxed">
+              Waiting for students in room <strong className="font-mono text-blue-400">{roomCode}</strong> to lock their Round {currentRound} decisions, or click <span className="text-purple-300 font-bold">&ldquo;🎲 Fresh Trial&rdquo;</span> to simulate a live cohort.
+            </p>
+            <button
+              onClick={handleGenerateFreshCohortTrial}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white text-base font-bold rounded-2xl transition-all shadow-xl cursor-pointer mt-4"
+            >
+              <span>🎲</span>
+              <span>Simulate Active Student Cohort</span>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-6 flex-1 flex flex-col justify-between">
+            {/* One-Line Equilibrium Gap Summary at very large text */}
+            <div className="bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900 border-2 border-blue-500/70 rounded-3xl p-6 sm:p-8 shadow-2xl">
+              <div className="flex items-center gap-2.5 text-xs sm:text-sm font-bold uppercase tracking-widest text-sky-400 font-mono mb-2">
+                <span className="text-xl">⚡</span>
+                <span>Equilibrium Gap Summary</span>
+              </div>
+              <p className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-amber-300 leading-tight tracking-tight">
+                &ldquo;{debriefDist.equilibriumGap}&rdquo;
+              </p>
+            </div>
+
+            {/* Main Live Chart & Nash Benchmark Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch flex-1">
+              {/* Left 7 cols: Choice Distribution Bars */}
+              <div className="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col justify-between space-y-6">
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
+                    <div>
+                      <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                        Classroom Choice Distribution
+                      </h2>
+                      <p className="text-sm text-slate-400 mt-0.5">
+                        Empirical decisions from {debriefDist.totalSubmissions} participants in Round {currentRound}
+                      </p>
+                    </div>
+                    <span className="text-sm font-mono font-bold px-3 py-1 bg-blue-500/20 text-blue-300 rounded-xl border border-blue-500/40">
+                      Live Telemetry
+                    </span>
+                  </div>
+
+                  {/* Distribution Bars */}
+                  <div className="space-y-6">
+                    {debriefDist.bars.map((bar) => (
+                      <div key={bar.id} className="space-y-2">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-lg sm:text-xl font-bold text-white">
+                              {bar.label}
+                            </span>
+                            {bar.isNash && (
+                              <span className="text-xs font-mono font-bold px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full flex items-center gap-1">
+                                <span>⭐</span>
+                                <span>Nash Eq</span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-2xl sm:text-3xl font-mono font-black text-sky-300 tabular-nums">
+                              {bar.percentage}%
+                            </span>
+                            <span className="text-sm sm:text-base font-mono text-slate-400 font-semibold">
+                              ({bar.count} students)
+                            </span>
+                          </div>
+                        </div>
+
+                        {bar.sublabel && (
+                          <p className="text-xs sm:text-sm text-slate-400 font-medium">
+                            {bar.sublabel}
+                          </p>
+                        )}
+
+                        {/* Bar Track */}
+                        <div className="w-full bg-slate-950 rounded-2xl h-8 sm:h-10 p-1 border border-slate-800/80 overflow-hidden flex items-center">
+                          <div
+                            className={`${bar.color} h-full rounded-xl transition-all duration-700 flex items-center justify-end pr-3`}
+                            style={{ width: `${Math.max(6, bar.percentage)}%` }}
+                          >
+                            <span className="text-xs sm:text-sm font-mono font-bold text-white drop-shadow">
+                              {bar.percentage}%
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs sm:text-sm font-mono text-slate-400">
+                          <span className="text-slate-500">Student Share: {bar.count} of {debriefDist.totalSubmissions}</span>
+                          <span className={bar.isNash ? 'text-amber-300 font-bold' : 'text-slate-400'}>
+                            Theoretical Benchmark: {bar.nashPredictionText}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right 5 cols: Theoretical Nash Equilibrium Prediction */}
+              <div className="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col justify-between space-y-6">
+                <div className="space-y-6">
+                  <div className="border-b border-slate-800 pb-4">
+                    <div className="flex items-center gap-2 text-xs uppercase font-bold tracking-wider text-emerald-400 font-mono mb-1">
+                      <span>⚖️</span>
+                      <span>Theoretical Prediction Benchmark</span>
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                      Nash Equilibrium Model
+                    </h3>
+                  </div>
+
+                  <div className="p-5 bg-slate-950/90 rounded-2xl border border-slate-800 space-y-2">
+                    <span className="text-xs uppercase font-bold tracking-wider text-emerald-400 block font-mono">
+                      Textbook Equilibrium Profile
+                    </span>
+                    <p className="text-lg sm:text-xl font-bold text-emerald-200 leading-snug">
+                      {debriefDist.nashPredictionHeadline}
+                    </p>
+                    <p className="text-sm sm:text-base text-slate-300 leading-relaxed pt-2 border-t border-slate-800/80">
+                      {debriefDist.nashOutcomeExplanation}
+                    </p>
+                  </div>
+
+                  <div className="p-5 bg-slate-950/90 rounded-2xl border border-slate-800 space-y-2">
+                    <span className="text-xs uppercase font-bold tracking-wider text-blue-400 block font-mono">
+                      Behavioral Reality & Human Deviations
+                    </span>
+                    <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+                      {debriefDist.behavioralInsight}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800 text-xs sm:text-sm text-slate-400 flex items-center justify-between">
+                  <span>Projector View · Large Screen Mode</span>
+                  <span className="font-mono text-slate-500">Press Esc to exit</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Projector Footer Strip */}
+        <div className="pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+          <span>DOTE 3090 Classroom Economics Laboratory · Live Debrief Mode</span>
+          <span className="font-mono text-slate-400">Trial #{trialSeed} · Room PIN: {roomCode}</span>
         </div>
       </div>
     );
@@ -1068,217 +1132,128 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({
                 Active Submissions Tracked
               </span>
               <div className="text-2xl font-black font-mono tabular-nums text-blue-200">
-                {activeOnline} / {totalEnrolled}
+                {debriefDist.totalSubmissions} / {totalEnrolled}
               </div>
               <p className="text-[11px] text-slate-400">100% of online participants in Round {currentRound}</p>
             </div>
           </div>
 
+          {/* One-Line Equilibrium Gap Summary Banner */}
+          {debriefDist.hasData && (
+            <div className="p-4 bg-gradient-to-r from-blue-950/80 via-indigo-950/80 to-slate-900 border border-blue-500/50 rounded-2xl flex items-center gap-3.5 shadow-sm">
+              <span className="text-2xl shrink-0">⚡</span>
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-sky-400 font-mono block">
+                  Equilibrium Gap Summary
+                </span>
+                <p className="text-base sm:text-lg font-black text-amber-300 leading-snug">
+                  &ldquo;{debriefDist.equilibriumGap}&rdquo;
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Main Grid: Distribution Chart + Side-by-Side Theory Benchmark */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             {/* Chart: Choice Distribution */}
             <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 md:p-6 shadow-sm space-y-5">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                 <div>
-                  <h3 className="text-base font-bold text-white tracking-tight">
-                    Distribution of Student Choices
+                  <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                    <span>📊</span>
+                    <span>Distribution of Student Choices</span>
                   </h3>
                   <p className="text-xs text-slate-400">
                     Empirical classroom selections in {currentWeek.shortTitle || currentWeek.title} (Round {currentRound})
                   </p>
                 </div>
-                <span className="text-xs font-mono font-bold px-2.5 py-1 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">
-                  {activeOnline} Decisions
-                </span>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 bg-blue-500/20 text-blue-300 rounded-lg border border-blue-500/30">
+                    {debriefDist.totalSubmissions} Decisions
+                  </span>
+                  <button
+                    onClick={() => setShowProjectorMode(true)}
+                    className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer flex items-center gap-1.5 active:scale-95"
+                    title="Launch full-screen projector view for classroom debrief"
+                  >
+                    <span>📺</span>
+                    <span>Projector</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Dynamic Game-Specific Choice Distribution Bars */}
-              {currentWeek.id === 6 ? (
-                <div className="space-y-3.5">
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-purple-300 font-bold">Mutual Trust (C, C) · Folk Theorem</span>
-                      <span className="font-mono tabular-nums text-white">19 Dyads (68%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-                      <div className="bg-purple-600 h-full rounded-full transition-all" style={{ width: '68%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-amber-300 font-bold">Unilateral Defection (D, C) / (C, D)</span>
-                      <span className="font-mono tabular-nums text-white">5 Dyads (18%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-                      <div className="bg-amber-500 h-full rounded-full transition-all" style={{ width: '18%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-slate-400 font-bold">Mutual Defection Trap (D, D)</span>
-                      <span className="font-mono tabular-nums text-white">4 Dyads (14%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-                      <div className="bg-slate-600 h-full rounded-full transition-all" style={{ width: '14%' }} />
-                    </div>
-                  </div>
-                </div>
-              ) : currentWeek.id === 7 || currentWeek.id === 8 ? (
-                <div className="space-y-3.5">
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-blue-400 font-bold">Truthful Bidding (b = v) · Weakly Dominant</span>
-                      <span className="font-mono tabular-nums text-white">17 Students (61%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-                      <div className="bg-blue-600 h-full rounded-full transition-all" style={{ width: '61%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-slate-400 font-bold">Shaded / Underbidding (b &lt; v)</span>
-                      <span className="font-mono tabular-nums text-white">7 Students (25%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-                      <div className="bg-slate-600 h-full rounded-full transition-all" style={{ width: '25%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-amber-400 font-bold">Overbidding (b &gt; v · Winner's Curse Risk)</span>
-                      <span className="font-mono tabular-nums text-white">4 Students (14%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-                      <div className="bg-amber-500 h-full rounded-full transition-all" style={{ width: '14%' }} />
-                    </div>
-                  </div>
-                </div>
-              ) : currentWeek.id === 11 ? (
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-slate-400 font-bold">Level-0 (~50 · Random / Anchor)</span>
-                      <span className="font-mono tabular-nums text-white">6 Students (21%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-3.5 overflow-hidden">
-                      <div className="bg-slate-600 h-full rounded-full" style={{ width: '21%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-indigo-400 font-bold">Level-1 (~33 · 2/3 of 50)</span>
-                      <span className="font-mono tabular-nums text-white">14 Students (50%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-3.5 overflow-hidden">
-                      <div className="bg-indigo-600 h-full rounded-full" style={{ width: '50%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-purple-400 font-bold">Level-2 (~22 · 2/3 of 33)</span>
-                      <span className="font-mono tabular-nums text-white">6 Students (21%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-3.5 overflow-hidden">
-                      <div className="bg-purple-600 h-full rounded-full" style={{ width: '21%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-emerald-400 font-bold">Nash Equilibrium (0 · Complete Induction)</span>
-                      <span className="font-mono tabular-nums text-white">2 Students (8%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-3.5 overflow-hidden">
-                      <div className="bg-emerald-600 h-full rounded-full" style={{ width: '8%' }} />
-                    </div>
-                  </div>
-                </div>
-              ) : currentWeek.id === 12 ? (
-                <div className="space-y-3.5">
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-emerald-400 font-bold">High Contribution (8–10 tokens · Altruistic)</span>
-                      <span className="font-mono tabular-nums text-white">11 Students (39%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-                      <div className="bg-emerald-600 h-full rounded-full" style={{ width: '39%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-blue-400 font-bold">Conditional Cooperators (4–7 tokens)</span>
-                      <span className="font-mono tabular-nums text-white">12 Students (43%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-                      <div className="bg-blue-600 h-full rounded-full" style={{ width: '43%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-amber-400 font-bold">Free-Riders (0–3 tokens · Strict Nash)</span>
-                      <span className="font-mono tabular-nums text-white">5 Students (18%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-                      <div className="bg-amber-500 h-full rounded-full" style={{ width: '18%' }} />
-                    </div>
-                  </div>
-                </div>
-              ) : currentWeek.id === 20 ? (
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-slate-400 font-bold">Node 1 Take (SPNE · Zero Trust)</span>
-                      <span className="font-mono tabular-nums text-white">2 Students (7%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-3.5 overflow-hidden">
-                      <div className="bg-slate-600 h-full rounded-full" style={{ width: '7%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-amber-400 font-bold">Nodes 2–4 Exit (Moderate Bounded Trust)</span>
-                      <span className="font-mono tabular-nums text-white">15 Students (54%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-3.5 overflow-hidden">
-                      <div className="bg-amber-500 h-full rounded-full" style={{ width: '54%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-emerald-400 font-bold">Nodes 5–6 / Terminal (High Cooperation)</span>
-                      <span className="font-mono tabular-nums text-white">11 Students (39%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-3.5 overflow-hidden">
-                      <div className="bg-emerald-600 h-full rounded-full" style={{ width: '39%' }} />
-                    </div>
-                  </div>
+              {/* Dynamic Game-Specific Choice Distribution Bars or Friendly Empty State */}
+              {!debriefDist.hasData ? (
+                <div className="text-center py-10 px-4 bg-slate-950/60 border border-dashed border-slate-800 rounded-2xl space-y-3">
+                  <div className="text-4xl">📊</div>
+                  <h4 className="text-base font-bold text-white">No Student Decisions Recorded Yet</h4>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Waiting for students in room <strong className="font-mono text-blue-400">{roomCode}</strong> to lock their Round {currentRound} decisions, or click below to simulate a cohort.
+                  </p>
+                  <button
+                    onClick={handleGenerateFreshCohortTrial}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer mt-1"
+                  >
+                    <span>🎲</span>
+                    <span>Simulate Active Student Cohort</span>
+                  </button>
                 </div>
               ) : (
-                <div className="space-y-3.5">
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-blue-400 font-bold">Cooperative / High Coordination Option</span>
-                      <span className="font-mono tabular-nums text-white">18 Students (64%)</span>
+                <div className="space-y-4">
+                  {debriefDist.bars.map((bar) => (
+                    <div key={bar.id} className="space-y-1.5">
+                      <div className="flex flex-wrap items-baseline justify-between gap-1.5 text-xs font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-200 font-bold">{bar.label}</span>
+                          {bar.isNash && (
+                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded">
+                              ⭐ Nash
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="font-mono tabular-nums text-sky-300 font-black text-sm">
+                            {bar.percentage}%
+                          </span>
+                          <span className="font-mono tabular-nums text-slate-400 text-xs">
+                            ({bar.count} students)
+                          </span>
+                        </div>
+                      </div>
+
+                      {bar.sublabel && (
+                        <p className="text-[11px] text-slate-400">
+                          {bar.sublabel}
+                        </p>
+                      )}
+
+                      {/* Bar Track */}
+                      <div className="w-full bg-slate-950 rounded-full h-4 p-0.5 border border-slate-800/80 overflow-hidden flex items-center">
+                        <div
+                          className={`${bar.color} h-full rounded-full transition-all duration-700 flex items-center justify-end pr-2`}
+                          style={{ width: `${Math.max(6, bar.percentage)}%` }}
+                        >
+                          <span className="text-[10px] font-mono font-bold text-white drop-shadow">
+                            {bar.percentage}%
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                        <span>Share: {bar.count} / {debriefDist.totalSubmissions}</span>
+                        <span className={bar.isNash ? 'text-amber-300 font-bold' : 'text-slate-500'}>
+                          Benchmark: {bar.nashPredictionText}
+                        </span>
+                      </div>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-                      <div className="bg-blue-600 h-full rounded-full" style={{ width: '64%' }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
-                      <span className="text-amber-400 font-bold">Defection / Selfish / Pure Nash Option</span>
-                      <span className="font-mono tabular-nums text-white">10 Students (36%)</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-                      <div className="bg-amber-500 h-full rounded-full" style={{ width: '36%' }} />
-                    </div>
-                  </div>
+                  ))}
                 </div>
               )}
             </div>
 
             {/* Theory Benchmark Comparison Card */}
             <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 md:p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
                 <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
                   <span>⚖️</span>
                   <span>Nash Equilibrium vs. Empirical Play</span>
@@ -1289,20 +1264,23 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({
               </div>
 
               <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800/80 space-y-1">
-                <span className="text-[11px] uppercase tracking-wider font-bold text-emerald-400 block">
+                <span className="text-[11px] uppercase tracking-wider font-bold text-emerald-400 block font-mono">
                   Textbook Game-Theoretic Prediction:
                 </span>
-                <p className="text-xs text-slate-200 leading-relaxed font-medium">
-                  {gameMetrics.nashOutcomeText}
+                <p className="text-xs text-slate-200 leading-relaxed font-semibold">
+                  {debriefDist.nashPredictionHeadline}
+                </p>
+                <p className="text-xs text-slate-300 leading-relaxed pt-1 border-t border-slate-800/60 mt-1">
+                  {debriefDist.nashOutcomeExplanation}
                 </p>
               </div>
 
               <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800/80 space-y-1">
-                <span className="text-[11px] uppercase tracking-wider font-bold text-blue-400 block">
+                <span className="text-[11px] uppercase tracking-wider font-bold text-blue-400 block font-mono">
                   Observed Human Classroom Play:
                 </span>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  {gameMetrics.humanInsightText}
+                  {debriefDist.behavioralInsight}
                 </p>
               </div>
 

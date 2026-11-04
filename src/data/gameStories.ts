@@ -334,3 +334,160 @@ export const getGameStory = (moduleId: number): GameStory => {
     stakes: "Higher Payoff vs. Strategic Exploitation"
   };
 };
+
+export interface GameQuickChips {
+  role: string;
+  choices: string;
+  howYouWin: string;
+}
+
+export const GAME_QUICK_CHIPS: Record<number, GameQuickChips> = {
+  1: {
+    role: "Suspect in isolated interrogation",
+    choices: "Cooperate (stay silent) or Defect (confess)",
+    howYouWin: "Both cooperate for 2 pts; avoid mutual defection trap"
+  },
+  2: {
+    role: "Disruptive startup founder (First Mover)",
+    choices: "Launch now or Wait & refine product",
+    howYouWin: "Launch to claim 4 pts if rival stays out"
+  },
+  3: {
+    role: "Service station owner on desert highway",
+    choices: "High Price ($4) or Low Price ($3)",
+    howYouWin: "Undercut rival for 3 pts; avoid price war"
+  },
+  4: {
+    role: "Retail marketing director scheduling promotions",
+    choices: "Pick Monday, Wednesday, or Friday",
+    howYouWin: "Pick a different day than rival to earn 1 pt"
+  },
+  5: {
+    role: "Dominant battery incumbent facing entry",
+    choices: "Commit capacity or Stay Flexible",
+    howYouWin: "Credibly commit to deter rival and keep 4 pts"
+  },
+  6: {
+    role: "Long-term auto supplier across 5 rounds",
+    choices: "Cooperate or Defect each monthly round",
+    howYouWin: "Build sustained trust to earn $2.00 per round"
+  },
+  7: {
+    role: "Private art collector in sealed auction",
+    choices: "Submit sealed bid ($0 to $12)",
+    howYouWin: "Bid true valuation to win at second-highest price"
+  },
+  8: {
+    role: "Defense aviation contractor bidding on contract",
+    choices: "Submit sealed pay-as-bid ($0 to $12)",
+    howYouWin: "Shade bid below valuation to balance profit and win odds"
+  },
+  9: {
+    role: "Joint venture partner dividing 10 points",
+    choices: "Demand a share of 10 points",
+    howYouWin: "Demand maximum points while keeping total sum ≤ 10"
+  },
+  10: {
+    role: "Job candidate with private quality type",
+    choices: "Earn costly degree or Direct work",
+    howYouWin: "Signal high quality credibly to secure top wage"
+  },
+  11: {
+    role: "Financial trader outguessing the market",
+    choices: "Pick an integer guess from 0 to 100",
+    howYouWin: "Guess closest to 2/3 of average of all guesses"
+  },
+  12: {
+    role: "Community member with 20 resource tokens",
+    choices: "Contribute 0 to 20 tokens to pool",
+    howYouWin: "Coordinate contributions to multiply pool returns by 1.6x"
+  },
+  13: {
+    role: "Member of cooperative hunting team",
+    choices: "Hunt Stag (trust) or Hare (safe)",
+    howYouWin: "Both hunt Stag to capture 10 pts each"
+  },
+  14: {
+    role: "Chemical manufacturer setting gallon price",
+    choices: "Set product price between $10 and $50",
+    howYouWin: "Undercut rival by 1 cent without pricing below cost"
+  },
+  15: {
+    role: "Contender over shared territory and prey",
+    choices: "Dove (peaceful share) or Hawk (fight)",
+    howYouWin: "Fight if rival yields; avoid catastrophic mutual fight"
+  },
+  16: {
+    role: "Proposer dividing $10 cash pot",
+    choices: "Offer $0 to $10 to responder",
+    howYouWin: "Keep largest share while offering enough to avoid rejection"
+  },
+  17: {
+    role: "Matcher trying to match opponent's coin",
+    choices: "Heads or Tails",
+    howYouWin: "Match opponent's coin face to win 2 pts"
+  },
+  18: {
+    role: "Partner selecting evening entertainment",
+    choices: "Opera (your favorite) or Football",
+    howYouWin: "Coordinate on same event; avoid clash on separate events"
+  },
+  19: {
+    role: "Investor with 10 endowment points",
+    choices: "Send 0 to 10 points (tripled by trustee)",
+    howYouWin: "Invest in trustworthy partner to maximize returned payout"
+  },
+  20: {
+    role: "Sequential player along 6-node decision chain",
+    choices: "Pass (grow pot) or Take (exit)",
+    howYouWin: "Pass to expand pot to 8 pts; take before betrayal"
+  },
+  21: {
+    role: "Crude oil refinery operations manager",
+    choices: "Choose output quantity (10 to 45 units)",
+    howYouWin: "Balance production volume against market-clearing price drops"
+  },
+  22: {
+    role: "Ice cream vendor on boardwalk beach",
+    choices: "Choose stand position along 0 to 100",
+    howYouWin: "Locate near center (50) to capture majority of beachgoers"
+  },
+  23: {
+    role: "General commanding 100 battalions",
+    choices: "Allocate 100 troops across Fronts A, B, C",
+    howYouWin: "Win troop majority on 2 of 3 battlefronts"
+  },
+  24: {
+    role: "Offshore exploration oil tract bidder",
+    choices: "Submit sealed bid based on noisy seismic signal",
+    howYouWin: "Discount bid below estimate to avoid winner's curse"
+  },
+  25: {
+    role: "Auction participant bidding on $1 bill",
+    choices: "Bid $0.10 to $2.50 or fold",
+    howYouWin: "Win bill under $1.00; avoid escalating sunk costs"
+  },
+  26: {
+    role: "Airline passenger claiming lost luggage",
+    choices: "Claim integer value from $2 to $100",
+    howYouWin: "Claim lowest to earn +$2 reward over rival's claim"
+  },
+  27: {
+    role: "Commercial ocean trawler fleet admiral",
+    choices: "Deploy 0 to 10 trawler vessels",
+    howYouWin: "Maintain sustainable harvest to avoid breeding stock collapse"
+  },
+  28: {
+    role: "Car buyer negotiating in used vehicle market",
+    choices: "Offer purchase price ($1,000 to $9,000)",
+    howYouWin: "Offer enough to attract peaches without overpaying for lemons"
+  }
+};
+
+export const getGameQuickChips = (moduleId: number): GameQuickChips => {
+  return GAME_QUICK_CHIPS[moduleId] || {
+    role: "Strategic decision maker in competitive encounter",
+    choices: "Evaluate available actions and select your strategy",
+    howYouWin: "Anticipate rival moves to maximize your net score"
+  };
+};

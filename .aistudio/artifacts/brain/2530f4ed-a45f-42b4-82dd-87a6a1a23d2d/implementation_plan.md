@@ -1,122 +1,96 @@
-# Implementation Plan: Canonical 1-to-28 Game Numbering & Curriculum Unification
+# Implementation Plan: Top 6 High-Impact Improvements for DOTE3090 Game Theory Lab
 
-Align and unify game numbering across the entire platform so that Solo Lab, What-If Lab, and all navigation dropdowns follow the exact same authoritative 8-tier progression from **Game 1 to Game 28**.
-
----
-
-## User Review & Critical Decisions
-
-> [!IMPORTANT]
-> The following decisions were confirmed by the user during the Phase 1 clarification interview:
-
-- **Confirmed Sequence Source**: All views (Solo Lab, What-If Lab, and navigation dropdowns) strictly align with the **Solo Lab 8-tier pedagogical progression**.
-- **Confirmed Numbering Convention**: Unified sequential numbering (**Game 1 to Game 28**) is displayed uniformly across all page headers, badges, card labels, and dropdown menus. Internal database IDs are mapped via an authoritative lookup (`src/data/curriculumOrder.ts`) so existing game logic, scoring, and calculations remain 100% stable without breaking backwards compatibility.
+This plan outlines the 6 highest-impact, student-centered improvements for the DOTE3090 Game Theory Experiment Lab, ranked by value for university students and designed to fit into single, focused builds.
 
 ---
 
-## 1. Overview & Root Cause Analysis
-
-### The Problem
-Previously, games were referenced using inconsistent numbering schemes:
-1. **Random Internal IDs**: Games were created with arbitrary legacy IDs (`id: 1, 6, 12, 7, 13, 18, 15, 4, 17, 23, 21, 22, 2, 5, 20...`).
-2. **Conflicting What-If Dropdown Labels**: In `App.tsx`, games were manually given sequential labels that contradicted their internal IDs (e.g., `id: 6` was labeled "Game 2", but the What-If header rendered `Game 6`).
-3. **Mismatched Solo Lab Sequence**: In Solo Lab, `id: 3` (Price Competition) was the second game, while in What-If Lab it was listed as Game 17.
-
-### The Solution
-Established a single source of truth (`src/data/curriculumOrder.ts`) that maps internal game IDs to an authoritative **Curriculum Number (1 to 28)** and organizes them into the 8 canonical tiers.
+## Ranked Improvement Roadmap
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ MASTER CURRICULUM SEQUENCE (GAMES 1 TO 28 ACROSS 8 TIERS)                   │
+│ RANKED IMPROVEMENT ROADMAP (BY VALUE FOR STUDENTS)                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ TIER 1: Foundations & Dominance                                             │
-│   • Game 1  (id: 1)  🤝 One-Shot Prisoner's Dilemma                         │
-│   • Game 2  (id: 3)  ⚡ Simultaneous Price Competition (Bertrand 2x2)       │
-│                                                                             │
-│ TIER 2: Coordination & Conflict                                             │
-│   • Game 3  (id: 13) 🦌 Stag Hunt Coordination                              │
-│   • Game 4  (id: 18) 🎭 Battle of the Sexes                                 │
-│   • Game 5  (id: 15) 🦅 Hawk-Dove Brinkmanship                              │
-│                                                                             │
-│ TIER 3: Zero-Sum & Mixed Strategies                                         │
-│   • Game 6  (id: 17) 🪙 Matching Pennies                                    │
-│   • Game 7  (id: 4)  📅 Promotion Timing (3x3 Mixed)                        │
-│   • Game 8  (id: 23) ⚔️ Colonel Blotto Resource War                         │
-│                                                                             │
-│ TIER 4: Extensive Form & Backward Induction                                 │
-│   • Game 9  (id: 2)  🚀 Launch-or-Wait (Sequential Entry)                   │
-│   • Game 10 (id: 5)  🏰 Entry Deterrence & Commitment                       │
-│   • Game 11 (id: 20) 🐛 Centipede Game (Backward Induction)                 │
-│                                                                             │
-│ TIER 5: Repeated Games & Reciprocity                                        │
-│   • Game 12 (id: 6)  🔁 Repeated Prisoner's Dilemma                         │
-│   • Game 13 (id: 19) 🏦 The Trust Game (Investment)                         │
-│   • Game 14 (id: 12) 🐟 Tragedy of the Commons & Coastal Fishery            │
-│   • Game 15 (id: 27) 🌊 Renewable Ocean Fishery (Ostrom Commons)            │
-│                                                                             │
-│ TIER 6: Behavioral Bargaining & Fairness                                    │
-│   • Game 16 (id: 16) 🍰 Ultimatum Bargaining & Fairness                     │
-│   • Game 17 (id: 9)  🥧 Split-the-Pie (Outside Options)                     │
-│   • Game 18 (id: 26) 🧳 Traveler's Dilemma (Basu Paradox)                   │
-│                                                                             │
-│ TIER 7: Industrial Organization & Markets                                   │
-│   • Game 19 (id: 14) 🏷️ Bertrand Continuous Duopoly Price War              │
-│   • Game 20 (id: 21) 🏭 Cournot Duopoly Competition (Quantity)              │
-│   • Game 21 (id: 22) 🏖️ Hotelling's Spatial Competition (Beachfront)        │
-│                                                                             │
-│ TIER 8: Information Economics, Cognitive Levels & Auctions                  │
-│   • Game 22 (id: 11) 💭 Keynesian Beauty Contest (2/3 of Average)           │
-│   • Game 23 (id: 10) 📜 Costly Signaling & Adverse Selection (Spence)       │
-│   • Game 24 (id: 7)  ⚖️ Second-Price Vickrey Auction                       │
-│   • Game 25 (id: 8)  🎯 First-Price Sealed-Bid Auction                      │
-│   • Game 26 (id: 24) 🛢️ Common-Value Oil Lease Auction (Winner's Curse)     │
-│   • Game 27 (id: 25) 💸 The Escalating Dollar Auction                       │
-│   • Game 28 (id: 28) 🍋 Market for Lemons (Akerlof Adverse Selection)       │
+│ 1. [Fun & Clarity]     Visual "Payoff Radar & Regret Flash" in Step 3       │
+│ 2. [Simpler Text]      3-Bullet "TL;DR Executive Briefing" on Step 1 Rules  │
+│ 3. [Mobile Layout]     Sticky Thumb-Friendly Action Dock on Step 2 Choices  │
+│ 4. [Bot Balance]       Adaptive Bounded Rationality & Opponent Thought Bubbles│
+│ 5. [Instructor Portal] Real-Time Classroom Distribution & Equilibrium Gap   │
+│ 6. [Fun & Retention]   Equilibrium Mastery Streaks & Tier Completion Badges │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Technical Architecture & File Modifications
-
-### A. Authoritative Curriculum Mapping (`src/data/curriculumOrder.ts`) [COMPLETED]
-Created a single shared utility module exporting:
-- `CURRICULUM_ENTRIES`: Ordered array of all 28 games with their `curriculumNumber` (1–28), `internalId`, `tierNumber`, `tierTitle`, `title`, and `icon`.
-- `CURRICULUM_TIERS`: Grouped tiers for easy dropdown rendering.
-- Helper functions:
-  - `getCurriculumNumber(internalId: number): number`
-  - `getInternalId(curriculumNumber: number): number`
-
-### B. What-If Lab Dropdown & App Routing (`src/App.tsx`) [COMPLETED]
-- Replaced the hardcoded `<optgroup>` list in `<select id="sandbox-model-select">` with dynamic tier mapping from `CURRICULUM_TIERS`.
-- Handled `sandboxGameId === 999` cleanly as "Universal 2×2 Matrix Solver (Custom Homework / Scratchpad)".
-- Passed `sandboxGameId` into the `<Header ... />` component.
-
-### C. What-If Sandbox & Pedagogy Presentation [COMPLETED]
-- `src/components/WhatIfSandbox.tsx`: Active Game Context Header now displays `{game.id === 999 ? 'Custom Tool' : `Game ${getCurriculumNumber(game.id)}`}: {game.title}`.
-- Matrix solver tab toggle remains visible strictly for 2×2 matrix games (`id: 1, 3, 13, 15, 17, 18, 999`), preserving clear focus for all 22 other models.
-- `src/components/sandbox/GamePedagogyCard.tsx`: Updated Panel A header badge to render `{gameId === 999 ? 'Custom Tool' : `Game ${getCurriculumNumber(gameId)}`}`.
-
-### D. Solo Lab View & Debrief Sync [COMPLETED]
-- `src/components/SoloLabView.tsx`: Step 3 and Step 4 transition buttons now display `Game ${currentModuleIndex}: {activeModule.shortTitle}`.
-- `src/components/TheoryDebrief.tsx`: What-If button displays `∫ Test in What-If Sandbox (Game {getCurriculumNumber(data.gameId)})`.
-- Clicking from any game in Solo Lab launches What-If Lab directly into the identical game number.
-
-### E. Global Header & Catalog Dropdown [COMPLETED]
-- `src/components/Header.tsx`:
-  - Solo mode indicator: `Game X of 28`.
-  - Sandbox mode indicator: `Game X of 28` (or `Custom 2×2 Solver`).
-  - Live mode indicator: `Game X: Title`.
-  - Catalog dropdown: Prefixed every game title with `Game ${getCurriculumNumber(game.id)}: ${title}`.
+### Rank 1: Visual "Payoff Radar & Regret Flash" (Step 3: Outcome & Results)
+- **Pedagogical Value**: Immediate intuitive feedback on strategic optimality without reading paragraphs of numbers.
+- **One-Sentence Description**: Displays an instant visual matrix comparison directly after a round resolves showing "What You Earned vs. What You Could Have Earned (Counterfactual Regret)", turning raw point totals into instantaneous strategic intuition.
+- **Key Deliverables**:
+  - Color-coded payoff difference highlight (Green for optimal, Amber for unexploited surplus).
+  - One-line takeaway: e.g., *"By pricing at $3.00 instead of $4.00, you captured +$1.00 more than undercutting."*
+- **Files Likely Affected**:
+  - `src/components/SoloLabView.tsx`
+  - `src/components/InteractiveMatrixVisualizer.tsx`
 
 ---
 
-## 3. Verification & Execution Status
+### Rank 2: 3-Bullet "TL;DR Executive Briefing" (Step 1: Rules & Setup)
+- **Pedagogical Value**: Eliminates cognitive overload so students can start playing within 10 seconds.
+- **One-Sentence Description**: Condenses the narrative story on Step 1 into three 10-word bullet chips (Your Role, Available Choices, Win Condition) by default, keeping the detailed background story accessible under a clean "Historical / Market Context" expander.
+- **Key Deliverables**:
+  - Standardized 3-chip banner at top of Step 1 (`Role` | `Choice` | `Win Condition`).
+  - Narrative text collapsed by default into an expandable card.
+- **Files Likely Affected**:
+  - `src/data/gameStories.ts`
+  - `src/components/SoloLabView.tsx`
 
-- [x] **Curriculum Map**: Created `src/data/curriculumOrder.ts`.
-- [x] **What-If Dropdown & App State**: Synchronized in `src/App.tsx`.
-- [x] **Sandbox & Pedagogy Headers**: Updated in `WhatIfSandbox.tsx` and `GamePedagogyCard.tsx`.
-- [x] **Solo Lab & Debrief Buttons**: Updated in `SoloLabView.tsx` and `TheoryDebrief.tsx`.
-- [x] **Global Header**: Updated in `Header.tsx`.
-- [x] **Lint Verification**: `tsc --noEmit` passed with 0 errors.
-- [x] **Build Verification**: `npm run build` compiled cleanly.
+---
+
+### Rank 3: Sticky Thumb-Friendly Mobile Action Dock (Step 2: Choice Arena)
+- **Pedagogical Value**: Effortless one-handed classroom play on student smartphones.
+- **One-Sentence Description**: Anchors decision buttons and bid/price sliders into a persistent bottom dock on mobile screens so students never have to scroll past diagrams or rule text to submit their choices.
+- **Key Deliverables**:
+  - Fixed mobile bottom-bar container (`sticky bottom-0 z-20`) for primary action buttons.
+  - Safe padding offset to prevent overlapping content.
+- **Files Likely Affected**:
+  - `src/components/SoloLabView.tsx`
+
+---
+
+### Rank 4: Adaptive Bounded Rationality & Opponent Thought Bubbles (Bot Balance)
+- **Pedagogical Value**: Realistic human-like play that teaches students how people actually deviate from pure Nash equilibria.
+- **One-Sentence Description**: Rebalances bot decision distributions across the 8 tiers so entry-level opponents exhibit human bounded rationality (e.g. Level-1 Keynesian guesses, fair-minded Ultimatum offers) while displaying animated thought bubbles before decisions.
+- **Key Deliverables**:
+  - Adjusted noise and heuristic weights in `botEngine.ts`.
+  - Dynamic anticipation thought bubble rendered during the bot's turn.
+- **Files Likely Affected**:
+  - `src/services/botEngine.ts`
+  - `src/components/SoloLabView.tsx`
+
+---
+
+### Rank 5: Real-Time Classroom Distribution Heatmap & "Equilibrium Gap" (Instructor Portal)
+- **Pedagogical Value**: Instantly gives instructors the data needed to lead rich classroom debriefs.
+- **One-Sentence Description**: Adds a live 1-click visual histogram showing aggregated student choices compared against the theoretical Nash prediction on the instructor projector view, highlighting behavioral anomalies in real time.
+- **Key Deliverables**:
+  - Live frequency distribution chart overlaying theoretical equilibrium benchmark.
+  - One-click "Projector Spotlight" toggle for full-screen classroom presentation.
+- **Files Likely Affected**:
+  - `src/components/InstructorDashboard.tsx`
+
+---
+
+### Rank 6: Equilibrium Mastery Streaks & Tier Completion Badges (Fun & Retention)
+- **Pedagogical Value**: Sustains student engagement and motivation throughout the 28-game curriculum.
+- **One-Sentence Description**: Introduces a lightweight mastery tracker that records completed games and consecutive quiz scores with unlockable tier badges, rewarding students for completing the curriculum.
+- **Key Deliverables**:
+  - Visual tier progress bar in top navigation.
+  - Milestone unlock toasts upon completing each of the 8 curriculum tiers.
+- **Files Likely Affected**:
+  - `src/components/SoloLabView.tsx`
+  - `src/components/Header.tsx`
+
+---
+
+## Implementation Strategy & Next Steps
+
+Each improvement is fully decoupled and sized for a single focused build turn. Please review and select which improvement you would like to proceed with first.

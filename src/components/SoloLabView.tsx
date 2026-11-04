@@ -12,10 +12,12 @@ import { safeStorage } from '../utils/safeStorage';
 import { getQuizForGame } from '../data/soloLabQuizzes';
 import { InteractiveMatrixVisualizer } from './InteractiveMatrixVisualizer';
 import { SequentialVisualizer } from './SequentialVisualizer';
-import { getGameStory } from '../data/gameStories';
+import { getGameStory, getGameQuickChips } from '../data/gameStories';
+import { computeWhatYouCouldHaveGot } from '../utils/counterfactualEngine';
 
 export interface SoloLabRoundHistoryEntry extends RoundHistoryEntry {
   botRationale: string;
+  botThought?: string;
 }
 
 interface SoloLabViewProps {
@@ -536,10 +538,52 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
     };
   }, [isSimpleBotPickerOpen, isBotIntelOpen]);
 
+  // Collapsible 'Background and full rules' state for Step 1 (collapsed by default)
+  const [isFullRulesExpanded, setIsFullRulesExpanded] = useState<boolean>(false);
+
+  // Bot animated thought bubble & thinking anticipation state for choice/result flow
+  const [isBotThinking, setIsBotThinking] = useState<boolean>(false);
+  const [currentBotThought, setCurrentBotThought] = useState<string>('');
+
   useEffect(() => {
     setIsSimpleBotPickerOpen(false);
     setIsBotIntelOpen(false);
+    setIsFullRulesExpanded(false);
   }, [selectedModuleId]);
+
+  // Real measured height of the mobile sticky action dock (for dynamic Step 2 bottom padding)
+  const [mobileDockHeight, setMobileDockHeight] = useState<number>(120);
+  const mobileDockRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = mobileDockRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.height > 0) {
+        setMobileDockHeight(Math.round(rect.height));
+      }
+    };
+
+    measure();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const h = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+          if (h > 0) {
+            setMobileDockHeight(Math.round(h));
+          }
+        }
+      });
+      ro.observe(el);
+      return () => ro.disconnect();
+    } else {
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+  }, [activeStep, isRoundResolved, selectedModuleId]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -923,6 +967,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
     setCurrentRound(1);
     setHistory([]);
     setIsRoundResolved(false);
+    setIsBotThinking(false);
+    setCurrentBotThought('');
     setLastRoundResult(null);
     setIsExperimentFinished(false);
     setPdChoice('Cooperate');
@@ -980,11 +1026,9 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
     }
   };
 
-  // Submit player's decision for the active round
+  // Submit player's decision for the active round with animated bot thought bubble anticipation
   const handleSubmitRound = () => {
-    let playerAction: any;
-    let playerPayoff = 0;
-    let botPayoff = 0;
+    if (isBotThinking) return;
 
     const roundHistoryForBot: RoundHistoryEntry[] = history.map(h => ({
       round: h.round,
@@ -995,6 +1039,29 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       playerValuation: h.playerValuation,
       botValuation: h.botValuation
     }));
+
+    let thought = "";
+    try {
+      thought = activeBot.getAnticipationThought(currentRound, roundHistoryForBot);
+    } catch {
+      thought = "Deciding strategy based on the payoff matrix and prior interactions.";
+    }
+    if (!thought || thought.trim().length === 0) {
+      thought = "Deciding my move according to my strategic profile.";
+    }
+
+    setCurrentBotThought(thought);
+    setIsBotThinking(true);
+
+    setTimeout(() => {
+      executeSubmitRound(thought, roundHistoryForBot);
+    }, 950);
+  };
+
+  const executeSubmitRound = (resolvedThought: string, roundHistoryForBot: RoundHistoryEntry[]) => {
+    let playerAction: any;
+    let playerPayoff = 0;
+    let botPayoff = 0;
 
     const botDecision = activeBot.decide({
       round: currentRound,
@@ -1317,6 +1384,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
           } else {
             setCentipedeNode(botNode + 1);
             setCentipedePath(p => [...p, { node: botNode, player: 'Bot', action: 'Pass' }]);
+            setIsBotThinking(false);
             return;
           }
         }
@@ -1475,6 +1543,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       playerPayoff,
       botPayoff,
       botRationale: botDecision.rationale,
+      botThought: resolvedThought,
       playerValuation: selectedModuleId === 7 ? studentValuation : selectedModuleId === 24 ? cvPlayerSignal : undefined,
       botValuation: selectedModuleId === 7 ? botValuation : selectedModuleId === 24 ? cvBotSignal : undefined
     };
@@ -1482,6 +1551,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
     setLastRoundResult(roundResult);
     setHistory(prev => [...prev, roundResult]);
     setIsRoundResolved(true);
+    setIsBotThinking(false);
 
     if (currentRound >= totalRounds) {
       markGameCompleted(selectedModuleId);
@@ -1497,6 +1567,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
     if (currentRound < totalRounds) {
       setCurrentRound(prev => prev + 1);
       setIsRoundResolved(false);
+      setIsBotThinking(false);
+      setCurrentBotThought('');
       setLastRoundResult(null);
       setTimeout(() => {
         scrollToStep(2);
@@ -1999,12 +2071,488 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
     }
   };
 
+  // Mobile Thumb-Friendly Action Dock Stepper Helper (>=56px touch targets)
+  const renderCompactThumbStepper = (
+    label: string,
+    value: number,
+    min: number,
+    max: number,
+    step: number,
+    displayStr: string,
+    onChange: (v: number) => void
+  ) => {
+    return (
+      <div className="bg-slate-900/95 border border-slate-800 rounded-xl px-2 py-1 flex items-center justify-between gap-2 shadow-inner">
+        <button
+          type="button"
+          disabled={value <= min}
+          onClick={() => onChange(Math.max(min, Math.round((value - step) * 100) / 100))}
+          className="w-12 h-12 min-w-[48px] min-h-[48px] text-2xl font-black bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-20 disabled:cursor-not-allowed text-white rounded-xl border border-slate-700 flex items-center justify-center shrink-0 cursor-pointer shadow select-none active:scale-95 transition-all"
+          aria-label={`Decrease ${label}`}
+        >
+          −
+        </button>
+
+        <div className="flex-1 min-w-0 flex flex-col items-center justify-center px-1">
+          <div className="flex items-center justify-between w-full text-[11px] font-bold text-slate-300">
+            <span className="truncate">{label}</span>
+            <span className="font-mono text-sm font-black text-blue-400 shrink-0 ml-1">
+              {displayStr}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(e) => onChange(parseFloat(e.target.value))}
+            className="w-full accent-blue-500 h-2 bg-slate-800 rounded-full cursor-pointer mt-0.5 touch-none"
+          />
+        </div>
+
+        <button
+          type="button"
+          disabled={value >= max}
+          onClick={() => onChange(Math.min(max, Math.round((value + step) * 100) / 100))}
+          className="w-12 h-12 min-w-[48px] min-h-[48px] text-2xl font-black bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-20 disabled:cursor-not-allowed text-white rounded-xl border border-slate-700 flex items-center justify-center shrink-0 cursor-pointer shadow select-none active:scale-95 transition-all"
+          aria-label={`Increase ${label}`}
+        >
+          +
+        </button>
+      </div>
+    );
+  };
+
+  // Render Thumb-Friendly Controls in Mobile Sticky Action Dock across all 28 games
+  const renderMobileActionDockControls = () => {
+    switch (selectedModuleId) {
+      case 1:
+      case 6:
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setPdChoice('Cooperate')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                pdChoice === 'Cooperate'
+                  ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg ring-2 ring-emerald-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🤝</span>
+              <span>Cooperate</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPdChoice('Defect')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                pdChoice === 'Defect'
+                  ? 'bg-rose-600 border-rose-400 text-white shadow-lg ring-2 ring-rose-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">⚔️</span>
+              <span>Defect</span>
+            </button>
+          </div>
+        );
+      case 2:
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setLaunchChoice('Launch')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                launchChoice === 'Launch'
+                  ? 'bg-blue-600 border-blue-400 text-white shadow-lg ring-2 ring-blue-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🚀</span>
+              <span>Launch Now</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLaunchChoice('Wait')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                launchChoice === 'Wait'
+                  ? 'bg-amber-600 border-amber-400 text-white shadow-lg ring-2 ring-amber-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">⏳</span>
+              <span>Wait & Refine</span>
+            </button>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setPrice2x2Choice('High Price')}
+              className={`min-h-[48px] py-1.5 px-2 rounded-xl border-2 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                price2x2Choice === 'High Price'
+                  ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg ring-2 ring-emerald-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🏷️</span>
+              <span>High Price ($4)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPrice2x2Choice('Low Price')}
+              className={`min-h-[48px] py-1.5 px-2 rounded-xl border-2 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                price2x2Choice === 'Low Price'
+                  ? 'bg-rose-600 border-rose-400 text-white shadow-lg ring-2 ring-rose-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">⚡</span>
+              <span>Low Price ($3)</span>
+            </button>
+          </div>
+        );
+      case 4:
+        return (
+          <div className="grid grid-cols-3 gap-1.5">
+            {(['Monday', 'Wednesday', 'Friday'] as const).map(day => (
+              <button
+                key={day}
+                type="button"
+                onClick={() => setTimingChoice(day)}
+                className={`min-h-[48px] py-1.5 px-1 rounded-xl border-2 font-black text-xs sm:text-sm flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 ${
+                  timingChoice === day
+                    ? 'bg-blue-600 border-blue-400 text-white shadow-lg ring-2 ring-blue-300/60'
+                    : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+                }`}
+              >
+                <span>📅</span>
+                <span>{day.slice(0, 3)}</span>
+              </button>
+            ))}
+          </div>
+        );
+      case 5:
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setDeterrenceChoice('Commit')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                deterrenceChoice === 'Commit'
+                  ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg ring-2 ring-indigo-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🏰</span>
+              <span>Commit</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeterrenceChoice('Stay Flexible')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                deterrenceChoice === 'Stay Flexible'
+                  ? 'bg-amber-600 border-amber-400 text-white shadow-lg ring-2 ring-amber-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🔄</span>
+              <span>Stay Flexible</span>
+            </button>
+          </div>
+        );
+      case 7:
+        return renderCompactThumbStepper(`Vickrey Bid (Val: $${studentValuation})`, auctionBid, 0, 100, 1, `$${auctionBid}.00`, setAuctionBid);
+      case 8:
+        return renderCompactThumbStepper(`First-Price Bid (Val: $${studentValuation})`, fpAuctionBid, 0, 100, 0.5, `$${fpAuctionBid.toFixed(2)}`, setFpAuctionBid);
+      case 9:
+        return renderCompactThumbStepper("Pie Share Demand", pieDemand, 0, 10, 0.5, `$${pieDemand.toFixed(2)}`, setPieDemand);
+      case 10:
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSignalingChoice('Yes (Costly)')}
+              className={`min-h-[48px] py-1.5 px-2 rounded-xl border-2 font-black text-xs sm:text-sm flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 ${
+                signalingChoice === 'Yes (Costly)'
+                  ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg ring-2 ring-indigo-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🎓</span>
+              <span>Earn Degree</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSignalingChoice('No')}
+              className={`min-h-[48px] py-1.5 px-2 rounded-xl border-2 font-black text-xs sm:text-sm flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 ${
+                signalingChoice === 'No'
+                  ? 'bg-slate-700 border-slate-500 text-white shadow-lg ring-2 ring-slate-400/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">💼</span>
+              <span>Direct Work</span>
+            </button>
+          </div>
+        );
+      case 11:
+        return renderCompactThumbStepper("Beauty Contest Guess", beautyGuess, 0, 100, 1, `${beautyGuess}`, setBeautyGuess);
+      case 12:
+        return renderCompactThumbStepper("Fishery Tokens / Contr", publicGoodsContr, 0, 20, 1, `${publicGoodsContr} pts`, setPublicGoodsContr);
+      case 13:
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setStagChoice('Stag')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                stagChoice === 'Stag'
+                  ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg ring-2 ring-emerald-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🦌</span>
+              <span>Hunt Stag</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStagChoice('Hare')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                stagChoice === 'Hare'
+                  ? 'bg-amber-600 border-amber-400 text-white shadow-lg ring-2 ring-amber-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🐇</span>
+              <span>Hunt Hare</span>
+            </button>
+          </div>
+        );
+      case 14:
+        return renderCompactThumbStepper("Price / Gallon", bertrandPrice, 0, 10, 0.25, `$${bertrandPrice.toFixed(2)}`, setBertrandPrice);
+      case 15:
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setHawkChoice('Dove')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                hawkChoice === 'Dove'
+                  ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg ring-2 ring-emerald-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🕊️</span>
+              <span>Dove (Share)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setHawkChoice('Hawk')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                hawkChoice === 'Hawk'
+                  ? 'bg-rose-600 border-rose-400 text-white shadow-lg ring-2 ring-rose-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🦅</span>
+              <span>Hawk (Fight)</span>
+            </button>
+          </div>
+        );
+      case 16:
+        return renderCompactThumbStepper("Offer to Responder", ultimatumOffer, 0, 10, 1, `$${ultimatumOffer}`, setUltimatumOffer);
+      case 17:
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setPenniesChoice('Heads')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                penniesChoice === 'Heads'
+                  ? 'bg-amber-600 border-amber-400 text-white shadow-lg ring-2 ring-amber-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🪙</span>
+              <span>Heads</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPenniesChoice('Tails')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                penniesChoice === 'Tails'
+                  ? 'bg-amber-600 border-amber-400 text-white shadow-lg ring-2 ring-amber-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🪙</span>
+              <span>Tails</span>
+            </button>
+          </div>
+        );
+      case 18:
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setBattleChoice('Opera')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                battleChoice === 'Opera'
+                  ? 'bg-purple-600 border-purple-400 text-white shadow-lg ring-2 ring-purple-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🎭</span>
+              <span>Opera</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setBattleChoice('Football')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                battleChoice === 'Football'
+                  ? 'bg-amber-600 border-amber-400 text-white shadow-lg ring-2 ring-amber-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">⚽</span>
+              <span>Football</span>
+            </button>
+          </div>
+        );
+      case 19:
+        return renderCompactThumbStepper("Trust Transfer", trustInvestment, 0, 10, 1, `$${trustInvestment}`, setTrustInvestment);
+      case 20:
+        return (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setCentipedeChoice('Pass')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                centipedeChoice === 'Pass'
+                  ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg ring-2 ring-emerald-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">➡️</span>
+              <span>Pass (Grow Pot)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCentipedeChoice('Take')}
+              className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                centipedeChoice === 'Take'
+                  ? 'bg-rose-600 border-rose-400 text-white shadow-lg ring-2 ring-rose-300/60'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">🛑</span>
+              <span>Take Pot (Exit)</span>
+            </button>
+          </div>
+        );
+      case 21:
+        return renderCompactThumbStepper("Production Output", cournotQuantity, 10, 45, 0.5, `${cournotQuantity.toFixed(1)} units`, setCournotQuantity);
+      case 22:
+        return renderCompactThumbStepper("Beach Stand Location", hotellingLocation, 0, 100, 1, `Pos ${hotellingLocation}`, setHotellingLocation);
+      case 23: {
+        const blottoSum = blottoA + blottoB + blottoC;
+        return (
+          <div className="space-y-1 bg-slate-900/95 border border-slate-800 rounded-xl p-1.5 shadow-inner">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-300 px-0.5">
+              <span>Allocate 100 Battalions:</span>
+              <span className={`font-mono text-[11px] px-1.5 py-0.2 rounded font-black ${
+                blottoSum === 100
+                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-700'
+                  : 'bg-rose-950 text-rose-300 border border-rose-700'
+              }`}>
+                {blottoSum}/100 {blottoSum === 100 ? '✓' : `(${100 - blottoSum > 0 ? `+${100 - blottoSum}` : 100 - blottoSum})`}
+              </span>
+            </div>
+            {/* 3 Fronts in a tight horizontal grid */}
+            <div className="grid grid-cols-3 gap-1">
+              {[
+                { label: 'A', val: blottoA, set: setBlottoA },
+                { label: 'B', val: blottoB, set: setBlottoB },
+                { label: 'C', val: blottoC, set: setBlottoC }
+              ].map(f => (
+                <div key={f.label} className="bg-slate-950/80 p-1 rounded-lg border border-slate-800/80 flex items-center justify-between gap-1">
+                  <button
+                    type="button"
+                    disabled={f.val <= 0}
+                    onClick={() => f.set(Math.max(0, f.val - 5))}
+                    className="w-8 h-9 min-h-[44px] text-lg font-black bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white rounded-md flex items-center justify-center shrink-0 disabled:opacity-20 cursor-pointer select-none"
+                    aria-label={`Decrease Front ${f.label}`}
+                  >
+                    −
+                  </button>
+                  <div className="text-center min-w-0 flex-1">
+                    <div className="text-[9px] text-slate-400 font-bold uppercase">Front {f.label}</div>
+                    <div className="font-mono text-sm font-black text-amber-400 leading-tight">{f.val}</div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={f.val >= 100}
+                    onClick={() => f.set(Math.min(100, f.val + 5))}
+                    className="w-8 h-9 min-h-[44px] text-lg font-black bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white rounded-md flex items-center justify-center shrink-0 disabled:opacity-20 cursor-pointer select-none"
+                    aria-label={`Increase Front ${f.label}`}
+                  >
+                    +
+                  </button>
+                </div>
+              ))}
+            </div>
+            {/* Quick Presets in 1 compact row */}
+            <div className="flex gap-1 pt-0.5">
+              <button
+                type="button"
+                onClick={() => { setBlottoA(34); setBlottoB(33); setBlottoC(33); }}
+                className="flex-1 min-h-[28px] py-1 px-1 text-[10px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 rounded border border-slate-700"
+              >
+                Balanced 34/33/33
+              </button>
+              <button
+                type="button"
+                onClick={() => { setBlottoA(50); setBlottoB(50); setBlottoC(0); }}
+                className="flex-1 min-h-[28px] py-1 px-1 text-[10px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 rounded border border-slate-700"
+              >
+                2-Front 50/50/0
+              </button>
+              <button
+                type="button"
+                onClick={() => { setBlottoA(80); setBlottoB(10); setBlottoC(10); }}
+                className="flex-1 min-h-[28px] py-1 px-1 text-[10px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 rounded border border-slate-700"
+              >
+                Blitz 80/10/10
+              </button>
+            </div>
+          </div>
+        );
+      }
+      case 24:
+        return renderCompactThumbStepper(`Oil Lease Bid (Est: $${cvPlayerSignal.toFixed(0)})`, cvBid, 10, 100, 1, `$${cvBid.toFixed(2)}`, setCvBid);
+      case 25:
+        return renderCompactThumbStepper("Dollar Auction Bid", dollarBid, 0.1, 2.5, 0.1, `$${dollarBid.toFixed(2)}`, setDollarBid);
+      case 26:
+        return renderCompactThumbStepper("Traveler Luggage Claim", travelerClaim, 2, 100, 1, `$${travelerClaim}`, setTravelerClaim);
+      case 27:
+        return renderCompactThumbStepper("Ocean Trawlers", fisheryEffort, 0, 10, 1, `${fisheryEffort} boats`, setFisheryEffort);
+      case 28:
+        return renderCompactThumbStepper("Car Offer Price", lemonPrice, 1000, 9000, 250, `$${lemonPrice.toLocaleString()}`, setLemonPrice);
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-3 sm:space-y-4">
       {/* Unified Compact Game & Step Control Strip */}
-      <div className="bg-slate-900/95 border border-slate-800/90 rounded-2xl px-2.5 sm:px-3 py-1.5 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-2">
+      <div className="w-full max-w-full overflow-hidden bg-slate-900/95 border border-slate-800/90 rounded-2xl px-2 sm:px-3 py-1.5 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-2">
         {/* Left: Previous Game Arrow + Current Active Game Info + Switcher */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+        <div className="flex items-center gap-1 sm:gap-2.5 w-full md:w-auto min-w-0 justify-between md:justify-start">
           <button
             type="button"
             onClick={() => {
@@ -2021,7 +2569,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             <span>←</span>
           </button>
 
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 overflow-hidden px-1">
             <span className="text-xl sm:text-2xl shrink-0 p-1 bg-slate-950 rounded-lg border border-slate-800">
               {activeModule?.icon || '🎮'}
             </span>
@@ -2098,7 +2646,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         </div>
 
         {/* Right: Integrated Step Navigation Tabs */}
-        <div className="flex items-center gap-1 self-center sm:self-auto shrink-0 bg-slate-950/80 p-0.5 rounded-xl border border-slate-800">
+        <div className="flex items-center justify-center gap-1 w-full md:w-auto shrink-0 bg-slate-950/80 p-0.5 rounded-xl border border-slate-800 overflow-x-auto [&::-webkit-scrollbar]:hidden">
           {[
             { num: 1, label: '1 Rules', icon: '📜' },
             { num: 2, label: '2 Choice', icon: '🎮' },
@@ -2433,29 +2981,35 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-                    {/* Segmented Simple/Expert Mode Switcher */}
+                    {/* Segmented Quick / Full Rules Switcher */}
                     <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
                       <button
                         type="button"
-                        onClick={() => toggleBriefingMode('simple')}
+                        onClick={() => {
+                          toggleBriefingMode('simple');
+                          setIsFullRulesExpanded(false);
+                        }}
                         className={`min-h-[36px] px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                          briefingMode === 'simple'
+                          !isFullRulesExpanded
                             ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-300'
                             : 'text-slate-400 hover:text-white'
                         }`}
                       >
-                        <span>⚡ Simple</span>
+                        <span>⚡ Quick</span>
                       </button>
                       <button
                         type="button"
-                        onClick={() => toggleBriefingMode('expert')}
+                        onClick={() => {
+                          toggleBriefingMode('expert');
+                          setIsFullRulesExpanded(true);
+                        }}
                         className={`min-h-[36px] px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                          briefingMode === 'expert'
+                          isFullRulesExpanded
                             ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-300'
                             : 'text-slate-400 hover:text-white'
                         }`}
                       >
-                        <span>🔬 Expert</span>
+                        <span>🔬 Full Rules</span>
                       </button>
                     </div>
 
@@ -2465,486 +3019,473 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   </div>
                 </div>
 
-                {briefingMode === 'simple' ? (
-                  /* ========================================================================= */
-                  /* SIMPLE BRIEFING: Story First, Compact Counterpart, Rules & Direct Start   */
-                  /* ========================================================================= */
-                  (() => {
-                    const gameStory = getGameStory(selectedModuleId);
-                    const simpleRule = renderSimpleRules(selectedModuleId);
+                {(() => {
+                  const quickChips = getGameQuickChips(selectedModuleId);
+                  const gameStory = getGameStory(selectedModuleId);
+                  const simpleRule = renderSimpleRules(selectedModuleId);
 
-                    return (
-                      <div className="lg:grid lg:grid-cols-12 lg:gap-5 items-stretch space-y-3.5 lg:space-y-0">
-                        {/* LEFT COLUMN (7 cols): The Verbal Story Scenario in Point Form */}
-                        <div className="lg:col-span-7 flex flex-col justify-between bg-slate-950/80 rounded-2xl p-4 sm:p-4.5 border border-slate-800 space-y-3">
-                          <div className="space-y-2.5">
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-mono font-bold uppercase tracking-wider">
-                                <span>📖</span>
-                                <span>The Scenario</span>
-                              </span>
-                              <span className="text-xs font-mono font-bold text-slate-300 truncate">
-                                {gameStory.title}
-                              </span>
-                            </div>
-
-                            {/* 3 Point-Form Bullets: Setup, Choices, Stakes */}
-                            <ul className="space-y-2 text-xs sm:text-sm text-slate-200">
-                              <li className="flex items-start gap-2.5 bg-slate-900/70 p-2 sm:p-2.5 rounded-xl border border-slate-800/80">
-                                <span className="font-bold text-blue-400 shrink-0 flex items-center gap-1">
-                                  <span>📍</span>
-                                  <span>Setup:</span>
-                                </span>
-                                <span className="leading-snug text-slate-200">{gameStory.setup}</span>
-                              </li>
-                              <li className="flex items-start gap-2.5 bg-slate-900/70 p-2 sm:p-2.5 rounded-xl border border-slate-800/80">
-                                <span className="font-bold text-emerald-400 shrink-0 flex items-center gap-1">
-                                  <span>⚡</span>
-                                  <span>Choices:</span>
-                                </span>
-                                <span className="leading-snug text-slate-200">{gameStory.choices}</span>
-                              </li>
-                              <li className="flex items-start gap-2.5 bg-slate-900/70 p-2 sm:p-2.5 rounded-xl border border-slate-800/80">
-                                <span className="font-bold text-amber-400 shrink-0 flex items-center gap-1">
-                                  <span>⚖️</span>
-                                  <span>Stakes:</span>
-                                </span>
-                                <span className="leading-snug text-slate-200">{gameStory.stakesDetail}</span>
-                              </li>
-                            </ul>
-                          </div>
-
-                          {/* Character Roles & High-Stakes Tension */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-slate-800/80">
-                            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 flex flex-col justify-between min-h-[52px]">
-                              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-blue-400">
-                                🎭 Your Role
-                              </span>
-                              <span className="text-xs sm:text-sm font-semibold text-white truncate">
-                                {gameStory.yourRole}
-                              </span>
-                            </div>
-                            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 flex flex-col justify-between min-h-[52px]">
-                              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">
-                                ⚖️ High-Level Stakes
-                              </span>
-                              <span className="text-xs sm:text-sm font-semibold text-white truncate">
-                                {gameStory.stakes}
-                              </span>
-                            </div>
+                  return (
+                    <div className="space-y-4">
+                      {/* ========================================================================= */}
+                      {/* TOP 3 CHIPS: Your role, Your choices, How you win (Under ~10 words each)   */}
+                      {/* ========================================================================= */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-3">
+                        {/* Chip 1: Your role */}
+                        <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-3.5 border border-blue-500/30 flex items-start gap-3 shadow-sm hover:border-blue-500/50 transition-colors">
+                          <span className="text-xl sm:text-2xl p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 shrink-0">
+                            🎭
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-blue-400 block mb-0.5">
+                              Your role
+                            </span>
+                            <p className="text-sm sm:text-base font-semibold text-white leading-snug">
+                              {quickChips.role}
+                            </p>
                           </div>
                         </div>
 
-                        {/* RIGHT COLUMN (5 cols): Opponent Counterpart, Quick Rules & Primary CTA */}
-                        <div className="lg:col-span-5 flex flex-col justify-between space-y-3">
-                          {/* Counterpart / Opponent Card with Inline Bot Switcher & Strategy Intel */}
-                          <div className="bg-slate-950/80 rounded-2xl p-3 sm:p-3.5 border border-slate-800 relative">
-                            <div className="flex items-center justify-between gap-2 mb-2">
+                        {/* Chip 2: Your choices */}
+                        <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-3.5 border border-emerald-500/30 flex items-start gap-3 shadow-sm hover:border-emerald-500/50 transition-colors">
+                          <span className="text-xl sm:text-2xl p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
+                            ⚡
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 block mb-0.5">
+                              Your choices
+                            </span>
+                            <p className="text-sm sm:text-base font-semibold text-white leading-snug">
+                              {quickChips.choices}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Chip 3: How you win */}
+                        <div className="bg-slate-950/90 rounded-2xl p-3 sm:p-3.5 border border-amber-500/30 flex items-start gap-3 shadow-sm hover:border-amber-500/50 transition-colors">
+                          <span className="text-xl sm:text-2xl p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
+                            🏆
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 block mb-0.5">
+                              How you win
+                            </span>
+                            <p className="text-sm sm:text-base font-semibold text-white leading-snug">
+                              {quickChips.howYouWin}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ========================================================================= */}
+                      {/* OPPONENT STRIP & DIRECT CTA BUTTON                                         */}
+                      {/* ========================================================================= */}
+                      <div className="bg-slate-950/80 rounded-2xl p-3.5 sm:p-4 border border-slate-800 space-y-3.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          {/* Active Opponent Info */}
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <span className="text-2xl sm:text-3xl p-1.5 sm:p-2 rounded-xl bg-slate-900 border border-slate-800 shrink-0">
+                              {activeBot.avatar}
+                            </span>
+                            <div className="min-w-0 flex-1">
                               <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
-                                <span>🤝 Counterpart / Rival</span>
+                                <span>🤝 Counterpart / Opponent</span>
                                 <span className="text-slate-500 font-normal truncate">({gameStory.counterpartRole})</span>
                               </div>
+                              <div className="text-sm sm:text-base font-black text-white flex items-center gap-1.5 truncate">
+                                <span className="truncate">{activeBot.name}</span>
+                                <span className={`text-xs font-bold truncate ${activeBot.color}`}>· {activeBot.title}</span>
+                              </div>
+                              <div className="text-xs text-amber-300/90 italic truncate">
+                                "{activeBot.tagline}"
+                              </div>
+                            </div>
+                          </div>
 
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {/* Strategy Intel Hover/Tap Trigger */}
-                                <div className="relative shrink-0" ref={botIntelRef}>
-                                  <button
-                                    type="button"
-                                    onClick={() => setIsBotIntelOpen(prev => !prev)}
-                                    onMouseEnter={() => setIsBotIntelOpen(true)}
-                                    className={`min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
-                                      isBotIntelOpen
-                                        ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
-                                        : 'bg-blue-950/70 hover:bg-blue-900/80 text-blue-300 hover:text-white border-blue-800/70'
-                                    }`}
-                                    aria-expanded={isBotIntelOpen}
-                                    aria-label="View opponent strategy intelligence"
-                                    title="Preview opponent strategy intelligence"
-                                  >
-                                    <span>ⓘ</span>
-                                    <span>Intel</span>
-                                  </button>
+                          {/* Opponent Intel & Switcher Controls */}
+                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                            {/* Strategy Intel Hover/Tap Trigger */}
+                            <div className="relative shrink-0" ref={botIntelRef}>
+                              <button
+                                type="button"
+                                onClick={() => setIsBotIntelOpen(prev => !prev)}
+                                onMouseEnter={() => setIsBotIntelOpen(true)}
+                                className={`min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
+                                  isBotIntelOpen
+                                    ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
+                                    : 'bg-blue-950/70 hover:bg-blue-900/80 text-blue-300 hover:text-white border-blue-800/70'
+                                }`}
+                                aria-expanded={isBotIntelOpen}
+                                aria-label="View opponent strategy intelligence"
+                                title="Preview opponent strategy intelligence"
+                              >
+                                <span>ⓘ</span>
+                                <span>Intel</span>
+                              </button>
 
-                                  {/* Strategy Intel Popover */}
-                                  {isBotIntelOpen && (
-                                    <div
-                                      onMouseLeave={() => setIsBotIntelOpen(false)}
-                                      className="absolute right-0 top-full mt-2 z-50 w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] p-3 bg-slate-900/98 backdrop-blur-md border border-blue-500/50 rounded-2xl shadow-2xl shadow-black/90 space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-150"
+                              {/* Strategy Intel Popover */}
+                              {isBotIntelOpen && (
+                                <div
+                                  onMouseLeave={() => setIsBotIntelOpen(false)}
+                                  className="absolute right-0 top-full mt-2 z-50 w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] p-3.5 bg-slate-900/98 backdrop-blur-md border border-blue-500/50 rounded-2xl shadow-2xl shadow-black/90 space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-150"
+                                >
+                                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-xl p-1 bg-slate-950 rounded-lg border border-slate-800 shrink-0">
+                                        {activeBot.avatar}
+                                      </span>
+                                      <div className="min-w-0">
+                                        <div className="text-xs font-bold text-white truncate">
+                                          {activeBot.name}
+                                        </div>
+                                        <div className={`text-[10px] font-medium truncate ${activeBot.color}`}>
+                                          {activeBot.title}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsBotIntelOpen(false)}
+                                      className="text-slate-400 hover:text-slate-200 text-xs px-1.5 py-0.5 rounded cursor-pointer"
+                                      aria-label="Close intel popover"
                                     >
-                                      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          <span className="text-xl p-1 bg-slate-950 rounded-lg border border-slate-800 shrink-0">
-                                            {activeBot.avatar}
-                                          </span>
-                                          <div className="min-w-0">
-                                            <div className="text-xs font-bold text-white truncate">
-                                              {activeBot.name}
-                                            </div>
-                                            <div className={`text-[10px] font-medium truncate ${activeBot.color}`}>
-                                              {activeBot.title}
-                                            </div>
-                                          </div>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => setIsBotIntelOpen(false)}
-                                          className="text-slate-400 hover:text-slate-200 text-xs px-1.5 py-0.5 rounded cursor-pointer"
-                                          aria-label="Close intel popover"
-                                        >
-                                          ✕
-                                        </button>
+                                      ✕
+                                    </button>
+                                  </div>
+
+                                  <div className="space-y-1.5 text-xs">
+                                    <div className="text-[10px] font-mono text-blue-400 uppercase tracking-wider font-bold">
+                                      Strategy Heuristic:
+                                    </div>
+                                    <p className="text-slate-200 leading-relaxed font-normal bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80">
+                                      {getBotStrategySummary(activeBot)}
+                                    </p>
+                                  </div>
+
+                                  {activeBot.gauges && activeBot.gauges.length > 0 && (
+                                    <div className="space-y-1 pt-1 border-t border-slate-800/80">
+                                      <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">
+                                        Behavioral Traits:
                                       </div>
-
-                                      <div className="space-y-1.5 text-xs">
-                                        <div className="text-[10px] font-mono text-blue-400 uppercase tracking-wider font-bold">
-                                          Strategy Heuristic:
-                                        </div>
-                                        <p className="text-slate-200 leading-relaxed font-normal bg-slate-950/80 p-2 rounded-xl border border-slate-800/80">
-                                          {getBotStrategySummary(activeBot)}
-                                        </p>
-                                      </div>
-
-                                      {activeBot.gauges && activeBot.gauges.length > 0 && (
-                                        <div className="space-y-1 pt-1 border-t border-slate-800/80">
-                                          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">
-                                            Behavioral Traits:
+                                      <div className="grid grid-cols-2 gap-1.5">
+                                        {activeBot.gauges.slice(0, 2).map((gauge, gIdx) => (
+                                          <div key={gIdx} className="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800 text-[11px] flex items-center justify-between">
+                                            <span className="text-slate-400 truncate">{gauge.label}</span>
+                                            <span className={`font-mono font-bold ${gauge.color}`}>{gauge.value}%</span>
                                           </div>
-                                          <div className="grid grid-cols-2 gap-1.5">
-                                            {activeBot.gauges.slice(0, 2).map((gauge, gIdx) => (
-                                              <div key={gIdx} className="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800 text-[11px] flex items-center justify-between">
-                                                <span className="text-slate-400 truncate">{gauge.label}</span>
-                                                <span className={`font-mono font-bold ${gauge.color}`}>{gauge.value}%</span>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-
-                                      <div className="text-[11px] text-amber-300/90 italic bg-amber-950/20 p-2 rounded-xl border border-amber-900/30">
-                                        "{activeBot.tagline}"
+                                        ))}
                                       </div>
                                     </div>
                                   )}
+
+                                  <div className="text-[11px] text-amber-300/90 italic bg-amber-950/20 p-2 rounded-xl border border-amber-900/30">
+                                    "{activeBot.tagline}"
+                                  </div>
                                 </div>
+                              )}
+                            </div>
 
-                                {/* Bot Switcher Trigger */}
-                                {activeGameBots.length > 1 && (
-                                  <div className="relative shrink-0" ref={simpleBotPickerRef}>
-                                    <button
-                                      type="button"
-                                      onClick={() => setIsSimpleBotPickerOpen(prev => !prev)}
-                                      className="min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                                      aria-expanded={isSimpleBotPickerOpen}
-                                      aria-label="Change opponent bot"
-                                    >
-                                      <span>🤖</span>
-                                      <span>Change</span>
-                                      <span className={`transition-transform duration-200 text-[10px] text-slate-400 ${isSimpleBotPickerOpen ? 'rotate-180' : ''}`}>▼</span>
-                                    </button>
+                            {/* Bot Switcher Trigger */}
+                            {activeGameBots.length > 1 && (
+                              <div className="relative shrink-0" ref={simpleBotPickerRef}>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsSimpleBotPickerOpen(prev => !prev)}
+                                  className="min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                  aria-expanded={isSimpleBotPickerOpen}
+                                  aria-label="Change opponent bot"
+                                >
+                                  <span>🤖</span>
+                                  <span>Change</span>
+                                  <span className={`transition-transform duration-200 text-[10px] text-slate-400 ${isSimpleBotPickerOpen ? 'rotate-180' : ''}`}>▼</span>
+                                </button>
 
-                                    {/* Dropdown Menu */}
-                                    {isSimpleBotPickerOpen && (
-                                      <div className="absolute right-0 top-full mt-2 z-40 w-72 max-w-[calc(100vw-2.5rem)] p-2.5 bg-slate-900/98 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl shadow-black/90 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
-                                        <div className="px-2 py-1 text-[11px] font-mono text-slate-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1.5">
-                                          <span>Choose Opponent ({activeGameBots.length})</span>
+                                {/* Dropdown Menu */}
+                                {isSimpleBotPickerOpen && (
+                                  <div className="absolute right-0 top-full mt-2 z-40 w-72 max-w-[calc(100vw-2.5rem)] p-2.5 bg-slate-900/98 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl shadow-black/90 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                                    <div className="px-2 py-1 text-[11px] font-mono text-slate-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1.5">
+                                      <span>Choose Opponent ({activeGameBots.length})</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsSimpleBotPickerOpen(false)}
+                                        className="text-slate-400 hover:text-slate-200 text-xs px-1 cursor-pointer"
+                                        aria-label="Close"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                    <div className="max-h-56 overflow-y-auto space-y-1.5 pr-0.5">
+                                      {activeGameBots.map(b => {
+                                        const isSelected = activeBot.id === b.id;
+                                        return (
                                           <button
+                                            key={b.id}
                                             type="button"
-                                            onClick={() => setIsSimpleBotPickerOpen(false)}
-                                            className="text-slate-400 hover:text-slate-200 text-xs px-1 cursor-pointer"
-                                            aria-label="Close"
+                                            onClick={() => {
+                                              setSelectedBotId(b.id);
+                                              setIsSimpleBotPickerOpen(false);
+                                            }}
+                                            className={`w-full min-h-[44px] p-2 rounded-xl text-left cursor-pointer transition-all flex items-center gap-2 border ${
+                                              isSelected
+                                                ? `${b.badgeBg} ${b.badgeBorder} border-blue-500 ring-1 ring-blue-400/50 text-white font-semibold shadow-md`
+                                                : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-700'
+                                            }`}
                                           >
-                                            ✕
-                                          </button>
-                                        </div>
-                                        <div className="max-h-56 overflow-y-auto space-y-1.5 pr-0.5">
-                                          {activeGameBots.map(b => {
-                                            const isSelected = activeBot.id === b.id;
-                                            return (
-                                              <button
-                                                key={b.id}
-                                                type="button"
-                                                onClick={() => {
-                                                  setSelectedBotId(b.id);
-                                                  setIsSimpleBotPickerOpen(false);
-                                                }}
-                                                className={`w-full min-h-[44px] p-2 rounded-xl text-left cursor-pointer transition-all flex items-center gap-2 border ${
-                                                  isSelected
-                                                    ? `${b.badgeBg} ${b.badgeBorder} border-blue-500 ring-1 ring-blue-400/50 text-white font-semibold shadow-md`
-                                                    : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-700'
-                                                }`}
-                                              >
-                                                <span className="text-xl shrink-0">{b.avatar}</span>
-                                                <div className="min-w-0 flex-1">
-                                                  <div className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
-                                                    <span className="truncate">{b.name}</span>
-                                                    {isSelected && (
-                                                      <span className="text-[9px] bg-blue-500 text-white font-black px-1.5 py-0.2 rounded-full shrink-0">
-                                                        Active
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                  <div className={`text-[10px] font-medium truncate ${b.color}`}>
-                                                    {b.title}
-                                                  </div>
-                                                </div>
+                                            <span className="text-xl shrink-0">{b.avatar}</span>
+                                            <div className="min-w-0 flex-1">
+                                              <div className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                                                <span className="truncate">{b.name}</span>
                                                 {isSelected && (
-                                                  <span className="text-emerald-400 text-xs font-black shrink-0">✓</span>
+                                                  <span className="text-[9px] bg-blue-500 text-white font-black px-1.5 py-0.2 rounded-full shrink-0">
+                                                    Active
+                                                  </span>
                                                 )}
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    )}
+                                              </div>
+                                              <div className={`text-[10px] font-medium truncate ${b.color}`}>
+                                                {b.title}
+                                              </div>
+                                            </div>
+                                            {isSelected && (
+                                              <span className="text-emerald-400 text-xs font-black shrink-0">✓</span>
+                                            )}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
                                 )}
                               </div>
-                            </div>
+                            )}
+                          </div>
+                        </div>
 
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className="text-2xl sm:text-3xl p-1.5 sm:p-2 rounded-xl bg-slate-900 border border-slate-800 shrink-0">
-                                {activeBot.avatar}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm sm:text-base font-black text-white flex items-center gap-1.5 truncate">
-                                  <span className="truncate">{activeBot.name}</span>
-                                  <span className={`text-xs font-bold truncate ${activeBot.color}`}>· {activeBot.title}</span>
-                                </div>
-                                <div className="text-xs text-amber-300/90 italic truncate mt-0.5">
-                                  "{activeBot.tagline}"
-                                </div>
+                        {/* Primary Big Action Button */}
+                        <button
+                          type="button"
+                          onClick={() => scrollToStep(2)}
+                          className="w-full min-h-[56px] py-3.5 px-5 text-base sm:text-lg font-black bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-950/60 flex items-center justify-center gap-2 cursor-pointer transition-all ring-1 ring-blue-400/40"
+                        >
+                          <span>Got it! Enter Scenario & Make Your Choice (Step 2) →</span>
+                        </button>
+                      </div>
+
+                      {/* ========================================================================= */}
+                      {/* EXPANDABLE SECTION: 'Background and full rules' (Collapsed by default)     */}
+                      {/* ========================================================================= */}
+                      <div className="rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden transition-all">
+                        {/* Toggle Header Button: Large tap target >= 52px */}
+                        <button
+                          type="button"
+                          onClick={() => setIsFullRulesExpanded(prev => !prev)}
+                          className="w-full min-h-[52px] sm:min-h-[56px] px-4 py-3 bg-slate-950 hover:bg-slate-900 active:bg-slate-900 border-b border-transparent data-[expanded=true]:border-slate-800 flex items-center justify-between gap-3 text-left transition-all cursor-pointer group"
+                          data-expanded={isFullRulesExpanded}
+                          aria-expanded={isFullRulesExpanded}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="text-lg sm:text-xl p-2 rounded-xl bg-slate-900 border border-slate-800 text-blue-400 group-hover:scale-105 transition-transform shrink-0">
+                              📖
+                            </span>
+                            <div className="min-w-0">
+                              <div className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                                <span>Background and full rules</span>
+                                <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full ${
+                                  isFullRulesExpanded ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-slate-800 text-slate-400'
+                                }`}>
+                                  {isFullRulesExpanded ? 'Open' : 'Expand'}
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-400 truncate">
+                                {isFullRulesExpanded
+                                  ? 'Tap to collapse'
+                                  : 'Story setup, point-form details, payoff rules & visualizer'}
                               </div>
                             </div>
                           </div>
 
-                          {/* Plain-Language Rules in Brief */}
-                          <div className="bg-slate-950/80 rounded-2xl p-3 sm:p-3.5 border border-slate-800 space-y-2">
-                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                              <span>📋 Rules in Brief</span>
-                              <span className="text-[10px] font-mono text-emerald-400 font-bold flex items-center gap-1">
-                                <span>⚡</span>
-                                <span>Instant</span>
-                              </span>
-                            </div>
-                            <div className="space-y-1.5 text-xs sm:text-sm">
-                              <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-start gap-2">
-                                <span className="text-blue-400 font-bold shrink-0">1. Action:</span>
-                                <span className="text-slate-200 font-normal leading-snug">{simpleRule.action}</span>
-                              </div>
-                              <div className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-start gap-2">
-                                <span className="text-amber-400 font-bold shrink-0">2. Payoffs:</span>
-                                <span className="text-slate-200 font-normal leading-snug">{simpleRule.payoff}</span>
-                              </div>
-                            </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs font-semibold text-blue-400 group-hover:text-blue-300 hidden sm:inline">
+                              {isFullRulesExpanded ? 'Collapse' : 'View full rules'}
+                            </span>
+                            <span className={`w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-300 text-xs font-bold transition-transform duration-200 ${
+                              isFullRulesExpanded ? 'rotate-180 bg-blue-600/20 text-blue-400 border-blue-500/30' : ''
+                            }`}>
+                              ▼
+                            </span>
                           </div>
+                        </button>
 
-                          {/* Primary CTA Button */}
-                          <div className="space-y-1.5">
-                            <button
-                              type="button"
-                              onClick={() => scrollToStep(2)}
-                              className="w-full min-h-[48px] py-2.5 px-4 text-base sm:text-lg font-black bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-950/60 flex items-center justify-center gap-2 cursor-pointer transition-all ring-1 ring-blue-400/40"
-                            >
-                              <span>Enter Scenario & Make Your Choice (Step 2) →</span>
-                            </button>
-                            <div className="text-center">
+                        {/* Collapsed/Expanded Content */}
+                        {isFullRulesExpanded && (
+                          <div className="p-4 sm:p-5 space-y-4 animate-in fade-in duration-200 border-t border-slate-800/80">
+                            {/* Verbal Story Scenario */}
+                            <div className="space-y-3 bg-slate-900/60 p-4 rounded-xl border border-slate-800/80">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-mono font-bold uppercase tracking-wider">
+                                  <span>📖</span>
+                                  <span>The Scenario</span>
+                                </span>
+                                <span className="text-xs font-mono font-bold text-slate-300 truncate">
+                                  {gameStory.title}
+                                </span>
+                              </div>
+
+                              {gameStory.hook && (
+                                <p className="text-xs sm:text-sm text-slate-300 italic leading-relaxed">
+                                  "{gameStory.hook}"
+                                </p>
+                              )}
+
+                              {/* 3 Point-Form Bullets: Setup, Choices, Stakes */}
+                              <ul className="space-y-2 text-xs sm:text-sm text-slate-200">
+                                <li className="flex items-start gap-2.5 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80">
+                                  <span className="font-bold text-blue-400 shrink-0 flex items-center gap-1">
+                                    <span>📍</span>
+                                    <span>Setup:</span>
+                                  </span>
+                                  <span className="leading-snug text-slate-200">{gameStory.setup}</span>
+                                </li>
+                                <li className="flex items-start gap-2.5 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80">
+                                  <span className="font-bold text-emerald-400 shrink-0 flex items-center gap-1">
+                                    <span>⚡</span>
+                                    <span>Choices:</span>
+                                  </span>
+                                  <span className="leading-snug text-slate-200">{gameStory.choices}</span>
+                                </li>
+                                <li className="flex items-start gap-2.5 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80">
+                                  <span className="font-bold text-amber-400 shrink-0 flex items-center gap-1">
+                                    <span>⚖️</span>
+                                    <span>Stakes:</span>
+                                  </span>
+                                  <span className="leading-snug text-slate-200">{gameStory.stakesDetail}</span>
+                                </li>
+                              </ul>
+                            </div>
+
+                            {/* Plain-Language Rules & Payoffs */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800/80 space-y-1.5">
+                                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-blue-400 block">
+                                  1. Action Mechanics
+                                </span>
+                                <p className="text-xs sm:text-sm text-slate-200 leading-snug">
+                                  {simpleRule.action}
+                                </p>
+                              </div>
+                              <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800/80 space-y-1.5">
+                                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 block">
+                                  2. Payoff Calculations
+                                </span>
+                                <p className="text-xs sm:text-sm text-slate-200 leading-snug">
+                                  {simpleRule.payoff}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* How to Play Bullets */}
+                            <div className="bg-slate-900/60 p-3.5 sm:p-4 rounded-xl border border-slate-800/80 space-y-2">
+                              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 block">
+                                📜 Objective & Round Rules
+                              </span>
+                              <ul className="space-y-2 text-xs sm:text-sm text-slate-200 leading-relaxed">
+                                {renderHowToPlayBullets(selectedModuleId)}
+                              </ul>
+                            </div>
+
+                            {/* Bot Backstory & Detailed Strategy Profile */}
+                            <div className="bg-slate-900/60 p-3.5 sm:p-4 rounded-xl border border-slate-800/80 space-y-2.5">
+                              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 block">
+                                ♟️ Opponent Profile & Strategic Context
+                              </span>
+                              <div className="p-3 rounded-xl bg-blue-950/40 border border-blue-800/40">
+                                <span className="font-bold text-blue-300 text-xs uppercase tracking-wider block mb-1">
+                                  Strategy Profile:
+                                </span>
+                                <p className="text-xs sm:text-sm text-blue-100 font-medium leading-relaxed">
+                                  {getBotStrategySummary(activeBot)}
+                                </p>
+                              </div>
+                              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                {activeBot.backstory}
+                              </p>
+                            </div>
+
+                            {/* Interactive Matrix / Sequential Visualizer */}
+                            <div className="pt-2">
+                              {[1, 3, 4, 6, 13, 15, 17, 18].includes(selectedModuleId) ? (
+                                <InteractiveMatrixVisualizer
+                                  gameId={selectedModuleId}
+                                  botName={activeBot.name}
+                                  botAvatar={activeBot.avatar}
+                                  isDollarGame={isDollarGame}
+                                />
+                              ) : (
+                                <SequentialVisualizer
+                                  gameId={selectedModuleId}
+                                  botName={activeBot.name}
+                                  botAvatar={activeBot.avatar}
+                                  studentValuation={studentValuation}
+                                  botValuation={botValuation}
+                                  ultimatumOffer={ultimatumOffer}
+                                  trustInvestment={trustInvestment}
+                                  auctionBid={selectedModuleId === 8 ? fpAuctionBid : auctionBid}
+                                  bertrandPrice={bertrandPrice}
+                                  beautyGuess={beautyGuess}
+                                  publicGoodsContr={publicGoodsContr}
+                                  centipedeNode={centipedeNode}
+                                  launchChoice={launchChoice}
+                                  deterrenceChoice={deterrenceChoice}
+                                  pieDemand={pieDemand}
+                                  signalingType={signalingType}
+                                  signalingChoice={signalingChoice}
+                                  cournotQuantity={cournotQuantity}
+                                  botCournotQuantity={activeBot.id === 'cournot_cartel' ? 22.5 : activeBot.id === 'cournot_aggressive' ? 35 : 30}
+                                  hotellingLocation={hotellingLocation}
+                                  botHotellingLocation={activeBot.id === 'hotelling_pier' ? 15 : activeBot.id === 'hotelling_flank' ? (hotellingLocation < 50 ? 80 : 20) : 50}
+                                  blottoAllocations={{ a: blottoA, b: blottoB, c: blottoC }}
+                                  botBlottoAllocations={activeBot.id === 'blotto_blitz' || activeBot.id === 'blotto_clausewitz' ? { a: 50, b: 50, c: 0 } : activeBot.id === 'blotto_feint' ? { a: 60, b: 0, c: 40 } : { a: 34, b: 33, c: 33 }}
+                                  cvBid={cvBid}
+                                  botCvBid={activeBot.id === 'cv_naive' ? cvBotSignal : activeBot.id === 'cv_hubris' ? cvBotSignal + 2 : Math.max(10, cvBotSignal - 6)}
+                                  cvTrueValue={cvTrueValue}
+                                  cvPlayerSignal={cvPlayerSignal}
+                                  cvBotSignal={cvBotSignal}
+                                  dollarBid={dollarBid}
+                                  botDollarBid={activeBot.id === 'dollar_escalator' ? Math.min(2.0, dollarBid + 0.1) : 0.5}
+                                  travelerClaim={travelerClaim}
+                                  botTravelerClaim={activeBot.id === 'traveler_undercutter' ? 98 : activeBot.id === 'traveler_rational' ? 2 : 100}
+                                  fisheryEffort={fisheryEffort}
+                                  botFisheryEffort={activeBot.id === 'fishery_industrialist' ? 8 : activeBot.id === 'fishery_steward' ? 3 : 4}
+                                  lemonPrice={lemonPrice}
+                                />
+                              )}
+                            </div>
+
+                            {/* Secondary CTA inside expanded details */}
+                            <div className="pt-2">
                               <button
                                 type="button"
-                                onClick={() => toggleBriefingMode('expert')}
-                                className="text-[11px] text-slate-400 hover:text-blue-300 font-medium cursor-pointer inline-flex items-center gap-1 transition-colors"
+                                onClick={() => scrollToStep(2)}
+                                className="w-full min-h-[52px] sm:min-h-[56px] py-3 px-5 text-base sm:text-lg font-black bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-2xl shadow-lg shadow-blue-950/50 flex items-center justify-center gap-2 cursor-pointer transition-all"
                               >
-                                <span>Need payoff matrices and bot intelligence?</span>
-                                <span className="text-blue-400 font-bold underline">Expert Mode</span>
+                                <span>Continue to Decision Console (Step 2) →</span>
                               </button>
                             </div>
                           </div>
-                        </div>
+                        )}
                       </div>
-                    );
-                  })()
-                ) : (
-                  /* ========================================================================= */
-                  /* EXPERT BRIEFING: Full Pre-Match Intelligence, Backstory, & Matrix Tables   */
-                  /* ========================================================================= */
-                  <div className="space-y-5">
-                    {/* Opponent Bot Card */}
-                    <div className="bg-slate-950/80 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                          Opponent Faced in this Match
-                        </span>
-                        <span className="text-xs font-mono text-slate-500">
-                          {activeGameBots.length} Bot Archetypes
-                        </span>
-                      </div>
-
-                      <div className={`p-4 rounded-xl border ${activeBot.badgeBg} ${activeBot.badgeBorder}`}>
-                        <div className="flex items-center gap-3.5">
-                          <div className="text-4xl">{activeBot.avatar}</div>
-                          <div>
-                            <div className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                              <span>{activeBot.name}</span>
-                            </div>
-                            <div className={`text-sm font-bold ${activeBot.color}`}>
-                              {activeBot.title}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-sm text-amber-300 font-medium mt-2 italic">
-                          "{activeBot.tagline}"
-                        </div>
-
-                        <div className="mt-3 p-3 rounded-xl bg-blue-950/40 border border-blue-800/40">
-                          <span className="font-bold text-blue-300 text-xs uppercase tracking-wider block mb-1">
-                            ♟️ Strategy Profile (Pre-Match Intelligence):
-                          </span>
-                          <p className="text-sm sm:text-base text-blue-100 font-medium leading-relaxed">
-                            {getBotStrategySummary(activeBot)}
-                          </p>
-                        </div>
-
-                        <p className="text-sm text-slate-300 mt-2.5 leading-relaxed">
-                          {activeBot.backstory}
-                        </p>
-                      </div>
-
-                      {/* Switch Opponent if game has options */}
-                      {activeGameBots.length > 1 && (
-                        <div className="pt-3 border-t border-slate-800/80">
-                          <div className="flex items-center justify-between mb-2.5">
-                            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                              <span>🤖 Choose Opponent Bot ({activeGameBots.length} available):</span>
-                            </span>
-                            <span className="text-xs text-slate-400 font-mono hidden sm:inline">
-                              Swipe horizontally ⇄
-                            </span>
-                          </div>
-                          <div className="overflow-x-auto flex gap-3 pb-2 pt-1 touch-pan-x snap-x scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                            {activeGameBots.map(b => {
-                              const isSelected = activeBot.id === b.id;
-                              return (
-                                <button
-                                  key={b.id}
-                                  type="button"
-                                  onClick={() => setSelectedBotId(b.id)}
-                                  className={`min-h-[56px] min-w-[220px] sm:min-w-[260px] p-3.5 sm:p-4 rounded-2xl border-2 text-left cursor-pointer transition-all flex items-center gap-3 shrink-0 snap-start active:scale-[0.98] ${
-                                    isSelected
-                                      ? `${b.badgeBg} ${b.badgeBorder} border-blue-500 ring-2 ring-blue-400/50 shadow-lg text-white`
-                                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
-                                  }`}
-                                >
-                                  <span className="text-3xl shrink-0">{b.avatar}</span>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="text-sm sm:text-base font-extrabold text-white flex items-center gap-1.5 truncate">
-                                      <span className="truncate">{b.name}</span>
-                                      {isSelected && (
-                                        <span className="text-[10px] bg-blue-500 text-white font-black px-1.5 py-0.5 rounded-full shrink-0">
-                                          Active
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className={`text-xs font-bold truncate mt-0.5 ${b.color}`}>
-                                      {b.title}
-                                    </div>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
                     </div>
-
-                    {/* How to Play Bullets (1-line each, base size 16-18px) */}
-                    <div className="bg-slate-950/80 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3">
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                        📜 Objective & How to Play
-                      </div>
-                      <ul className="space-y-2.5 text-base sm:text-lg text-slate-100 font-medium leading-relaxed">
-                        {renderHowToPlayBullets(selectedModuleId)}
-                      </ul>
-                    </div>
-
-                    {/* Interactive Payoff Matrix Reference */}
-                    <div>
-                      {[1, 3, 4, 6, 13, 15, 17, 18].includes(selectedModuleId) ? (
-                        <InteractiveMatrixVisualizer
-                          gameId={selectedModuleId}
-                          botName={activeBot.name}
-                          botAvatar={activeBot.avatar}
-                          isDollarGame={isDollarGame}
-                        />
-                      ) : (
-                        <SequentialVisualizer
-                          gameId={selectedModuleId}
-                          botName={activeBot.name}
-                          botAvatar={activeBot.avatar}
-                          studentValuation={studentValuation}
-                          botValuation={botValuation}
-                          ultimatumOffer={ultimatumOffer}
-                          trustInvestment={trustInvestment}
-                          auctionBid={selectedModuleId === 8 ? fpAuctionBid : auctionBid}
-                          bertrandPrice={bertrandPrice}
-                          beautyGuess={beautyGuess}
-                          publicGoodsContr={publicGoodsContr}
-                          centipedeNode={centipedeNode}
-                          launchChoice={launchChoice}
-                          deterrenceChoice={deterrenceChoice}
-                          pieDemand={pieDemand}
-                          signalingType={signalingType}
-                          signalingChoice={signalingChoice}
-                          cournotQuantity={cournotQuantity}
-                          botCournotQuantity={activeBot.id === 'cournot_cartel' ? 22.5 : activeBot.id === 'cournot_aggressive' ? 35 : 30}
-                          hotellingLocation={hotellingLocation}
-                          botHotellingLocation={activeBot.id === 'hotelling_pier' ? 15 : activeBot.id === 'hotelling_flank' ? (hotellingLocation < 50 ? 80 : 20) : 50}
-                          blottoAllocations={{ a: blottoA, b: blottoB, c: blottoC }}
-                          botBlottoAllocations={activeBot.id === 'blotto_clausewitz' ? { a: 50, b: 50, c: 0 } : activeBot.id === 'blotto_feint' ? { a: 60, b: 0, c: 40 } : { a: 34, b: 33, c: 33 }}
-                          cvBid={cvBid}
-                          botCvBid={activeBot.id === 'cv_naive' ? cvBotSignal : activeBot.id === 'cv_hubris' ? cvBotSignal + 2 : Math.max(10, cvBotSignal - 6)}
-                          cvTrueValue={cvTrueValue}
-                          cvPlayerSignal={cvPlayerSignal}
-                          cvBotSignal={cvBotSignal}
-                          dollarBid={dollarBid}
-                          botDollarBid={activeBot.id === 'dollar_escalator' ? Math.min(2.0, dollarBid + 0.1) : 0.5}
-                          travelerClaim={travelerClaim}
-                          botTravelerClaim={activeBot.id === 'traveler_undercutter' ? 98 : activeBot.id === 'traveler_rational' ? 2 : 100}
-                          fisheryEffort={fisheryEffort}
-                          botFisheryEffort={activeBot.id === 'fishery_industrialist' ? 8 : activeBot.id === 'fishery_steward' ? 3 : 4}
-                          lemonPrice={lemonPrice}
-                        />
-                      )}
-                    </div>
-
-                    {/* Big Action Button (Step 1 -> Step 2) */}
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={() => scrollToStep(2)}
-                        className="w-full min-h-[56px] py-4 px-6 text-lg sm:text-xl font-black bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-950/60 flex items-center justify-center gap-2 cursor-pointer transition-all ring-1 ring-blue-400/40"
-                      >
-                        <span>Got it! Make Your Choice (Step 2) →</span>
-                      </button>
-                    </div>
-
-                    <div className="text-center pt-1">
-                      <button
-                        type="button"
-                        onClick={() => toggleBriefingMode('simple')}
-                        className="text-xs text-slate-400 hover:text-blue-300 font-medium cursor-pointer inline-flex items-center gap-1.5 transition-colors"
-                      >
-                        <span>Prefer a fast 2-line overview?</span>
-                        <span className="text-blue-400 font-bold underline">Switch to Simple Mode</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
 
             {/* ========================================================================= */}
             {/* STEP 2: MAKE YOUR CHOICE (DECISION CONSOLE)                                */}
             {/* ========================================================================= */}
-            <div className="w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2">
+            <div
+              className="w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2 lg:!pb-0"
+              style={{
+                paddingBottom: activeStep === 2 && !isRoundResolved ? `${mobileDockHeight + 12}px` : undefined
+              }}
+            >
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 lg:p-6 shadow-xl space-y-4 lg:space-y-5 text-slate-100 max-w-4xl lg:max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
                   <div>
@@ -3091,8 +3632,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   </div>
                 </div>
 
-                {/* Interactive Controls per Game */}
-                <div className="space-y-4">
+                {/* Interactive Controls per Game (Desktop Cockpit View - On Mobile, anchored in bottom Action Dock) */}
+                <div className="space-y-4 hidden lg:block">
                   {/* Module 1 & 6: Prisoner's Dilemma */}
                   {(selectedModuleId === 1 || selectedModuleId === 6) && (
                     <div className="space-y-3">
@@ -4345,31 +4886,74 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   ) : null}
                 </div>
 
-                {/* Big Main Confirm Button (at least 56px tall, full width on phone) */}
-                <div className="pt-3 space-y-3">
+                {/* Desktop Animated Thought Bubble (Shown while bot is deciding) */}
+                {isBotThinking && (
+                  <div className="pt-2">
+                    <div className="p-4 sm:p-5 rounded-2xl bg-indigo-950/80 border-2 border-indigo-500/70 shadow-2xl flex items-start gap-3.5 animate-in fade-in zoom-in-95 duration-200">
+                      <div className="relative shrink-0">
+                        <span className="text-3xl p-2 rounded-xl bg-slate-900 border border-slate-700 block">
+                          {activeBot.avatar}
+                        </span>
+                        <span className="absolute -bottom-1 -right-1 text-xs animate-ping">💭</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-xs font-black uppercase tracking-wider ${activeBot.color}`}>
+                            {activeBot.name} is deciding...
+                          </span>
+                          <span className="flex gap-1 items-center">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.3s]"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.15s]"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce"></span>
+                          </span>
+                        </div>
+                        <div className="relative bg-slate-900/90 border border-indigo-500/40 rounded-xl p-3 text-sm sm:text-base text-indigo-100 italic font-medium leading-relaxed shadow-inner">
+                          💭 &ldquo;{currentBotThought}&rdquo;
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Desktop Big Main Confirm Button */}
+                <div className="pt-3 space-y-3 hidden lg:block">
                   <button
                     type="button"
+                    disabled={isBotThinking}
                     onClick={handleSubmitRound}
-                    className="w-full min-h-[56px] py-4 px-6 text-lg font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:via-indigo-500 hover:to-blue-500 active:from-blue-700 active:to-indigo-700 text-white rounded-2xl shadow-xl shadow-blue-950/60 flex items-center justify-center gap-2.5 cursor-pointer transition-all ring-1 ring-blue-400/40 hover:ring-blue-300 hover:shadow-blue-600/30"
+                    className={`w-full min-h-[56px] py-4 px-6 text-lg font-black rounded-2xl shadow-xl flex items-center justify-center gap-2.5 transition-all ${
+                      isBotThinking
+                        ? 'bg-indigo-900/80 text-indigo-200 border border-indigo-700/60 cursor-wait'
+                        : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:via-indigo-500 hover:to-blue-500 active:from-blue-700 active:to-indigo-700 text-white shadow-blue-950/60 cursor-pointer ring-1 ring-blue-400/40 hover:ring-blue-300 hover:shadow-blue-600/30'
+                    }`}
                   >
-                    <span>
-                      {selectedModuleId === 20
-                        ? `Confirm Node ${centipedeNode} Choice (${centipedeChoice})`
-                        : totalRounds > 1
-                        ? `Confirm Round ${currentRound} of ${totalRounds} Decision`
-                        : `Confirm Your Decision`}
-                    </span>
-                    {totalRounds <= 1 && selectedModuleId !== 20 && (
-                      <span className="text-[11px] font-bold uppercase tracking-wider bg-blue-950/80 border border-blue-400/40 text-blue-200 px-2.5 py-0.5 rounded-full hidden sm:inline-block">
-                        One-Off Game
+                    {isBotThinking ? (
+                      <span className="flex items-center gap-2">
+                        <span className="animate-spin text-lg">⏳</span>
+                        <span>{activeBot.name} is analyzing your move...</span>
                       </span>
+                    ) : (
+                      <>
+                        <span>
+                          {selectedModuleId === 20
+                            ? `Confirm Node ${centipedeNode} Choice (${centipedeChoice})`
+                            : totalRounds > 1
+                            ? `Confirm Round ${currentRound} of ${totalRounds} Decision`
+                            : `Confirm Your Decision`}
+                        </span>
+                        {totalRounds <= 1 && selectedModuleId !== 20 && (
+                          <span className="text-[11px] font-bold uppercase tracking-wider bg-blue-950/80 border border-blue-400/40 text-blue-200 px-2.5 py-0.5 rounded-full hidden sm:inline-block">
+                            One-Off Game
+                          </span>
+                        )}
+                        {totalRounds > 1 && (
+                          <span className="text-[11px] font-bold uppercase tracking-wider bg-blue-950/80 border border-blue-400/40 text-blue-200 px-2 py-0.5 rounded-full hidden sm:inline-block">
+                            R{currentRound}/{totalRounds}
+                          </span>
+                        )}
+                        <span>→</span>
+                      </>
                     )}
-                    {totalRounds > 1 && (
-                      <span className="text-[11px] font-bold uppercase tracking-wider bg-blue-950/80 border border-blue-400/40 text-blue-200 px-2 py-0.5 rounded-full hidden sm:inline-block">
-                        R{currentRound}/{totalRounds}
-                      </span>
-                    )}
-                    <span>→</span>
                   </button>
 
                   <button
@@ -4508,6 +5092,26 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                       </>
                     );
 
+                    const counterfactual = computeWhatYouCouldHaveGot(
+                      selectedModuleId,
+                      lastRoundResult.playerAction,
+                      lastRoundResult.botAction,
+                      lastRoundResult.playerPayoff,
+                      {
+                        studentValuation,
+                        botValuation,
+                        activeBotId: activeBot.id,
+                        botName: activeBot.name,
+                        signalingType,
+                        centipedeNode,
+                        cvTrueValue,
+                        cvPlayerSignal,
+                        cvBotSignal,
+                        isDollarGame,
+                        history
+                      }
+                    );
+
                     return (
                       <div className="space-y-5">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
@@ -4538,8 +5142,127 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           </p>
                         </div>
 
+                        {/* Opponent Bot Strategy Thought Bubble */}
+                        <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-indigo-500/40 shadow-md flex items-start gap-3.5">
+                          <div className="relative shrink-0">
+                            <span className="text-3xl p-2 rounded-xl bg-slate-900 border border-slate-800 block">
+                              {activeBot.avatar}
+                            </span>
+                            <span className="absolute -bottom-1 -right-1 text-sm">💭</span>
+                          </div>
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center justify-between gap-1">
+                              <span className={`text-xs font-black uppercase tracking-wider ${activeBot.color}`}>
+                                {activeBot.name}&apos;s Strategy Thought
+                              </span>
+                              <span className="text-[10px] font-mono font-bold text-slate-400 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800">
+                                {totalRounds > 1 ? `Round ${currentRound} Decision` : 'Match Decision'}
+                              </span>
+                            </div>
+                            <div className="bg-slate-900/90 border border-slate-800/80 rounded-xl p-3 text-sm sm:text-base text-slate-200 italic font-medium leading-relaxed">
+                              💭 &ldquo;{lastRoundResult.botThought || activeBot.getAnticipationThought(currentRound, history)}&rdquo;
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. Compact 'What you got vs. what you could have got' comparison */}
+                        <div
+                          className={`p-4 sm:p-5 rounded-2xl border transition-all shadow-md space-y-3 ${
+                            counterfactual.isBestResponse
+                              ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-100'
+                              : 'bg-amber-950/30 border-amber-500/50 text-amber-100'
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl sm:text-2xl shrink-0">
+                                {counterfactual.isBestResponse ? '🎯' : '⚖️'}
+                              </span>
+                              <div>
+                                <span className="text-xs sm:text-sm font-mono font-black uppercase tracking-wider text-white block">
+                                  What you got vs. what you could have got
+                                </span>
+                                <span className="text-[11px] text-slate-300 font-medium">
+                                  Compared against {activeBot.name}'s actual action
+                                </span>
+                              </div>
+                            </div>
+                            <span
+                              className={`text-xs font-black px-3 py-1 rounded-full border self-start sm:self-auto shrink-0 ${
+                                counterfactual.isBestResponse
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50'
+                                  : 'bg-amber-500/20 text-amber-300 border-amber-400/50'
+                              }`}
+                            >
+                              {counterfactual.isBestResponse ? '✓ Best Response Played' : '⚡ Alternative Scored More'}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                            {/* What You Got */}
+                            <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between min-h-[72px]">
+                              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                                What You Got ({String(lastRoundResult.playerAction)})
+                              </span>
+                              <div className="flex items-baseline gap-2 mt-1">
+                                <span
+                                  className={`text-2xl sm:text-3xl font-black ${
+                                    counterfactual.isBestResponse ? 'text-emerald-300' : 'text-white'
+                                  }`}
+                                >
+                                  {formatSignedPayoff(counterfactual.earnedPayoff, isDollarGame)}
+                                </span>
+                                <span className="text-xs text-slate-400 font-medium">earned</span>
+                              </div>
+                            </div>
+
+                            {/* What You Could Have Got */}
+                            <div
+                              className={`p-3 sm:p-3.5 rounded-xl border flex flex-col justify-between min-h-[72px] ${
+                                counterfactual.isBestResponse
+                                  ? 'bg-emerald-950/30 border-emerald-500/30'
+                                  : 'bg-amber-950/40 border-amber-500/40'
+                              }`}
+                            >
+                              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                                Best Possible ({counterfactual.bestActionLabel})
+                              </span>
+                              <div className="flex items-baseline gap-2 mt-1 flex-wrap">
+                                <span
+                                  className={`text-2xl sm:text-3xl font-black ${
+                                    counterfactual.isBestResponse ? 'text-emerald-300' : 'text-amber-300'
+                                  }`}
+                                >
+                                  {formatSignedPayoff(counterfactual.bestPayoff, isDollarGame)}
+                                </span>
+                                {counterfactual.difference > 0 ? (
+                                  <span className="text-xs font-bold text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-700/60">
+                                    +{isDollarGame ? `$${Number(counterfactual.difference.toFixed(2))}` : `${counterfactual.difference} ${pluralWord(counterfactual.difference, 'pt', 'pts')}`} more
+                                  </span>
+                                ) : (
+                                  <span className="text-xs font-bold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-700/60">
+                                    Maximum possible
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* One-Line Plain-Language Takeaway */}
+                          <div
+                            className={`p-3 rounded-xl border flex items-start gap-2.5 text-sm sm:text-base font-semibold leading-snug ${
+                              counterfactual.isBestResponse
+                                ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-100'
+                                : 'bg-amber-950/60 border-amber-500/40 text-amber-100'
+                            }`}
+                          >
+                            <span className="shrink-0 text-base sm:text-lg mt-0.5">💬</span>
+                            <p>{counterfactual.takeaway}</p>
+                          </div>
+                        </div>
+
                         {/* Interactive Payoff Matrix / Mechanism Visualizer with Highlighted Outcome Cell */}
-                        <div>
+                        <div className="w-full max-w-full overflow-hidden">
                           {[1, 3, 4, 6, 13, 15, 17, 18].includes(selectedModuleId) ? (
                             <InteractiveMatrixVisualizer
                               gameId={selectedModuleId}
@@ -4578,7 +5301,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                               hotellingLocation={hotellingLocation}
                               botHotellingLocation={activeBot.id === 'hotelling_pier' ? 15 : activeBot.id === 'hotelling_flank' ? (hotellingLocation < 50 ? 80 : 20) : 50}
                               blottoAllocations={{ a: blottoA, b: blottoB, c: blottoC }}
-                              botBlottoAllocations={activeBot.id === 'blotto_clausewitz' ? { a: 50, b: 50, c: 0 } : activeBot.id === 'blotto_feint' ? { a: 60, b: 0, c: 40 } : { a: 34, b: 33, c: 33 }}
+                              botBlottoAllocations={activeBot.id === 'blotto_blitz' || activeBot.id === 'blotto_clausewitz' ? { a: 50, b: 50, c: 0 } : activeBot.id === 'blotto_feint' ? { a: 60, b: 0, c: 40 } : { a: 34, b: 33, c: 33 }}
                               cvBid={cvBid}
                               botCvBid={activeBot.id === 'cv_naive' ? cvBotSignal : activeBot.id === 'cv_hubris' ? cvBotSignal + 2 : Math.max(10, cvBotSignal - 6)}
                               cvTrueValue={cvTrueValue}
@@ -5810,6 +6533,80 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
               </div>
             </div>
           </div>
+
+          {/* ========================================================================= */}
+          {/* MOBILE STICKY BOTTOM ACTION DOCK (Step 2 Choice Step Ergonomics)           */}
+          {/* Visible ONLY on narrow screens (lg:hidden) during Step 2 when unresolved   */}
+          {/* ========================================================================= */}
+          {activeStep === 2 && !isRoundResolved && (
+            <div
+              ref={mobileDockRef}
+              className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/98 backdrop-blur-xl border-t border-slate-800/90 shadow-[0_-12px_40px_rgba(0,0,0,0.95)] px-3 sm:px-4 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden flex flex-col gap-1.5 animate-in slide-in-from-bottom-2 duration-200"
+              role="region"
+              aria-label="Choice decision dock"
+            >
+              {/* Primary Interactive Choice Controls (scrollable up to 40% of viewport for multi-control games) */}
+              <div className="w-full max-w-lg mx-auto max-h-[40vh] overflow-y-auto overscroll-contain pr-0.5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                {isBotThinking ? (
+                  <div className="p-3 rounded-xl bg-indigo-950/90 border border-indigo-500/70 shadow-lg flex items-center gap-2.5 animate-in fade-in duration-150">
+                    <span className="text-2xl p-1 rounded-lg bg-slate-900 border border-slate-700 shrink-0">{activeBot.avatar}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+                        <span>{activeBot.name} is deciding</span>
+                        <span className="flex gap-0.5">
+                          <span className="w-1 h-1 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.3s]"></span>
+                          <span className="w-1 h-1 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.15s]"></span>
+                          <span className="w-1 h-1 rounded-full bg-indigo-400 animate-bounce"></span>
+                        </span>
+                      </div>
+                      <p className="text-xs text-indigo-100 italic font-medium truncate">
+                        💭 &ldquo;{currentBotThought}&rdquo;
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  renderMobileActionDockControls()
+                )}
+              </div>
+
+              {/* Primary Confirm Button (at least 56px tall, stays anchored and visible below controls) */}
+              <div className="w-full max-w-lg mx-auto shrink-0">
+                <button
+                  type="button"
+                  disabled={isBotThinking}
+                  onClick={handleSubmitRound}
+                  className={`w-full min-h-[56px] py-3 px-4 text-base sm:text-lg font-black rounded-xl shadow-xl flex items-center justify-center gap-2 transition-all ${
+                    isBotThinking
+                      ? 'bg-indigo-900/80 text-indigo-200 border border-indigo-700/60 cursor-wait'
+                      : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:via-indigo-500 hover:to-blue-500 active:from-blue-700 active:to-indigo-700 text-white shadow-blue-950/60 cursor-pointer active:scale-[0.98] ring-1 ring-blue-400/40'
+                  }`}
+                >
+                  {isBotThinking ? (
+                    <span className="flex items-center gap-2 text-sm sm:text-base">
+                      <span className="animate-spin text-base">⏳</span>
+                      <span>{activeBot.name} is thinking...</span>
+                    </span>
+                  ) : (
+                    <>
+                      <span>
+                        {selectedModuleId === 20
+                          ? `Confirm Node ${centipedeNode} Choice (${centipedeChoice})`
+                          : totalRounds > 1
+                          ? `Confirm Round ${currentRound} of ${totalRounds} Decision`
+                          : `Confirm Your Decision`}
+                      </span>
+                      {totalRounds > 1 && (
+                        <span className="text-[11px] font-bold uppercase tracking-wider bg-blue-950/80 border border-blue-400/40 text-blue-200 px-2 py-0.5 rounded-full">
+                          R{currentRound}/{totalRounds}
+                        </span>
+                      )}
+                      <span>→</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       </div>

@@ -167,9 +167,9 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
   };
 
   return (
-    <div className="w-full bg-slate-950/90 rounded-2xl p-3.5 sm:p-5 border border-slate-800 space-y-3 shadow-lg select-none">
+    <div className="w-full max-w-full overflow-hidden bg-slate-950/90 rounded-2xl p-2.5 sm:p-5 border border-slate-800 space-y-2.5 sm:space-y-3 shadow-lg select-none">
       {/* Header Info */}
-      <div className="flex items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-800/80 pb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 text-xs font-mono text-slate-400 border-b border-slate-800/80 pb-2">
         <span className="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
           <span>📊</span>
           <span>Normal-Form Payoff Matrix</span>
@@ -187,14 +187,14 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
       </div>
 
       {/* Matrix Table Grid */}
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[320px] border-collapse text-center">
+      <div className="w-full max-w-full overflow-x-auto touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <table className="w-full min-w-[270px] sm:min-w-[320px] border-collapse text-center">
           <thead>
             {/* Top Opponent Label Row */}
             <tr>
-              <th className="w-24 sm:w-28"></th>
+              <th className="w-20 sm:w-28"></th>
               <th colSpan={config.colActions.length} className="py-1 text-center">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-amber-300">
+                <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-[11px] sm:text-xs font-bold text-amber-300">
                   <span>{botAvatar}</span>
                   <span>{botName}'s Action (Columns)</span>
                 </div>
@@ -202,12 +202,12 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
             </tr>
             {/* Bot Action Columns */}
             <tr>
-              <th className="py-2 text-left">
-                <span className="text-[11px] font-mono text-sky-400 font-bold">Your Action (Rows)</span>
+              <th className="py-1.5 sm:py-2 text-left">
+                <span className="text-[10px] sm:text-[11px] font-mono text-sky-400 font-bold">Your Action (Rows)</span>
               </th>
               {config.colActions.map((action, i) => (
-                <th key={action} className="py-2 px-2 text-center">
-                  <div className="inline-flex items-center gap-1 text-xs sm:text-sm font-black text-slate-200 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-800">
+                <th key={action} className="py-1.5 sm:py-2 px-1 sm:px-2 text-center">
+                  <div className="inline-flex items-center gap-1 text-[11px] sm:text-sm font-black text-slate-200 bg-slate-900/80 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-slate-800">
                     <span>{config.colIcons[i]}</span>
                     <span>{action}</span>
                   </div>
@@ -226,9 +226,9 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
                   }`}
                 >
                   {/* Row Header (Player Action) */}
-                  <th className="py-2 px-2 text-left align-middle">
+                  <th className="py-1.5 sm:py-2 px-1 sm:px-2 text-left align-middle">
                     <div
-                      className={`inline-flex items-center gap-1.5 text-xs sm:text-sm font-black px-2.5 py-2 rounded-xl border transition-all ${
+                      className={`inline-flex items-center gap-1 text-[11px] sm:text-sm font-black px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl border transition-all ${
                         isRowSelected
                           ? 'bg-sky-950 border-sky-500 text-sky-200 ring-2 ring-sky-400/40 shadow'
                           : 'bg-slate-900 border-slate-800 text-slate-200'
@@ -252,11 +252,11 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
                       playedOutcome.botAction === colAction;
 
                     return (
-                      <td key={colAction} className="p-1 sm:p-1.5 align-middle">
+                      <td key={colAction} className="p-0.5 sm:p-1.5 align-middle">
                         <div
-                          className={`relative p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col items-center justify-center gap-1 ${
+                          className={`relative p-2 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col items-center justify-center gap-0.5 sm:gap-1 ${
                             isPlayedOutcome
-                              ? 'bg-emerald-950/80 border-emerald-400 ring-2 ring-emerald-400/80 shadow-xl shadow-emerald-950/80 scale-[1.02] z-10'
+                              ? 'bg-emerald-950/80 border-emerald-400 ring-2 ring-emerald-400/80 shadow-xl shadow-emerald-950/80 scale-[1.01] z-10'
                               : isRowSelected
                               ? 'bg-slate-900 border-sky-600/50 hover:border-slate-600'
                               : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
@@ -264,20 +264,20 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
                         >
                           {/* Played Outcome Badge */}
                           {isPlayedOutcome && (
-                            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-md whitespace-nowrap">
+                            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-slate-950 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full shadow-md whitespace-nowrap">
                               🎯 Played Outcome
                             </div>
                           )}
 
                           {/* Nash Equilibrium Indicator */}
                           {cell.isNash && !isPlayedOutcome && (
-                            <div className="absolute top-1 right-1.5 text-[9px] font-mono font-bold text-amber-300 bg-amber-950/80 border border-amber-800/80 px-1 rounded">
+                            <div className="absolute top-1 right-1 sm:right-1.5 text-[8px] sm:text-[9px] font-mono font-bold text-amber-300 bg-amber-950/80 border border-amber-800/80 px-1 rounded">
                               ⭐ Nash Eq
                             </div>
                           )}
 
                           {/* Cell Payoffs: (Player, Bot) */}
-                          <div className="flex items-center gap-2 text-base sm:text-lg lg:text-xl font-black font-mono">
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-lg lg:text-xl font-black font-mono">
                             <span className="text-sky-300" title={`Your payoff: ${formatPayoff(cell.playerPayoff)}`}>
                               {formatPayoff(cell.playerPayoff)}
                             </span>
@@ -288,7 +288,7 @@ export const InteractiveMatrixVisualizer: React.FC<InteractiveMatrixVisualizerPr
                           </div>
 
                           {/* Descriptive Subtitle Label */}
-                          <div className="text-[10px] sm:text-[11px] font-medium text-slate-400 truncate max-w-[130px]">
+                          <div className="text-[9px] sm:text-[11px] font-medium text-slate-400 truncate max-w-[95px] sm:max-w-[130px]">
                             {cell.label}
                           </div>
                         </div>

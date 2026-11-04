@@ -1114,8 +1114,23 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
 
   // Game 23: Colonel Blotto 3-Front Battlefield Clash
   if (gameId === 23) {
-    const pAlloc = blottoAllocations;
-    const bAlloc = botBlottoAllocations;
+    const parseAlloc = (val: any): { a: number; b: number; c: number } | null => {
+      if (!val) return null;
+      if (typeof val === 'object' && typeof val.a === 'number' && typeof val.b === 'number' && typeof val.c === 'number') {
+        return { a: val.a, b: val.b, c: val.c };
+      }
+      if (typeof val === 'string') {
+        const match = val.match(/Passes\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+        if (match) {
+          return { a: parseInt(match[1], 10), b: parseInt(match[2], 10), c: parseInt(match[3], 10) };
+        }
+      }
+      return null;
+    };
+
+    const pAlloc = (playedOutcome && parseAlloc(playedOutcome.playerAction)) || blottoAllocations || { a: 34, b: 33, c: 33 };
+    const bAlloc = (playedOutcome && parseAlloc(playedOutcome.botAction)) || botBlottoAllocations || { a: 50, b: 50, c: 0 };
+
     const frontResults = [
       { name: "Pass A (North)", p: pAlloc.a, b: bAlloc.a, winner: pAlloc.a > bAlloc.a ? 'Player' : bAlloc.a > pAlloc.a ? 'Bot' : 'Tie' },
       { name: "Pass B (Center)", p: pAlloc.b, b: bAlloc.b, winner: pAlloc.b > bAlloc.b ? 'Player' : bAlloc.b > pAlloc.b ? 'Bot' : 'Tie' },
@@ -1125,13 +1140,13 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
     const bWins = frontResults.filter(f => f.winner === 'Bot').length;
 
     return (
-      <div className="w-full bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4 shadow-lg select-none">
-        <div className="flex items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-800/80 pb-2">
+      <div className="w-full max-w-full overflow-hidden bg-slate-950/90 rounded-2xl p-3 sm:p-5 border border-slate-800 space-y-3.5 shadow-lg select-none">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-800/80 pb-2 gap-1.5">
           <span className="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
             <span>⚔️</span>
             <span>Colonel Blotto 3-Front Battlefield Matchup</span>
           </span>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full border self-start sm:self-auto ${
             pWins > bWins
               ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
               : bWins > pWins
@@ -1173,8 +1188,21 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
           ))}
         </div>
 
-        <div className="text-[11px] text-slate-400 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 leading-relaxed">
-          💡 <strong className="text-amber-300">Blotto Insight:</strong> Symmetrically guarding all passes (34/33/33) leaves every front vulnerable to a rival who concentrates 50 battalions on two passes and sacrifices the third with 0.
+        <div className="text-[11px] text-slate-300 bg-slate-900/80 p-2.5 sm:p-3 rounded-xl border border-slate-800 leading-relaxed">
+          💡 <strong className="text-amber-300">Blotto Insight:</strong>{' '}
+          {pWins > bWins ? (
+            <span>
+              Your deployment of <strong>({pAlloc.a}/{pAlloc.b}/{pAlloc.c})</strong> defeated {botName}&apos;s <strong>({bAlloc.a}/{bAlloc.b}/{bAlloc.c})</strong> by taking {pWins} of 3 passes. Concentrating forces on decisive passes overcomes an opponent, but leaving any front thinly guarded or at 0 gives away uncontested territory.
+            </span>
+          ) : bWins > pWins ? (
+            <span>
+              Your deployment of <strong>({pAlloc.a}/{pAlloc.b}/{pAlloc.c})</strong> lost to {botName}&apos;s <strong>({bAlloc.a}/{bAlloc.b}/{bAlloc.c})</strong>. In Colonel Blotto, spread-out troop lines are defeated when an opponent concentrates massed battalions on two key passes while conceding the third.
+            </span>
+          ) : (
+            <span>
+              Your deployment of <strong>({pAlloc.a}/{pAlloc.b}/{pAlloc.c})</strong> tied with {botName}&apos;s <strong>({bAlloc.a}/{bAlloc.b}/{bAlloc.c})</strong>. In Colonel Blotto, no pure strategy is unexploitable; spreading troops evenly leaves individual passes vulnerable, while heavy concentrations risk wasting battalions against conceded fronts.
+            </span>
+          )}
         </div>
       </div>
     );
