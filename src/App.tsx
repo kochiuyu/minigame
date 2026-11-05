@@ -277,7 +277,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 selection:bg-blue-600 selection:text-white overflow-x-hidden max-w-full">
+    <div className={`bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden max-w-full ${platformMode === 'solo' ? 'lg:min-h-screen pb-0' : 'min-h-screen pb-16'}`}>
       {/* Global Header */}
       <Header
         authSession={authSession}
@@ -330,6 +330,7 @@ export default function App() {
               if (totalGames) setTotalSoloGames(totalGames);
               if (completedCount !== undefined) setCompletedSoloGamesCount(completedCount);
             }}
+            studentId={studentInfo.id || authSession?.id || 'default_student'}
           />
         ) : platformMode === 'sandbox' ? (
           <div className="space-y-4">

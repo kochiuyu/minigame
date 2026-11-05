@@ -31,7 +31,75 @@ interface SoloLabViewProps {
     totalGames?: number,
     completedGamesCount?: number
   ) => void;
+  studentId?: string;
 }
+
+export interface SoloLabTier {
+  tierNumber: number;
+  tierTitle: string;
+  category: string;
+  icon: string;
+  gameIds: number[];
+}
+
+export const SOLOLAB_TIERS: SoloLabTier[] = [
+  {
+    tierNumber: 1,
+    tierTitle: "Tier 1: Foundations & Dominance",
+    category: "Foundations & Dominance",
+    icon: "🏛️",
+    gameIds: [1, 3]
+  },
+  {
+    tierNumber: 2,
+    tierTitle: "Tier 2: Coordination & Conflict",
+    category: "Coordination & Conflict",
+    icon: "🤝",
+    gameIds: [13, 18, 15]
+  },
+  {
+    tierNumber: 3,
+    tierTitle: "Tier 3: Zero-Sum & Mixed Strategies",
+    category: "Zero-Sum & Mixed Strategies",
+    icon: "🎲",
+    gameIds: [17, 4, 23]
+  },
+  {
+    tierNumber: 4,
+    tierTitle: "Tier 4: Extensive Form & Backward Induction",
+    category: "Extensive Form & Backward Induction",
+    icon: "♟️",
+    gameIds: [2, 5, 20]
+  },
+  {
+    tierNumber: 5,
+    tierTitle: "Tier 5: Repeated Games & Reciprocity",
+    category: "Repeated Games & Reciprocity",
+    icon: "🔁",
+    gameIds: [6, 19, 12, 27]
+  },
+  {
+    tierNumber: 6,
+    tierTitle: "Tier 6: Bargaining & Behavioral Fairness",
+    category: "Bargaining & Behavioral Fairness",
+    icon: "🍰",
+    gameIds: [16, 9, 26]
+  },
+  {
+    tierNumber: 7,
+    tierTitle: "Tier 7: Industrial Organization & Markets",
+    category: "Industrial Organization & Markets",
+    icon: "🏭",
+    gameIds: [14, 21, 22]
+  },
+  {
+    tierNumber: 8,
+    tierTitle: "Tier 8: Information, Levels & Auctions",
+    category: "Information, Levels & Auctions",
+    icon: "⚖️",
+    gameIds: [11, 10, 7, 8, 24, 25, 28]
+  }
+];
 
 // Signed payoff formatter that ensures negative points display as '-10 pts' instead of '+-10 pts'
 export const formatSignedPayoff = (val: number, isDollar: boolean = false): string => {
@@ -56,7 +124,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   allGames: _allGames,
   onOpenWhatIfSandbox,
   onSwitchToLiveClass: _onSwitchToLiveClass,
-  onModuleChange
+  onModuleChange,
+  studentId
 }) => {
   // Solo Lab Supported Educational Modules (Organized into an Authoritative 8-Tier Curriculum: 24 Games Total)
   const availableModules: Array<{
@@ -337,9 +406,53 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
     }
   ];
 
+  const effectiveStudentId = studentId || (() => {
+    try {
+      const rawInfo = safeStorage.getItem('gameTheoryStudentInfo');
+      if (rawInfo) {
+        const parsed = JSON.parse(rawInfo);
+        if (parsed.id) return parsed.id;
+      }
+      const rawAuth = safeStorage.getItem('gameTheoryAuthSession');
+      if (rawAuth) {
+        const parsed = JSON.parse(rawAuth);
+        if (parsed.id) return parsed.id;
+      }
+    } catch {
+      // fallback
+    }
+    return 'default_student';
+  })();
+
   const [selectedModuleId, setSelectedModuleId] = useState<number>(1);
+
+  // Mastery Streak: consecutive games where student reached the best response (stored per student)
+  const [masteryStreak, setMasteryStreak] = useState<number>(() => {
+    try {
+      const studentSaved = safeStorage.getItem(`sololab_streak_${effectiveStudentId}`);
+      if (studentSaved !== null) return parseInt(studentSaved, 10) || 0;
+      const legacy = safeStorage.getItem('sololab_mastery_streak');
+      if (legacy !== null) return parseInt(legacy, 10) || 0;
+    } catch {
+      // ignore
+    }
+    return 0;
+  });
+
+  const saveMasteryStreak = (streak: number) => {
+    setMasteryStreak(streak);
+    try {
+      safeStorage.setItem(`sololab_streak_${effectiveStudentId}`, String(streak));
+      safeStorage.setItem('sololab_mastery_streak', String(streak));
+    } catch {
+      // ignore
+    }
+  };
+
   const [completedGameIds, setCompletedGameIds] = useState<number[]>(() => {
     try {
+      const studentSaved = safeStorage.getItem(`sololab_completed_${effectiveStudentId}`);
+      if (studentSaved) return JSON.parse(studentSaved);
       const saved = safeStorage.getItem('sololab_completed_games');
       return saved ? JSON.parse(saved) : [];
     } catch {
@@ -352,6 +465,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       if (!prev.includes(gameId)) {
         const next = [...prev, gameId];
         try {
+          safeStorage.setItem(`sololab_completed_${effectiveStudentId}`, JSON.stringify(next));
           safeStorage.setItem('sololab_completed_games', JSON.stringify(next));
         } catch {
           // ignore storage error
@@ -360,6 +474,95 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       }
       return prev;
     });
+  };
+
+  // Sync state if student changes
+  useEffect(() => {
+    try {
+      const studentSavedStreak = safeStorage.getItem(`sololab_streak_${effectiveStudentId}`);
+      if (studentSavedStreak !== null) {
+        setMasteryStreak(parseInt(studentSavedStreak, 10) || 0);
+      }
+      const studentSavedCompleted = safeStorage.getItem(`sololab_completed_${effectiveStudentId}`);
+      if (studentSavedCompleted) {
+        setCompletedGameIds(JSON.parse(studentSavedCompleted));
+      }
+    } catch {
+      // ignore
+    }
+  }, [effectiveStudentId]);
+
+  // One-line friendly completion toast & banner state
+  const [gameCompletionToast, setGameCompletionToast] = useState<{
+    visible: boolean;
+    message: string;
+    isBestResponse: boolean;
+    streak: number;
+  }>({
+    visible: false,
+    message: '',
+    isBestResponse: false,
+    streak: 0
+  });
+
+  // Auto-dismiss floating toast after 6 seconds
+  useEffect(() => {
+    if (!gameCompletionToast.visible) return;
+    const timer = setTimeout(() => {
+      setGameCompletionToast(prev => ({ ...prev, visible: false }));
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [gameCompletionToast.visible, gameCompletionToast.message]);
+
+  // Game picker view mode: 'tiers' shows full 8-Tier Curriculum sections; 'carousel' shows horizontal cards
+  const [pickerViewMode, setPickerViewMode] = useState<'tiers' | 'carousel'>('tiers');
+
+  // Tier badge calculation helper
+  const getTierBadge = (tier: SoloLabTier, tierIdx: number) => {
+    const totalCount = tier.gameIds.length;
+    const playedCount = tier.gameIds.filter(id => completedGameIds.includes(id)).length;
+
+    if (totalCount > 0 && playedCount === totalCount) {
+      return {
+        status: 'completed' as const,
+        badgeLabel: '✓ Done',
+        badgeClass: 'bg-emerald-950/90 text-emerald-300 border-emerald-600/80 shadow-xs whitespace-nowrap',
+        playedCount,
+        totalCount
+      };
+    }
+
+    if (playedCount > 0) {
+      return {
+        status: 'in_progress' as const,
+        badgeLabel: `${playedCount}/${totalCount} played`,
+        badgeClass: 'bg-blue-950/90 text-blue-300 border-blue-600/80 shadow-xs whitespace-nowrap',
+        playedCount,
+        totalCount
+      };
+    }
+
+    const prevTier = tierIdx > 0 ? SOLOLAB_TIERS[tierIdx - 1] : null;
+    const prevPlayed = prevTier ? prevTier.gameIds.filter(id => completedGameIds.includes(id)).length : 0;
+    const isUnlocked = tierIdx === 0 || prevPlayed > 0;
+
+    if (isUnlocked) {
+      return {
+        status: 'in_progress' as const,
+        badgeLabel: `0/${totalCount} played`,
+        badgeClass: 'bg-amber-950/80 text-amber-300 border-amber-700/60 shadow-xs whitespace-nowrap',
+        playedCount,
+        totalCount
+      };
+    }
+
+    return {
+      status: 'locked' as const,
+      badgeLabel: '🔒 Locked',
+      badgeClass: 'bg-slate-900/90 text-slate-400 border-slate-800 shadow-xs whitespace-nowrap',
+      playedCount,
+      totalCount
+    };
   };
 
   const activeModuleIndex = availableModules.findIndex(m => m.id === selectedModuleId);
@@ -545,6 +748,9 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   const [isBotThinking, setIsBotThinking] = useState<boolean>(false);
   const [currentBotThought, setCurrentBotThought] = useState<string>('');
 
+  // Compact Game Picker toggle (default false so game selection collapses once selected)
+  const [isGamePickerExpanded, setIsGamePickerExpanded] = useState<boolean>(false);
+
   useEffect(() => {
     setIsSimpleBotPickerOpen(false);
     setIsBotIntelOpen(false);
@@ -552,7 +758,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
   }, [selectedModuleId]);
 
   // Real measured height of the mobile sticky action dock (for dynamic Step 2 bottom padding)
-  const [mobileDockHeight, setMobileDockHeight] = useState<number>(120);
+  const [mobileDockHeight, setMobileDockHeight] = useState<number>(72);
   const mobileDockRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -583,7 +789,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       window.addEventListener('resize', measure);
       return () => window.removeEventListener('resize', measure);
     }
-  }, [activeStep, isRoundResolved, selectedModuleId]);
+  }, [activeStep, isRoundResolved, selectedModuleId, isGamePickerExpanded]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -889,9 +1095,6 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
 
   // Expert Mode toggle for formal 2x2 payoff matrix & sequential visualizers
   const [showExpertMatrix, setShowExpertMatrix] = useState<boolean>(false);
-
-  // Compact Game Picker toggle (default false so game selection collapses once selected)
-  const [isGamePickerExpanded, setIsGamePickerExpanded] = useState<boolean>(false);
 
   const isDollarGame = selectedModuleId === 6 || selectedModuleId === 14 || selectedModuleId === 7 || selectedModuleId === 8 || selectedModuleId === 16 || selectedModuleId === 9 || selectedModuleId === 21 || selectedModuleId === 24 || selectedModuleId === 25 || selectedModuleId === 26 || selectedModuleId === 28;
 
@@ -1354,14 +1557,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         botDecision.action = 'Passed previously';
         setCentipedeExitNode(myNode);
         setCentipedeExitAction('Take (Player)');
-      } else {
         // Player Passed, now Bot's turn at Node + 1
         const botNode = myNode + 1;
-        const botTakes = activeBot.id === 'backward_induction_bot'
-          ? true
-          : activeBot.id === 'cooperative_centipede'
-          ? botNode === 6
-          : Math.random() < 0.6;
+        let botTakes = false;
+        if (activeBot.id === 'always_defect_centipede' || activeBot.id === 'backward_induction_bot') {
+          botTakes = true;
+        } else if (activeBot.id === 'tit_for_tat_centipede' || activeBot.id === 'cooperative_centipede') {
+          botTakes = botNode === 6;
+        } else if (activeBot.id === 'empirical_palfrey_centipede') {
+          // Bounded rationality: Palfrey passes early with human lab likelihoods
+          const passProb = botNode === 2 ? 0.80 : botNode === 4 ? 0.45 : 0.15;
+          botTakes = Math.random() >= passProb;
+        } else {
+          botTakes = Math.random() < 0.6;
+        }
 
         if (botTakes) {
           if (botNode === 2) { playerPayoff = 1; botPayoff = 4; }
@@ -1555,6 +1764,43 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
 
     if (currentRound >= totalRounds) {
       markGameCompleted(selectedModuleId);
+
+      const counterfactual = computeWhatYouCouldHaveGot(
+        selectedModuleId,
+        playerAction,
+        botDecision.action,
+        playerPayoff,
+        {
+          studentValuation: selectedModuleId === 7 ? studentValuation : selectedModuleId === 24 ? cvPlayerSignal : undefined,
+          botValuation: selectedModuleId === 7 ? botValuation : selectedModuleId === 24 ? cvBotSignal : undefined,
+          activeBotId: activeBot.id,
+          botName: activeBot.name,
+          signalingType,
+          centipedeNode,
+          cvTrueValue,
+          cvPlayerSignal,
+          cvBotSignal,
+          isDollarGame,
+          history: roundHistoryForBot
+        }
+      );
+
+      const isBest = counterfactual.isBestResponse;
+      const nextStreak = isBest ? masteryStreak + 1 : 0;
+      saveMasteryStreak(nextStreak);
+
+      const toastMessage = isBest
+        ? (nextStreak > 1
+            ? `Streak ${nextStreak}: you found the best response!`
+            : `Streak 1: you found the best response!`)
+        : `Streak reset: you scored ${formatSignedPayoffShort(playerPayoff, isDollarGame)} · Best response was ${counterfactual.bestActionLabel}`;
+
+      setGameCompletionToast({
+        visible: true,
+        message: toastMessage,
+        isBestResponse: isBest,
+        streak: nextStreak
+      });
     }
 
     // Automatically transition to Step 3: Result & Key Takeaway
@@ -2505,26 +2751,26 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                 </div>
               ))}
             </div>
-            {/* Quick Presets in 1 compact row */}
-            <div className="flex gap-1 pt-0.5">
+            {/* Quick Presets in 2-column stacked layout with >=13px font & >=44px touch targets */}
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
               <button
                 type="button"
                 onClick={() => { setBlottoA(34); setBlottoB(33); setBlottoC(33); }}
-                className="flex-1 min-h-[28px] py-1 px-1 text-[10px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 rounded border border-slate-700"
+                className="min-h-[44px] px-2 py-2 text-[13px] font-bold font-mono bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-100 rounded-xl border border-slate-700 flex items-center justify-center text-center cursor-pointer select-none active:scale-95 transition-all shadow-xs"
               >
                 Balanced 34/33/33
               </button>
               <button
                 type="button"
                 onClick={() => { setBlottoA(50); setBlottoB(50); setBlottoC(0); }}
-                className="flex-1 min-h-[28px] py-1 px-1 text-[10px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 rounded border border-slate-700"
+                className="min-h-[44px] px-2 py-2 text-[13px] font-bold font-mono bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-100 rounded-xl border border-slate-700 flex items-center justify-center text-center cursor-pointer select-none active:scale-95 transition-all shadow-xs"
               >
                 2-Front 50/50/0
               </button>
               <button
                 type="button"
                 onClick={() => { setBlottoA(80); setBlottoB(10); setBlottoC(10); }}
-                className="flex-1 min-h-[28px] py-1 px-1 text-[10px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 rounded border border-slate-700"
+                className="min-h-[44px] px-2 py-2 text-[13px] font-bold font-mono bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-100 rounded-xl border border-slate-700 col-span-2 flex items-center justify-center text-center cursor-pointer select-none active:scale-95 transition-all shadow-xs"
               >
                 Blitz 80/10/10
               </button>
@@ -2549,6 +2795,38 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
 
   return (
     <div className="space-y-3 sm:space-y-4">
+      {/* Floating Friendly Completion Toast (Visible on Step 1 or 2; automatically dismissed in Step 3 to prevent overlap with the in-page streak card) */}
+      {gameCompletionToast.visible && activeStep !== 3 && (
+        <aside
+          role="status"
+          aria-live="polite"
+          className="fixed top-2 sm:top-3 left-1/2 -translate-x-1/2 z-50 w-[92vw] max-w-md px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl shadow-2xl backdrop-blur-md border flex items-center justify-between gap-2.5 animate-in fade-in slide-in-from-top-3 duration-300 bg-slate-900/95 box-border"
+          style={{
+            borderColor: gameCompletionToast.isBestResponse ? '#10b981' : '#6366f1',
+            boxShadow: gameCompletionToast.isBestResponse
+              ? '0 10px 30px -5px rgba(16, 185, 129, 0.35)'
+              : '0 10px 30px -5px rgba(99, 102, 241, 0.35)'
+          }}
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="text-xl sm:text-2xl shrink-0">
+              {gameCompletionToast.isBestResponse ? '🔥' : '💡'}
+            </span>
+            <p className="text-xs sm:text-sm font-black text-white leading-snug break-words">
+              {gameCompletionToast.message}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setGameCompletionToast(prev => ({ ...prev, visible: false }))}
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors shrink-0 text-base font-bold min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+            aria-label="Dismiss notification"
+          >
+            ✕
+          </button>
+        </aside>
+      )}
+
       {/* Unified Compact Game & Step Control Strip */}
       <div className="w-full max-w-full overflow-hidden bg-slate-900/95 border border-slate-800/90 rounded-2xl px-2 sm:px-3 py-1.5 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-2">
         {/* Left: Previous Game Arrow + Current Active Game Info + Switcher */}
@@ -2569,14 +2847,14 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             <span>←</span>
           </button>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 overflow-hidden px-1">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1 overflow-hidden px-0.5">
             <span className="text-xl sm:text-2xl shrink-0 p-1 bg-slate-950 rounded-lg border border-slate-800">
               {activeModule?.icon || '🎮'}
             </span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-mono font-bold text-blue-400 uppercase tracking-wider shrink-0">
-                  Game {currentModuleIndex}/{totalModulesCount}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap overflow-hidden">
+                <span className="text-[10px] sm:text-[11px] font-mono font-bold text-blue-400 uppercase tracking-wider shrink-0 whitespace-nowrap">
+                  G{currentModuleIndex}/{totalModulesCount}
                 </span>
                 <span
                   className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border hidden sm:inline-block shrink-0 ${
@@ -2589,19 +2867,31 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                 >
                   {activeModule?.difficulty}
                 </span>
+                {/* Mastery Streak Compact Chip on Game Selector */}
+                <span
+                  className={`text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 rounded-full border inline-flex items-center gap-0.5 shrink-0 whitespace-nowrap ${
+                    masteryStreak > 0
+                      ? 'bg-amber-950/90 text-amber-300 border-amber-600/80 shadow-xs'
+                      : 'bg-slate-800/80 text-slate-400 border-slate-700/60'
+                  }`}
+                  title="Mastery Streak: Consecutive games in which you reached the best response"
+                >
+                  <span className={masteryStreak > 0 ? "animate-pulse" : ""}>🔥</span>
+                  <span>{masteryStreak}</span>
+                </span>
                 {completedGameIds.includes(selectedModuleId) && (
-                  <span className="text-[9px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-1 py-0.2 rounded-full hidden md:inline-flex items-center gap-0.5 shrink-0">
-                    ✓ Done
+                  <span className="text-[9px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-1 py-0.2 rounded-full inline-flex items-center gap-0.5 shrink-0 whitespace-nowrap">
+                    ✓
                   </span>
                 )}
                 {bestQuizScores[selectedModuleId] !== undefined && (
-                  <span className="text-[9px] font-bold text-amber-300 bg-amber-950/80 border border-amber-700/60 px-1.5 py-0.2 rounded-full inline-flex items-center gap-0.5 shrink-0">
-                    🎯 Quiz {bestQuizScores[selectedModuleId]}/3
+                  <span className="text-[9px] font-bold text-amber-300 bg-amber-950/80 border border-amber-700/60 px-1.5 py-0.2 rounded-full hidden sm:inline-flex items-center gap-0.5 shrink-0 whitespace-nowrap">
+                    🎯 {bestQuizScores[selectedModuleId]}/3
                   </span>
                 )}
               </div>
-              <h3 className="text-xs sm:text-sm font-black text-white truncate leading-tight">
-                {activeModule?.title}
+              <h3 className="text-xs sm:text-sm font-black text-white truncate leading-tight mt-0.5" title={activeModule?.title}>
+                {activeModule?.shortTitle || activeModule?.title}
               </h3>
             </div>
           </div>
@@ -2617,14 +2907,15 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                 }, 50);
               }
             }}
-            className={`min-h-[36px] px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border shrink-0 ${
+            className={`min-h-[36px] px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border shrink-0 ${
               isGamePickerExpanded
                 ? 'bg-blue-600 text-white border-blue-400'
                 : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700'
             }`}
-            title={isGamePickerExpanded ? "Collapse game picker" : "Browse all 20 game simulations"}
+            title={isGamePickerExpanded ? "Collapse game picker" : "Browse all game simulations and 8 curriculum tiers"}
           >
             <span className="hidden sm:inline">Games</span>
+            {masteryStreak > 0 && <span className="text-[10px] font-mono text-amber-300">🔥{masteryStreak}</span>}
             <span>{isGamePickerExpanded ? '▲' : '▾'}</span>
           </button>
 
@@ -2715,6 +3006,12 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   <span className="hidden md:inline-flex text-[11px] font-mono font-semibold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-800/60 items-center gap-1 shrink-0">
                     <span>✓</span>
                     <span>{completedGameIds.length} Done</span>
+                  </span>
+                )}
+                {masteryStreak > 0 && (
+                  <span className="hidden sm:inline-flex text-[11px] font-mono font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-md border border-amber-700/60 items-center gap-1 shrink-0">
+                    <span>🔥</span>
+                    <span>Streak {masteryStreak}</span>
                   </span>
                 )}
               </div>
@@ -2810,7 +3107,162 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             </div>
           </div>
 
-          {/* Horizontal Swipeable Carousel (desktop shows ~3 large cards at a time) */}
+          {/* View Switcher: 8 Curriculum Tiers vs Horizontal Carousel */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900 border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setPickerViewMode('tiers')}
+                className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer flex-1 sm:flex-none whitespace-nowrap ${
+                  pickerViewMode === 'tiers'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                }`}
+              >
+                <span>📚 8 Tiers</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-950/80 text-blue-200 border border-blue-700/60">
+                  {SOLOLAB_TIERS.filter(t => t.gameIds.every(id => completedGameIds.includes(id))).length}/8
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickerViewMode('carousel')}
+                className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer flex-1 sm:flex-none whitespace-nowrap ${
+                  pickerViewMode === 'carousel'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                }`}
+              >
+                <span>🎠 Carousel</span>
+              </button>
+            </div>
+
+            {/* Quick Summary of Progress */}
+            <div className="flex items-center gap-1.5 text-xs font-mono text-slate-300 px-1 justify-between sm:justify-end">
+              <span className="flex items-center gap-1 text-amber-300 font-bold bg-amber-950/70 border border-amber-700/50 px-2 py-1 rounded-lg shrink-0 whitespace-nowrap">
+                <span>🔥</span> {masteryStreak} Streak
+              </span>
+              <span className="flex items-center gap-1 text-emerald-300 font-bold bg-emerald-950/70 border border-emerald-700/50 px-2 py-1 rounded-lg shrink-0 whitespace-nowrap">
+                <span>✓</span> {completedGameIds.length}/{totalModulesCount} Done
+              </span>
+            </div>
+          </div>
+
+          {/* MODE 1: 8 Tiers Curriculum View (Native Page Flow, No Nested Scroll Traps) */}
+          {pickerViewMode === 'tiers' && (
+            <div className="space-y-4 pt-1">
+              {SOLOLAB_TIERS.map((tier, tierIdx) => {
+                const tierBadge = getTierBadge(tier, tierIdx);
+                const tierModules = tier.gameIds
+                  .map(id => availableModules.find(m => m.id === id))
+                  .filter((m): m is NonNullable<typeof m> => Boolean(m));
+
+                return (
+                  <div
+                    key={tier.tierNumber}
+                    className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-3 sm:p-4.5 space-y-3 shadow-lg"
+                  >
+                    {/* Tier Header with Tier Badge: locked, in progress (x/y played), or completed */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-2xl sm:text-3xl p-1.5 rounded-xl bg-slate-950 border border-slate-800 shrink-0">
+                          {tier.icon}
+                        </span>
+                        <div className="min-w-0">
+                          <h4 className="text-sm sm:text-base font-black text-white tracking-tight truncate">
+                            {tier.tierTitle}
+                          </h4>
+                          <span className="text-xs text-slate-400 font-mono block truncate">
+                            {tier.category} · {tierModules.length} game{tierModules.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Explicit Tier Badge */}
+                      <span
+                        className={`text-xs sm:text-sm font-black px-3 py-1 rounded-full border self-start sm:self-auto shrink-0 ${tierBadge.badgeClass}`}
+                      >
+                        {tierBadge.badgeLabel}
+                      </span>
+                    </div>
+
+                    {/* Games Grid inside this Tier */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {tierModules.map(mod => {
+                        const isSelected = mod.id === selectedModuleId;
+                        const isDone = completedGameIds.includes(mod.id);
+                        return (
+                          <div
+                            key={mod.id}
+                            className={`p-3.5 sm:p-4 rounded-xl border-2 transition-all flex flex-col justify-between gap-3 ${
+                              isSelected
+                                ? 'bg-slate-900 border-blue-500 shadow-lg shadow-blue-950/60 ring-2 ring-blue-500/40 text-white'
+                                : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700 text-slate-300'
+                            }`}
+                          >
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                <span className="text-[11px] font-mono font-bold text-blue-400 uppercase">
+                                  Game #{mod.id}
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                                      mod.difficulty === 'Easy'
+                                        ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                                        : mod.difficulty === 'Medium'
+                                        ? 'bg-amber-950 text-amber-300 border-amber-700'
+                                        : 'bg-rose-950 text-rose-300 border-rose-700'
+                                    }`}
+                                  >
+                                    {mod.difficulty}
+                                  </span>
+                                  {isDone && (
+                                    <span className="text-[10px] font-black text-emerald-300 bg-emerald-950/90 border border-emerald-600/80 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                                      ✓ Done
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-start gap-2.5">
+                                <span className="text-2xl shrink-0 p-1.5 rounded-lg bg-slate-900 border border-slate-800">
+                                  {mod.icon}
+                                </span>
+                                <div className="min-w-0">
+                                  <h5 className="text-sm sm:text-base font-black text-white leading-tight">
+                                    {mod.title}
+                                  </h5>
+                                  <p className="text-xs text-slate-300 mt-1 line-clamp-2 leading-relaxed">
+                                    {mod.description}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handlePlayGame(mod.id)}
+                              className={`w-full min-h-[48px] py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${
+                                isSelected
+                                  ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-md'
+                                  : 'bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white border border-slate-700'
+                              }`}
+                            >
+                              <span>{isSelected ? '▶ Resume Playing' : 'Play Game →'}</span>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* MODE 2: Horizontal Swipeable Carousel */}
+          {pickerViewMode === 'carousel' && (
           <div
             ref={gameCarouselRef}
             onScroll={handleCarouselScroll}
@@ -2919,6 +3371,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
               );
             })}
           </div>
+          )}
         </div>
       )}
 
@@ -2962,13 +3415,13 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth w-full touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="flex items-start overflow-x-auto snap-x snap-mandatory scroll-smooth w-full touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {/* ========================================================================= */}
             {/* STEP 1: VERBAL STORY & BRIEFING                                           */}
             {/* ========================================================================= */}
-            <div className="w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2">
+            <div className={`w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2 ${activeStep === 2 && !isRoundResolved ? 'max-h-0 lg:max-h-none overflow-hidden' : ''}`}>
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 lg:p-5 shadow-xl space-y-3.5 text-slate-100 max-w-4xl lg:max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-800/80 pb-3">
                   <div>
@@ -3087,15 +3540,15 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                               {activeBot.avatar}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+                              <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
                                 <span>🤝 Counterpart / Opponent</span>
-                                <span className="text-slate-500 font-normal truncate">({gameStory.counterpartRole})</span>
+                                <span className="text-slate-500 font-normal">({gameStory.counterpartRole})</span>
                               </div>
-                              <div className="text-sm sm:text-base font-black text-white flex items-center gap-1.5 truncate">
-                                <span className="truncate">{activeBot.name}</span>
-                                <span className={`text-xs font-bold truncate ${activeBot.color}`}>· {activeBot.title}</span>
+                              <div className="text-sm sm:text-base font-black text-white flex items-baseline gap-1.5 flex-wrap">
+                                <span className="break-words">{activeBot.name}</span>
+                                <span className={`text-xs font-bold ${activeBot.color}`}>· {activeBot.title}</span>
                               </div>
-                              <div className="text-xs text-amber-300/90 italic truncate">
+                              <div className="text-xs text-amber-300/90 italic break-words">
                                 "{activeBot.tagline}"
                               </div>
                             </div>
@@ -3483,10 +3936,10 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             <div
               className="w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2 lg:!pb-0"
               style={{
-                paddingBottom: activeStep === 2 && !isRoundResolved ? `${mobileDockHeight + 12}px` : undefined
+                paddingBottom: activeStep === 2 && !isRoundResolved && !isGamePickerExpanded ? `${mobileDockHeight + 12}px` : undefined
               }}
             >
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 lg:p-6 shadow-xl space-y-4 lg:space-y-5 text-slate-100 max-w-4xl lg:max-w-7xl mx-auto">
+              <div className={`bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 lg:p-6 ${activeStep === 2 && !isRoundResolved ? 'pb-2 sm:pb-5 lg:pb-6' : ''} shadow-xl space-y-4 lg:space-y-5 text-slate-100 max-w-4xl lg:max-w-7xl mx-auto`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
                   <div>
                     <span className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider block">
@@ -3536,14 +3989,14 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           <span className="text-2xl p-1.5 rounded-xl bg-slate-900 border border-slate-800 shrink-0">
                             {activeBot.avatar}
                           </span>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-black text-white truncate">{activeBot.name}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-black text-white break-words">{activeBot.name}</span>
                               <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-950/80 text-blue-300 border border-blue-800/80 shrink-0">
                                 Opponent
                               </span>
                             </div>
-                            <div className="text-[11px] text-slate-400 truncate">{activeBot.tagline}</div>
+                            <div className="text-[11px] text-slate-400 break-words mt-0.5">{activeBot.tagline}</div>
                           </div>
                         </div>
                         <span className="text-xs font-mono text-emerald-400 flex items-center gap-1.5 shrink-0 bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-800/50">
@@ -3601,36 +4054,36 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   </div>
 
                   {/* RIGHT COLUMN: Expert Toggle, Action Cards, Payoff Matrix, and Primary Confirm Button */}
-                  <div className="lg:col-span-7 space-y-3.5">
+                  <div className={`lg:col-span-7 ${!showExpertMatrix && !isBotThinking ? 'hidden lg:block' : ''} ${showExpertMatrix ? 'space-y-3.5' : 'space-y-0 lg:space-y-3.5'}`}>
 
-                {/* Single Compact Payoff Matrix Switch (Aligned Inline with Action Title) */}
-                <div className="flex items-center justify-between gap-2 pb-0.5">
-                  <div className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                    <span>Select your strategic action:</span>
-                  </div>
+                  {/* Single Compact Payoff Matrix Switch (Aligned Inline with Action Title - on mobile shown only when matrix is active) */}
+                  <div className={`items-center justify-between gap-2 pb-0.5 ${showExpertMatrix ? 'flex' : 'hidden lg:flex'}`}>
+                    <div className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                      <span>Select your strategic action:</span>
+                    </div>
 
-                  <div className="flex items-center gap-2 shrink-0 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800">
-                    <span className="text-xs font-semibold text-slate-300">
-                      {showExpertMatrix ? '📐 Full Matrix' : '⚡ Simple View'}
-                    </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={showExpertMatrix}
-                      onClick={() => setShowExpertMatrix(prev => !prev)}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        showExpertMatrix ? 'bg-indigo-600' : 'bg-slate-700'
-                      }`}
-                      title={showExpertMatrix ? 'Switch to simplified decision view' : 'Reveal full payoff matrix'}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                          showExpertMatrix ? 'translate-x-4' : 'translate-x-0'
+                    <div className="flex items-center gap-2 shrink-0 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800">
+                      <span className="text-xs font-semibold text-slate-300">
+                        {showExpertMatrix ? '📐 Full Matrix' : '⚡ Simple View'}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={showExpertMatrix}
+                        onClick={() => setShowExpertMatrix(prev => !prev)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          showExpertMatrix ? 'bg-indigo-600' : 'bg-slate-700'
                         }`}
-                      />
-                    </button>
+                        title={showExpertMatrix ? 'Switch to simplified decision view' : 'Reveal full payoff matrix'}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            showExpertMatrix ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
-                </div>
 
                 {/* Interactive Controls per Game (Desktop Cockpit View - On Mobile, anchored in bottom Action Dock) */}
                 <div className="space-y-4 hidden lg:block">
@@ -4649,26 +5102,26 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                         </div>
 
                         {/* Presets & Auto-Balance Bar */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
-                          <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+                          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
                             <button
                               type="button"
                               onClick={() => handleBlottoPreset(34, 33, 33)}
-                              className="px-2.5 py-1 text-xs font-mono font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700 cursor-pointer"
+                              className="min-h-[44px] px-3 py-2 text-[13px] sm:text-xs font-bold font-mono bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 flex items-center justify-center text-center cursor-pointer transition-colors shadow-xs"
                             >
                               Symmetric (34/33/33)
                             </button>
                             <button
                               type="button"
                               onClick={() => handleBlottoPreset(50, 50, 0)}
-                              className="px-2.5 py-1 text-xs font-mono font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700 cursor-pointer"
+                              className="min-h-[44px] px-3 py-2 text-[13px] sm:text-xs font-bold font-mono bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 flex items-center justify-center text-center cursor-pointer transition-colors shadow-xs"
                             >
                               Blitzkrieg (50/50/0)
                             </button>
                             <button
                               type="button"
                               onClick={() => handleBlottoPreset(60, 0, 40)}
-                              className="px-2.5 py-1 text-xs font-mono font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700 cursor-pointer"
+                              className="min-h-[44px] px-3 py-2 text-[13px] sm:text-xs font-bold font-mono bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 col-span-2 sm:col-span-1 flex items-center justify-center text-center cursor-pointer transition-colors shadow-xs"
                             >
                               Flank Feint (60/0/40)
                             </button>
@@ -4678,7 +5131,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                             <button
                               type="button"
                               onClick={handleAutoBalance}
-                              className="px-3 py-1 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg cursor-pointer shadow-sm"
+                              className="min-h-[44px] px-4 py-2 text-[13px] sm:text-xs font-bold bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl cursor-pointer shadow-md flex items-center justify-center w-full sm:w-auto shrink-0"
                             >
                               Auto-Balance to 100
                             </button>
@@ -4829,8 +5282,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                 </div>
 
                 {/* Live Interactive Payoff Matrix / Visualizer for Selected Move (Expert Mode) */}
-                <div className="pt-1">
-                  {showExpertMatrix ? (
+                {showExpertMatrix && (
+                  <div className="pt-1">
                     <div className="bg-slate-950/90 rounded-2xl border border-indigo-900/50 overflow-hidden shadow-xl shadow-indigo-950/20 animate-in fade-in duration-200">
                       {/* Full Matrix / Visualizer */}
                       <div className="p-3 sm:p-4 bg-slate-950/60">
@@ -4883,8 +5336,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                         )}
                       </div>
                     </div>
-                  ) : null}
-                </div>
+                  </div>
+                )}
 
                 {/* Desktop Animated Thought Bubble (Shown while bot is deciding) */}
                 {isBotThinking && (
@@ -4972,7 +5425,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             {/* ========================================================================= */}
             {/* STEP 3: RESULT & KEY TAKEAWAY                                             */}
             {/* ========================================================================= */}
-            <div className="w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2">
+            <div className={`w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2 ${activeStep === 2 && !isRoundResolved ? 'max-h-0 lg:max-h-none overflow-hidden' : ''}`}>
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-5 text-slate-100 max-w-4xl mx-auto">
                 {!isRoundResolved ? (
                   /* If round is not yet resolved, show clear prompt to complete choice */
@@ -5142,6 +5595,36 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           </p>
                         </div>
 
+                        {/* Friendly Mastery Banner right below result */}
+                        {gameCompletionToast.message && (
+                          <div
+                            className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between gap-3 shadow-md transition-all ${
+                              gameCompletionToast.isBestResponse
+                                ? 'bg-gradient-to-r from-emerald-950/80 to-blue-950/80 border-emerald-500/60 text-white'
+                                : 'bg-gradient-to-r from-amber-950/80 to-slate-900 border-amber-600/60 text-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <span className="text-2xl sm:text-3xl shrink-0">
+                                {gameCompletionToast.isBestResponse ? '🔥' : '💡'}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm sm:text-base font-extrabold tracking-tight leading-snug break-words">
+                                  {gameCompletionToast.message}
+                                </p>
+                                <span className="text-xs text-slate-300 block mt-0.5 leading-snug">
+                                  {gameCompletionToast.isBestResponse
+                                    ? `Theoretical best-response achieved! Current streak: ${masteryStreak}`
+                                    : 'Keep exploring strategies in the What-If Sandbox or next game!'}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-xs font-mono font-bold px-2 py-1 rounded-lg bg-black/40 border border-white/10 shrink-0 self-start sm:self-center">
+                              Streak {masteryStreak}
+                            </span>
+                          </div>
+                        )}
+
                         {/* Opponent Bot Strategy Thought Bubble */}
                         <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-indigo-500/40 shadow-md flex items-start gap-3.5">
                           <div className="relative shrink-0">
@@ -5152,10 +5635,10 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           </div>
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex flex-wrap items-center justify-between gap-1">
-                              <span className={`text-xs font-black uppercase tracking-wider ${activeBot.color}`}>
+                              <span className={`text-xs font-black uppercase tracking-wider ${activeBot.color} break-words`}>
                                 {activeBot.name}&apos;s Strategy Thought
                               </span>
-                              <span className="text-[10px] font-mono font-bold text-slate-400 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800">
+                              <span className="text-[10px] font-mono font-bold text-slate-400 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 shrink-0">
                                 {totalRounds > 1 ? `Round ${currentRound} Decision` : 'Match Decision'}
                               </span>
                             </div>
@@ -5502,7 +5985,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             {/* ========================================================================= */}
             {/* STEP 4: GO DEEPER (THEORY, BENCHMARKS & MATCH HISTORY)                    */}
             {/* ========================================================================= */}
-            <div className="w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2">
+            <div className={`w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2 ${activeStep === 2 && !isRoundResolved ? 'max-h-0 lg:max-h-none overflow-hidden' : ''}`}>
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-5 text-slate-100 max-w-4xl mx-auto">
                 {!isRoundResolved ? (
                   <div className="bg-slate-950/90 rounded-2xl p-6 sm:p-8 border border-slate-800 text-center space-y-4">
@@ -6291,7 +6774,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             {/* ========================================================================= */}
             {/* STEP 5: QUICK CHECK QUIZ (EQUILIBRIUM MASTERY)                            */}
             {/* ========================================================================= */}
-            <div className="w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2">
+            <div className={`w-full min-w-full shrink-0 snap-center snap-always px-1 sm:px-2 ${activeStep === 2 && !isRoundResolved ? 'max-h-0 lg:max-h-none overflow-hidden' : ''}`}>
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-5 text-slate-100 max-w-4xl mx-auto">
                 {!isRoundResolved ? (
                   /* If round is not yet resolved */
@@ -6537,8 +7020,9 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
           {/* ========================================================================= */}
           {/* MOBILE STICKY BOTTOM ACTION DOCK (Step 2 Choice Step Ergonomics)           */}
           {/* Visible ONLY on narrow screens (lg:hidden) during Step 2 when unresolved   */}
+          {/* Automatically hidden when game picker is open so it does not cover list     */}
           {/* ========================================================================= */}
-          {activeStep === 2 && !isRoundResolved && (
+          {activeStep === 2 && !isRoundResolved && !isGamePickerExpanded && (
             <div
               ref={mobileDockRef}
               className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/98 backdrop-blur-xl border-t border-slate-800/90 shadow-[0_-12px_40px_rgba(0,0,0,0.95)] px-3 sm:px-4 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden flex flex-col gap-1.5 animate-in slide-in-from-bottom-2 duration-200"
