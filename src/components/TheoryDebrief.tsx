@@ -2,7 +2,7 @@ import React from 'react';
 import { BotArchetype, BOT_PROFILES, GameSpecificBot } from '../services/botEngine';
 import { MathFormula, FormattedMathText } from './MathFormula';
 import { GlossaryTerm, AnnotateGlossaryText, formatUnit, pluralWord } from './GlossaryTerm';
-import { getCurriculumNumber } from '../data/curriculumOrder';
+import { getCurriculumNumber, getGameTakeawaySentence } from '../data/curriculumOrder';
 
 export interface DebriefData {
   gameTitle: string;
@@ -595,9 +595,18 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
   };
 
   const wholeMatchStats = getWholeMatchFrequencies();
+  const matchRoundsCount = (data.roundsSummary || []).length || data.roundCount;
+  const resultSentence =
+    data.playerTotalScore > data.botTotalScore
+      ? `You earned ${data.playerTotalScore} pts, beating ${botProfile.name} (${data.botTotalScore} pts) by ${data.playerTotalScore - data.botTotalScore} pts across ${formatUnit(matchRoundsCount, 'round')}.`
+      : data.playerTotalScore < data.botTotalScore
+      ? `You earned ${data.playerTotalScore} pts while ${botProfile.name} earned ${data.botTotalScore} pts across ${formatUnit(matchRoundsCount, 'round')}.`
+      : `You and ${botProfile.name} tied with ${data.playerTotalScore} pts each across ${formatUnit(matchRoundsCount, 'round')}.`;
+
+  const keyTakeawaySentence = getGameTakeawaySentence(data.gameId);
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-2 text-slate-100 font-sans">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-2 text-slate-100 font-sans">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
@@ -636,8 +645,38 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         </div>
       </div>
 
-      {/* Scoreboard Metrics Cards - Stack cleanly on mobile */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* 1. Exactly one Result Line shown at the very top */}
+      <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md flex items-start gap-3">
+        <span className="text-xl sm:text-2xl shrink-0 mt-0.5">📊</span>
+        <div className="min-w-0 flex-1">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+            Match Result ({formatUnit(matchRoundsCount, 'Round')}):
+          </span>
+          <p className="text-base sm:text-lg text-slate-100 font-medium leading-relaxed">
+            {resultSentence}
+          </p>
+        </div>
+      </div>
+
+      {/* 2. One Plain-Language Takeaway Sentence of 25 Words or Fewer */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-amber-950/30 border border-amber-600/40 text-slate-100 flex items-start gap-3 shadow-md">
+        <span className="text-2xl sm:text-3xl shrink-0 mt-0.5">💡</span>
+        <div className="min-w-0 flex-1">
+          <span className="font-black text-amber-300 text-xs sm:text-sm uppercase tracking-wider block mb-1">
+            Key Takeaway:
+          </span>
+          <p className="text-base sm:text-lg text-slate-100 font-semibold leading-relaxed">
+            <AnnotateGlossaryText text={keyTakeawaySentence} />
+          </p>
+        </div>
+      </div>
+
+      {/* 3. Counterfactual Comparison / Scoreboard Metrics Cards */}
+      <div className="space-y-2">
+        <div className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 px-1">
+          Payoff Comparison vs. Theoretical Benchmarks
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Your Cumulative Payoff</div>
           <div className="text-2xl font-black text-white font-mono tabular-nums mt-1">
@@ -682,217 +721,250 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Whole Match Choice Frequencies & Theoretical Equilibrium Comparison */}
-      <div className="bg-slate-950/80 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-800/80 pb-2">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <span>⚖️ Whole Match Decisions vs. Equilibrium Prediction</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-blue-400 font-mono">{formatUnit((data.roundsSummary || []).length, 'Round')} Analyzed</span>
-          </div>
-          <div className="text-xs font-mono font-bold text-slate-300">
-            Total Points: <strong className="text-emerald-400">You: {data.playerTotalScore}</strong> vs <strong className={botProfile.color}>{botProfile.name}: {data.botTotalScore}</strong>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="bg-slate-900/90 p-3 sm:p-3.5 rounded-xl border border-rose-900/50 space-y-1.5">
-            <div className="text-[10px] font-bold text-rose-400 uppercase tracking-wider flex items-center justify-between">
-              <span><GlossaryTerm term="nash-equilibrium">Equilibrium Prediction Benchmark</GlossaryTerm></span>
-              <span className="font-mono text-rose-300">Theory</span>
-            </div>
-            <div className="text-xs sm:text-sm font-black text-white font-mono leading-snug">
-              <AnnotateGlossaryText text={wholeMatchStats.equilibriumBenchmark} />
-            </div>
-          </div>
-
-          <div className="bg-slate-900/90 p-3 sm:p-3.5 rounded-xl border border-emerald-900/50 space-y-1.5">
-            <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
-              <span>Your Actual Choice Frequencies</span>
-              <span className="font-mono text-emerald-300">{(data.roundsSummary || []).length} {pluralWord((data.roundsSummary || []).length, 'Rd', 'Rds')} Played</span>
-            </div>
-            <div className="text-xs sm:text-sm font-black text-white font-mono leading-snug">
-              {wholeMatchStats.studentFrequencies}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border border-blue-900/50 text-xs sm:text-sm text-slate-200 leading-relaxed">
-          <strong className="text-sky-300 font-semibold block sm:inline mb-1 sm:mb-0">Gap Interpretation: </strong>
-          <span><AnnotateGlossaryText text={wholeMatchStats.gapSentence} /></span>
-        </div>
       </div>
 
-      {/* Comparative Payoff Bar Chart Against Theoretical Benchmarks */}
-      {(() => {
-        const maxScoreVal = Math.max(
-          data.playerTotalScore,
-          data.botTotalScore,
-          data.nashBenchmarkScore,
-          data.paretoOptimumScore,
-          1
-        );
-        const calcPercent = (val: number) =>
-          Math.min(100, Math.max(4, Math.round((val / maxScoreVal) * 100)));
-
-        const diffFromNash = Math.round((data.playerTotalScore - data.nashBenchmarkScore) * 10) / 10;
-
-        return (
-          <div className="bg-slate-950/80 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800/80">
+      {/* Collapsed 'Go deeper' sections keeping all content reachable */}
+      <div className="space-y-3 pt-1">
+        {/* Go deeper: Equilibrium Prediction Benchmarks & Choice Frequencies */}
+        <details className="group bg-slate-950/90 rounded-2xl border border-slate-800 overflow-hidden transition-all shadow-md">
+          <summary className="min-h-[52px] px-4 sm:px-5 py-3.5 font-bold text-sm sm:text-base text-slate-200 cursor-pointer flex items-center justify-between hover:bg-slate-900 select-none">
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg">⚖️</span>
+              <span>Go deeper: Equilibrium benchmarks & choice frequencies</span>
+            </div>
+            <span className="text-slate-400 group-open:rotate-90 transition-transform font-mono text-sm">▸</span>
+          </summary>
+          <div className="p-4 sm:p-5 border-t border-slate-800 space-y-3.5 bg-slate-900/40">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-800/80 pb-2">
               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <span>📊 Comparative Payoff Bar Chart</span>
+                <span>⚖️ Whole Match Decisions vs. Equilibrium Prediction</span>
                 <span className="text-slate-600">·</span>
-                <span className="text-blue-400 font-mono">Normalized against Equilibrium Frontiers</span>
+                <span className="text-blue-400 font-mono">{formatUnit((data.roundsSummary || []).length, 'Round')} Analyzed</span>
               </div>
-              <div className="text-xs font-mono font-bold">
-                {diffFromNash >= 0 ? (
-                  <span className="text-emerald-400">▲ +${diffFromNash} above <GlossaryTerm term="nash-equilibrium">Nash Equilibrium</GlossaryTerm></span>
-                ) : (
-                  <span className="text-rose-400">▼ -${Math.abs(diffFromNash)} below <GlossaryTerm term="nash-equilibrium">Nash Equilibrium</GlossaryTerm></span>
-                )}
+              <div className="text-xs font-mono font-bold text-slate-300">
+                Total Points: <strong className="text-emerald-400">You: {data.playerTotalScore}</strong> vs <strong className={botProfile.color}>{botProfile.name}: {data.botTotalScore}</strong>
               </div>
             </div>
 
-            <div className="space-y-3 pt-1">
-              {/* 1. Student Bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-white flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                    <span>Your Performance</span>
-                  </span>
-                  <span className="font-mono font-bold text-white">
-                    ${data.playerTotalScore} pts
-                  </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-slate-900/90 p-3 sm:p-3.5 rounded-xl border border-rose-900/50 space-y-1.5">
+                <div className="text-[10px] font-bold text-rose-400 uppercase tracking-wider flex items-center justify-between">
+                  <span><GlossaryTerm term="nash-equilibrium">Equilibrium Prediction Benchmark</GlossaryTerm></span>
+                  <span className="font-mono text-rose-300">Theory</span>
                 </div>
-                <div className="h-5 bg-slate-900 rounded-lg overflow-hidden border border-slate-800 flex items-center p-0.5">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded transition-all duration-700 shadow-sm"
-                    style={{ width: `${calcPercent(data.playerTotalScore)}%` }}
-                  />
+                <div className="text-xs sm:text-sm font-black text-white font-mono leading-snug">
+                  <AnnotateGlossaryText text={wholeMatchStats.equilibriumBenchmark} />
                 </div>
               </div>
 
-              {/* 2. Bot Bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between items-center text-xs">
-                  <span className={`font-semibold flex items-center gap-1.5 ${botProfile.color}`}>
-                    <span className="h-2 w-2 rounded-full bg-slate-400"></span>
-                    <span>{botProfile.name} ({botProfile.title})</span>
-                  </span>
-                  <span className="font-mono font-bold text-slate-300">
-                    ${data.botTotalScore} pts
-                  </span>
+              <div className="bg-slate-900/90 p-3 sm:p-3.5 rounded-xl border border-emerald-900/50 space-y-1.5">
+                <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Your Actual Choice Frequencies</span>
+                  <span className="font-mono text-emerald-300">{(data.roundsSummary || []).length} {pluralWord((data.roundsSummary || []).length, 'Rd', 'Rds')} Played</span>
                 </div>
-                <div className="h-5 bg-slate-900 rounded-lg overflow-hidden border border-slate-800 flex items-center p-0.5">
-                  <div
-                    className="h-full bg-slate-600 rounded transition-all duration-700"
-                    style={{ width: `${calcPercent(data.botTotalScore)}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* 3. Nash Benchmark Bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-amber-400 font-semibold flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-                    <span><GlossaryTerm term="nash-equilibrium">Nash Equilibrium Benchmark</GlossaryTerm> (Rational Self-Interest)</span>
-                  </span>
-                  <span className="font-mono font-bold text-amber-400">
-                    ${data.nashBenchmarkScore} pts
-                  </span>
-                </div>
-                <div className="h-5 bg-slate-900 rounded-lg overflow-hidden border border-slate-800 flex items-center p-0.5">
-                  <div
-                    className="h-full bg-amber-600/80 rounded transition-all duration-700 border-r-2 border-amber-300"
-                    style={{ width: `${calcPercent(data.nashBenchmarkScore)}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* 4. Pareto Social Optimum Bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                    <span><GlossaryTerm term="pareto-efficiency">Pareto Social Optimum</GlossaryTerm> (Max Group Efficiency)</span>
-                  </span>
-                  <span className="font-mono font-bold text-emerald-400">
-                    ${data.paretoOptimumScore} pts
-                  </span>
-                </div>
-                <div className="h-5 bg-slate-900 rounded-lg overflow-hidden border border-slate-800 flex items-center p-0.5">
-                  <div
-                    className="h-full bg-emerald-600/80 rounded transition-all duration-700 border-r-2 border-emerald-300"
-                    style={{ width: `${calcPercent(data.paretoOptimumScore)}%` }}
-                  />
+                <div className="text-xs sm:text-sm font-black text-white font-mono leading-snug">
+                  {wholeMatchStats.studentFrequencies}
                 </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
 
-      {/* Core Theoretical Insight Breakdown */}
-      <div className="bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md">
-          <div className="min-w-0">
-            <div className="text-[10px] font-mono text-blue-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-              <span>📚 Formal Theory Model</span>
-              <span className="text-slate-600">·</span>
-              <span><AnnotateGlossaryText text={insights.concept} /></span>
-            </div>
-            <h3 className="text-base sm:text-lg font-black text-white mt-0.5 tracking-tight">
-              Theoretical Foundation & Equilibrium Dynamics
-            </h3>
-          </div>
-          <div className="bg-slate-950 px-3.5 py-2.5 rounded-xl border border-amber-500/30 text-amber-300 text-xs sm:text-sm font-medium overflow-x-auto max-w-full shadow-inner flex items-center gap-2.5 shrink-0 self-start md:self-auto">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400/80 border-r border-slate-800 pr-2 select-none shrink-0">
-              EQUATION
-            </span>
-            <div className="text-amber-200 text-sm leading-none flex items-center">
-              <MathFormula math={insights.formula} />
+            <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border border-blue-900/50 text-xs sm:text-sm text-slate-200 leading-relaxed">
+              <strong className="text-sky-300 font-semibold block sm:inline mb-1 sm:mb-0">Gap Interpretation: </strong>
+              <span><AnnotateGlossaryText text={wholeMatchStats.gapSentence} /></span>
             </div>
           </div>
-        </div>
+        </details>
 
-        <div className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-          <FormattedMathText text={insights.keyFinding} />
-        </div>
+        {/* Go deeper: Comparative Payoff Bar Chart Against Theoretical Benchmarks */}
+        <details className="group bg-slate-950/90 rounded-2xl border border-slate-800 overflow-hidden transition-all shadow-md">
+          <summary className="min-h-[52px] px-4 sm:px-5 py-3.5 font-bold text-sm sm:text-base text-slate-200 cursor-pointer flex items-center justify-between hover:bg-slate-900 select-none">
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg">📊</span>
+              <span>Go deeper: Visual payoff comparison chart</span>
+            </div>
+            <span className="text-slate-400 group-open:rotate-90 transition-transform font-mono text-sm">▸</span>
+          </summary>
+          <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-900/40">
+            {(() => {
+              const maxScoreVal = Math.max(
+                data.playerTotalScore,
+                data.botTotalScore,
+                data.nashBenchmarkScore,
+                data.paretoOptimumScore,
+                1
+              );
+              const calcPercent = (val: number) =>
+                Math.min(100, Math.max(4, Math.round((val / maxScoreVal) * 100)));
 
-        {/* Key Game Theory Principles list */}
-        <div className="space-y-2 pt-2 border-t border-slate-900">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Key Formal Principles
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-            {insights.rulesSummary.map((rule, idx) => {
-              const [head, ...rest] = rule.split(':');
+              const diffFromNash = Math.round((data.playerTotalScore - data.nashBenchmarkScore) * 10) / 10;
+
               return (
-                <div key={idx} className="bg-slate-900/90 p-3 rounded-xl border border-slate-800/80">
-                  <div className="text-xs font-bold text-white mb-1">{head}:</div>
-                  <div className="text-[11px] text-slate-400 leading-relaxed">
-                    <FormattedMathText text={rest.join(':')} />
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800/80">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>📊 Comparative Payoff Bar Chart</span>
+                      <span className="text-slate-600">·</span>
+                      <span className="text-blue-400 font-mono">Normalized against Equilibrium Frontiers</span>
+                    </div>
+                    <div className="text-xs font-mono font-bold">
+                      {diffFromNash >= 0 ? (
+                        <span className="text-emerald-400">▲ +${diffFromNash} above <GlossaryTerm term="nash-equilibrium">Nash Equilibrium</GlossaryTerm></span>
+                      ) : (
+                        <span className="text-rose-400">▼ -${Math.abs(diffFromNash)} below <GlossaryTerm term="nash-equilibrium">Nash Equilibrium</GlossaryTerm></span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-1">
+                    {/* 1. Student Bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-white flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                          <span>Your Performance</span>
+                        </span>
+                        <span className="font-mono font-bold text-white">
+                          ${data.playerTotalScore} pts
+                        </span>
+                      </div>
+                      <div className="h-5 bg-slate-900 rounded-lg overflow-hidden border border-slate-800 flex items-center p-0.5">
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded transition-all duration-700 shadow-sm"
+                          style={{ width: `${calcPercent(data.playerTotalScore)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 2. Bot Bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className={`font-semibold flex items-center gap-1.5 ${botProfile.color}`}>
+                          <span className="h-2 w-2 rounded-full bg-slate-400"></span>
+                          <span>{botProfile.name} ({botProfile.title})</span>
+                        </span>
+                        <span className="font-mono font-bold text-slate-300">
+                          ${data.botTotalScore} pts
+                        </span>
+                      </div>
+                      <div className="h-5 bg-slate-900 rounded-lg overflow-hidden border border-slate-800 flex items-center p-0.5">
+                        <div
+                          className="h-full bg-slate-600 rounded transition-all duration-700"
+                          style={{ width: `${calcPercent(data.botTotalScore)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 3. Nash Benchmark Bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-amber-400 font-semibold flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-amber-500"></span>
+                          <span><GlossaryTerm term="nash-equilibrium">Nash Equilibrium Benchmark</GlossaryTerm> (Rational Self-Interest)</span>
+                        </span>
+                        <span className="font-mono font-bold text-amber-400">
+                          ${data.nashBenchmarkScore} pts
+                        </span>
+                      </div>
+                      <div className="h-5 bg-slate-900 rounded-lg overflow-hidden border border-slate-800 flex items-center p-0.5">
+                        <div
+                          className="h-full bg-amber-600/80 rounded transition-all duration-700 border-r-2 border-amber-300"
+                          style={{ width: `${calcPercent(data.nashBenchmarkScore)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 4. Pareto Social Optimum Bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                          <span><GlossaryTerm term="pareto-efficiency">Pareto Social Optimum</GlossaryTerm> (Max Group Efficiency)</span>
+                        </span>
+                        <span className="font-mono font-bold text-emerald-400">
+                          ${data.paretoOptimumScore} pts
+                        </span>
+                      </div>
+                      <div className="h-5 bg-slate-900 rounded-lg overflow-hidden border border-slate-800 flex items-center p-0.5">
+                        <div
+                          className="h-full bg-emerald-600/80 rounded transition-all duration-700 border-r-2 border-emerald-300"
+                          style={{ width: `${calcPercent(data.paretoOptimumScore)}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
-            })}
+            })()}
           </div>
-        </div>
+        </details>
 
-        {/* Real World Case Study */}
-        <div className="bg-blue-950/30 border border-blue-900/50 p-3.5 rounded-xl flex items-start gap-3 mt-3">
-          <span className="text-lg">🏛️</span>
-          <div>
-            <div className="text-xs font-bold text-blue-300">Real-World Application & Market Design:</div>
-            <div className="text-xs text-slate-300 mt-0.5 leading-relaxed">
-              <FormattedMathText text={insights.caseStudy} />
+        {/* Go deeper: Core Theoretical Model, Equations & Market Design Principles */}
+        <details className="group bg-slate-950/90 rounded-2xl border border-slate-800 overflow-hidden transition-all shadow-md">
+          <summary className="min-h-[52px] px-4 sm:px-5 py-3.5 font-bold text-sm sm:text-base text-slate-200 cursor-pointer flex items-center justify-between hover:bg-slate-900 select-none">
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg">📚</span>
+              <span>Go deeper: Formal theory model, equations & market design principles</span>
+            </div>
+            <span className="text-slate-400 group-open:rotate-90 transition-transform font-mono text-sm">▸</span>
+          </summary>
+          <div className="p-4 sm:p-5 border-t border-slate-800 space-y-4 bg-slate-900/40">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md">
+              <div className="min-w-0">
+                <div className="text-[10px] font-mono text-blue-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <span>📚 Formal Theory Model</span>
+                  <span className="text-slate-600">·</span>
+                  <span><AnnotateGlossaryText text={insights.concept} /></span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white mt-0.5 tracking-tight">
+                  Theoretical Foundation & Equilibrium Dynamics
+                </h3>
+              </div>
+              <div className="bg-slate-950 px-3.5 py-2.5 rounded-xl border border-amber-500/30 text-amber-300 text-xs sm:text-sm font-medium overflow-x-auto max-w-full shadow-inner flex items-center gap-2.5 shrink-0 self-start md:self-auto">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400/80 border-r border-slate-800 pr-2 select-none shrink-0">
+                  EQUATION
+                </span>
+                <div className="text-amber-200 text-sm leading-none flex items-center">
+                  <MathFormula math={insights.formula} />
+                </div>
+              </div>
+            </div>
+
+            <div className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <FormattedMathText text={insights.keyFinding} />
+            </div>
+
+            {/* Key Game Theory Principles list */}
+            <div className="space-y-2 pt-2 border-t border-slate-900">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Key Formal Principles
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                {insights.rulesSummary.map((rule, idx) => {
+                  const [head, ...rest] = rule.split(':');
+                  return (
+                    <div key={idx} className="bg-slate-900/90 p-3 rounded-xl border border-slate-800/80">
+                      <div className="text-xs font-bold text-white mb-1">{head}:</div>
+                      <div className="text-[11px] text-slate-400 leading-relaxed">
+                        <FormattedMathText text={rest.join(':')} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Real World Case Study */}
+            <div className="bg-blue-950/30 border border-blue-900/50 p-3.5 rounded-xl flex items-start gap-3 mt-3">
+              <span className="text-lg">🏛️</span>
+              <div>
+                <div className="text-xs font-bold text-blue-300">Real-World Application & Market Design:</div>
+                <div className="text-xs text-slate-300 mt-0.5 leading-relaxed">
+                  <FormattedMathText text={insights.caseStudy} />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </details>
       </div>
 
       {/* Try Against Another Game Persona */}

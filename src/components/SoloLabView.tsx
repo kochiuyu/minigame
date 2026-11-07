@@ -14,6 +14,7 @@ import { InteractiveMatrixVisualizer } from './InteractiveMatrixVisualizer';
 import { SequentialVisualizer } from './SequentialVisualizer';
 import { getGameStory, getGameQuickChips } from '../data/gameStories';
 import { computeWhatYouCouldHaveGot } from '../utils/counterfactualEngine';
+import { getGameTakeawaySentence } from '../data/curriculumOrder';
 
 export interface SoloLabRoundHistoryEntry extends RoundHistoryEntry {
   botRationale: string;
@@ -5474,74 +5475,17 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                     const roundScoreCmp = getScoreCmp(lastRoundResult.playerPayoff, lastRoundResult.botPayoff, isDollarGame);
                     const matchScoreCmp = getScoreCmp(playerTotal, botTotal, isDollarGame);
 
-                    // Strictly 2 short plain-language sentences with zero jargon in sentence 1
-                    let keyTakeawaySentence = "";
-                    if (selectedModuleId === 1) {
-                      keyTakeawaySentence = "Defecting is tempting because you get more points right now no matter what your opponent picks. But when both players give in to that temptation, both end up with fewer points than if they had cooperated.";
-                    } else if (selectedModuleId === 2) {
-                      keyTakeawaySentence = "Moving first lets you commit to an aggressive action that forces your rival to accommodate you. Committing early earns a higher payoff because the follower rationally chooses to avoid a mutually destructive confrontation.";
-                    } else if (selectedModuleId === 3) {
-                      keyTakeawaySentence = "Cutting prices is tempting because undercutting steals all the customers from your rival. But when both firms cut prices, neither gains a market share advantage and both end up stuck at lower profits.";
-                    } else if (selectedModuleId === 4) {
-                      keyTakeawaySentence = "When overlapping promotions ruin the impact for both stores, picking the same schedule as your rival destroys your return. The best strategy is to stay unpredictable by randomizing your schedule evenly across all available days.";
-                    } else if (selectedModuleId === 5) {
-                      keyTakeawaySentence = "Threatening retaliation is useless unless your opponent truly believes you have no choice but to fight. Sinking irreversible capital into capacity makes your threat credible, successfully keeping challengers out of your market.";
-                    } else if (selectedModuleId === 6) {
-                      keyTakeawaySentence = "When you play someone repeatedly, cooperating becomes much easier because future rounds give you a way to reward good moves or punish bad ones. Knowing that betrayal will be met with retaliation protects mutual trust and keeps both players earning more over time.";
-                    } else if (selectedModuleId === 7) {
-                      keyTakeawaySentence = "Your best move in this kind of auction is simply to write down what the prize is honestly worth to you. Bidding higher risks paying too much, while bidding lower makes you miss out on a good deal.";
-                    } else if (selectedModuleId === 8) {
-                      keyTakeawaySentence = "In a first-price auction, you pay whatever you bid, so bidding your full value guarantees you make zero profit even if you win. Shading your bid down toward half your valuation balances your chance of winning against the profit margin you keep.";
-                    } else if (selectedModuleId === 9) {
-                      keyTakeawaySentence = "Demanding a larger share is tempting, but if both players get too greedy the negotiation collapses completely. Fair splits around 50/50 succeed because both partners know that outside options leave everyone worse off.";
-                    } else if (selectedModuleId === 10) {
-                      keyTakeawaySentence = "High-quality sellers can prove their value by choosing a signal that is cheap for them but too expensive for impostors to fake. When the cost difference is large enough, honest quality separates itself from lemons.";
-                    } else if (selectedModuleId === 11) {
-                      keyTakeawaySentence = "Winning a guessing contest is not about finding the perfect math formula; it is about guessing how many steps ahead other people will think. Aiming just one step ahead of the crowd wins far more often than calculating the extreme theoretical answer that nobody else reaches.";
-                    } else if (selectedModuleId === 12) {
-                      keyTakeawaySentence = "Everyone gains when people chip in to help the group, but everyone is also tempted to keep their own money while enjoying what others built. Without rules, reputation, or ways to discourage freeloading, voluntary teamwork usually breaks down over time.";
-                    } else if (selectedModuleId === 13) {
-                      keyTakeawaySentence = "Going after the big prize only works when both people completely trust each other to show up. If you worry your partner might play it safe, settling for the smaller individual reward becomes the smarter move.";
-                    } else if (selectedModuleId === 14) {
-                      keyTakeawaySentence = "Trying to win all the customers by lowering your price by one dollar forces your rival to do the exact same thing. This price war keeps repeating until neither company makes any profit at all.";
-                    } else if (selectedModuleId === 15) {
-                      keyTakeawaySentence = "When two sides refuse to back down, the collision that follows often costs far more than whatever they were fighting over. The only way to survive high-stakes conflicts is to keep opponents guessing or find shared conventions for who gets to go first.";
-                    } else if (selectedModuleId === 16) {
-                      keyTakeawaySentence = "Even when math says taking a tiny crumb is better than taking nothing, real people will gladly walk away with zero just to punish an unfair offer. Successful bargaining requires respecting your partner's sense of dignity rather than trying to squeeze out every last dollar.";
-                    } else if (selectedModuleId === 17) {
-                      keyTakeawaySentence = "Whenever your opponent gains directly from whatever you lose, sticking to any predictable habit lets them beat you easily. The only safe way to protect yourself is to keep your choices truly random from one turn to the next.";
-                    } else if (selectedModuleId === 18) {
-                      keyTakeawaySentence = "Two partners can both want to hang out together even when they completely disagree on where to go. Finding a fair rhythm like taking turns is the only way to avoid stubborn clashes where both get nothing.";
-                    } else if (selectedModuleId === 19) {
-                      keyTakeawaySentence = "Handing resources to another person creates new value, but it requires taking a leap of faith that they will not keep everything. Real partnerships flourish when early goodwill is rewarded with fair sharing, expanding the pie for everyone involved.";
-                    } else if (selectedModuleId === 20) {
-                      keyTakeawaySentence = "Passing the turn back and forth lets the shared reward grow to its maximum potential. However, holding out for the grand prize requires mutual patience so neither player panics and grabs the pot prematurely.";
-                    } else if (selectedModuleId === 21) {
-                      keyTakeawaySentence = "Deciding production quantity allows firms to sustain positive profit margins above marginal cost, avoiding the complete price collapse of price wars. However, individual temptations to overproduce beyond cartel quotas make collusive agreements notoriously unstable.";
-                    } else if (selectedModuleId === 22) {
-                      keyTakeawaySentence = "Competing sellers naturally cluster together right at the center of the market to avoid losing captive customers on either side. Harold Hotelling's Principle of Minimum Differentiation explains why rival gas stations, fast-food chains, and political candidates often mirror each other's positions.";
-                    } else if (selectedModuleId === 23) {
-                      keyTakeawaySentence = "Spreading your resources evenly across every front leaves you vulnerable to an opponent who sacrifices one border to overwhelm the others. In high-stakes multi-front contests, unpredictability and focused force concentration are essential to victory.";
-                    } else if (selectedModuleId === 24) {
-                      keyTakeawaySentence = "Winning an auction where nobody knows the true value often means you had the most overly optimistic estimate in the room. Sophisticated bidders survive by shading their bids significantly downward to protect themselves from this Winner's Curse.";
-                    } else if (selectedModuleId === 25) {
-                      keyTakeawaySentence = "Entering an escalating war of attrition where the loser also forfeits their money traps both sides in the sunk cost fallacy. The only winning move is to recognize the trap immediately and refuse to bid at all.";
-                    } else if (selectedModuleId === 26) {
-                      keyTakeawaySentence = "Strict backward induction can produce paradoxical results that leave everyone deeply impoverished compared to real-world social cooperation. While game theory predicts both travelers will claim only $2, human players coordinate near $100 to maximize their shared payout.";
-                    } else if (selectedModuleId === 27) {
-                      keyTakeawaySentence = "Without shared harvest rules, open-access resources get overharvested until the entire fishery collapses. Long-term prosperity requires mutual quota stewardship to let renewable breeding stocks reproduce.";
-                    } else if (selectedModuleId === 28) {
-                      keyTakeawaySentence = "When buyers cannot verify product quality beforehand, low offer prices cause owners of high-quality goods to withdraw from the market. Unless sellers provide credible warranties or certifications, adverse selection collapses the market into low-value lemons.";
-                    }
+                    // One plain-language takeaway sentence (strictly 25 words or fewer)
+                    const keyTakeawaySentence = getGameTakeawaySentence(selectedModuleId);
 
-                    // Result line formatting: signed payoffs, negative points show as '-10 pts' (never '+-10 pts')
+                    // One result line: your points vs bot, over N rounds (signed payoffs, negative points show as '-10 pts')
                     const resultSentence = selectedModuleId === 1 || matchRounds <= 1 ? (
                       <>
-                        You chose <strong className="text-white">{String(lastRoundResult.playerAction)}</strong> ({formatSignedPayoff(lastRoundResult.playerPayoff, isDollarGame)}) and {activeBot.name} chose <strong className="text-white">{String(lastRoundResult.botAction)}</strong> ({formatSignedPayoff(lastRoundResult.botPayoff, isDollarGame)}) — {roundScoreCmp}.
+                        You scored <strong className="text-white">{formatSignedPayoff(lastRoundResult.playerPayoff, isDollarGame)}</strong> and {activeBot.name} scored <strong className="text-white">{formatSignedPayoff(lastRoundResult.botPayoff, isDollarGame)}</strong> over 1 round — {roundScoreCmp}.
                       </>
                     ) : (
                       <>
-                        You scored <strong className="text-white">{isDollarGame ? `$${playerTotal.toFixed(2)}` : `${playerTotal >= 0 ? playerTotal : `-${Math.abs(playerTotal)}`} ${pluralWord(playerTotal, 'pt', 'pts')}`}</strong> and {activeBot.name} scored <strong className="text-white">{isDollarGame ? `$${botTotal.toFixed(2)}` : `${botTotal >= 0 ? botTotal : `-${Math.abs(botTotal)}`} ${pluralWord(botTotal, 'pt', 'pts')}`}</strong> over {formatUnit(matchRounds, 'round')} — {matchScoreCmp}. In the latest round, you chose <strong className="text-white">{String(lastRoundResult.playerAction)}</strong> ({formatSignedPayoff(lastRoundResult.playerPayoff, isDollarGame)}) and {activeBot.name} chose <strong className="text-white">{String(lastRoundResult.botAction)}</strong> ({formatSignedPayoff(lastRoundResult.botPayoff, isDollarGame)}).
+                        You scored <strong className="text-white">{isDollarGame ? `$${playerTotal.toFixed(2)}` : `${playerTotal >= 0 ? playerTotal : `-${Math.abs(playerTotal)}`} ${pluralWord(playerTotal, 'pt', 'pts')}`}</strong> and {activeBot.name} scored <strong className="text-white">{isDollarGame ? `$${botTotal.toFixed(2)}` : `${botTotal >= 0 ? botTotal : `-${Math.abs(botTotal)}`} ${pluralWord(botTotal, 'pt', 'pts')}`}</strong> over {formatUnit(matchRounds, 'round')} — {matchScoreCmp}.
                       </>
                     );
 
@@ -5566,7 +5510,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                     );
 
                     return (
-                      <div className="space-y-5">
+                      <div className="space-y-4">
+                        {/* Step 3 Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
                           <div>
                             <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider block">
@@ -5576,8 +5521,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                             </span>
                             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-0.5">
                               {totalRounds > 1
-                                ? `Round ${currentRound} Result & Key Takeaway`
-                                : `Match Result & Key Takeaway`}
+                                ? `Round ${currentRound} Result & Takeaway`
+                                : `Match Result & Takeaway`}
                             </h2>
                           </div>
                           <span className="text-xs font-mono text-slate-400">
@@ -5585,17 +5530,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           </span>
                         </div>
 
-                        {/* 1. Result Line shown at the very top */}
-                        <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md">
-                          <span className="font-extrabold text-white text-base sm:text-lg block mb-1">
-                            {totalRounds > 1 ? `📊 Round ${currentRound} Result:` : '📊 Match Result:'}
-                          </span>
-                          <p className="text-base sm:text-lg text-slate-100 font-medium leading-relaxed">
-                            {resultSentence}
-                          </p>
+                        {/* 1. Exactly one Result Line shown at the very top */}
+                        <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md flex items-start gap-3">
+                          <span className="text-xl sm:text-2xl shrink-0 mt-0.5">📊</span>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                              {totalRounds > 1 ? `Match Standings (${formatUnit(matchRounds, 'Round')}):` : 'Match Result:'}
+                            </span>
+                            <p className="text-base sm:text-lg text-slate-100 font-medium leading-relaxed">
+                              {resultSentence}
+                            </p>
+                          </div>
                         </div>
 
-                        {/* Friendly Mastery Banner right below result */}
+                        {/* Friendly Mastery Banner right below result (if any) */}
                         {gameCompletionToast.message && (
                           <div
                             className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between gap-3 shadow-md transition-all ${
@@ -5625,30 +5573,20 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           </div>
                         )}
 
-                        {/* Opponent Bot Strategy Thought Bubble */}
-                        <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-indigo-500/40 shadow-md flex items-start gap-3.5">
-                          <div className="relative shrink-0">
-                            <span className="text-3xl p-2 rounded-xl bg-slate-900 border border-slate-800 block">
-                              {activeBot.avatar}
+                        {/* 2. One Plain-Language Takeaway Sentence of 25 Words or Fewer */}
+                        <div className="p-4 sm:p-5 rounded-2xl bg-amber-950/30 border border-amber-600/40 text-slate-100 flex items-start gap-3 shadow-md">
+                          <span className="text-2xl sm:text-3xl shrink-0 mt-0.5">💡</span>
+                          <div className="min-w-0 flex-1">
+                            <span className="font-black text-amber-300 text-xs sm:text-sm uppercase tracking-wider block mb-1">
+                              Key Takeaway:
                             </span>
-                            <span className="absolute -bottom-1 -right-1 text-sm">💭</span>
-                          </div>
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex flex-wrap items-center justify-between gap-1">
-                              <span className={`text-xs font-black uppercase tracking-wider ${activeBot.color} break-words`}>
-                                {activeBot.name}&apos;s Strategy Thought
-                              </span>
-                              <span className="text-[10px] font-mono font-bold text-slate-400 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 shrink-0">
-                                {totalRounds > 1 ? `Round ${currentRound} Decision` : 'Match Decision'}
-                              </span>
-                            </div>
-                            <div className="bg-slate-900/90 border border-slate-800/80 rounded-xl p-3 text-sm sm:text-base text-slate-200 italic font-medium leading-relaxed">
-                              💭 &ldquo;{lastRoundResult.botThought || activeBot.getAnticipationThought(currentRound, history)}&rdquo;
-                            </div>
+                            <p className="text-base sm:text-lg text-slate-100 font-semibold leading-relaxed">
+                              <AnnotateGlossaryText text={keyTakeawaySentence} />
+                            </p>
                           </div>
                         </div>
 
-                        {/* 2. Compact 'What you got vs. what you could have got' comparison */}
+                        {/* 3. The Counterfactual Comparison Card */}
                         <div
                           className={`p-4 sm:p-5 rounded-2xl border transition-all shadow-md space-y-3 ${
                             counterfactual.isBestResponse
@@ -5744,173 +5682,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           </div>
                         </div>
 
-                        {/* Interactive Payoff Matrix / Mechanism Visualizer with Highlighted Outcome Cell */}
-                        <div className="w-full max-w-full overflow-hidden">
-                          {[1, 3, 4, 6, 13, 15, 17, 18].includes(selectedModuleId) ? (
-                            <InteractiveMatrixVisualizer
-                              gameId={selectedModuleId}
-                              botName={activeBot.name}
-                              botAvatar={activeBot.avatar}
-                              playedOutcome={{
-                                playerAction: String(lastRoundResult.playerAction),
-                                botAction: String(lastRoundResult.botAction),
-                                playerPayoff: lastRoundResult.playerPayoff,
-                                botPayoff: lastRoundResult.botPayoff
-                              }}
-                              isDollarGame={isDollarGame}
-                            />
-                          ) : (
-                            <SequentialVisualizer
-                              gameId={selectedModuleId}
-                              botName={activeBot.name}
-                              botAvatar={activeBot.avatar}
-                              studentValuation={studentValuation}
-                              botValuation={botValuation}
-                              ultimatumOffer={ultimatumOffer}
-                              trustInvestment={trustInvestment}
-                              auctionBid={selectedModuleId === 8 ? fpAuctionBid : auctionBid}
-                              bertrandPrice={bertrandPrice}
-                              beautyGuess={beautyGuess}
-                              publicGoodsContr={publicGoodsContr}
-                              centipedeNode={centipedeNode}
-                              launchChoice={launchChoice}
-                              deterrenceChoice={deterrenceChoice}
-                              pieDemand={pieDemand}
-                              signalingType={signalingType}
-                              signalingChoice={signalingChoice}
-                              buyerTrustChoice={lastRoundResult ? (lastRoundResult.botAction === 'Trust' ? 'Trust' : "Don't Trust") : undefined}
-                              cournotQuantity={cournotQuantity}
-                              botCournotQuantity={activeBot.id === 'cournot_cartel' ? 22.5 : activeBot.id === 'cournot_aggressive' ? 35 : 30}
-                              hotellingLocation={hotellingLocation}
-                              botHotellingLocation={activeBot.id === 'hotelling_pier' ? 15 : activeBot.id === 'hotelling_flank' ? (hotellingLocation < 50 ? 80 : 20) : 50}
-                              blottoAllocations={{ a: blottoA, b: blottoB, c: blottoC }}
-                              botBlottoAllocations={activeBot.id === 'blotto_blitz' || activeBot.id === 'blotto_clausewitz' ? { a: 50, b: 50, c: 0 } : activeBot.id === 'blotto_feint' ? { a: 60, b: 0, c: 40 } : { a: 34, b: 33, c: 33 }}
-                              cvBid={cvBid}
-                              botCvBid={activeBot.id === 'cv_naive' ? cvBotSignal : activeBot.id === 'cv_hubris' ? cvBotSignal + 2 : Math.max(10, cvBotSignal - 6)}
-                              cvTrueValue={cvTrueValue}
-                              cvPlayerSignal={cvPlayerSignal}
-                              cvBotSignal={cvBotSignal}
-                              playedOutcome={{
-                                playerAction: String(lastRoundResult.playerAction),
-                                botAction: String(lastRoundResult.botAction),
-                                playerPayoff: lastRoundResult.playerPayoff,
-                                botPayoff: lastRoundResult.botPayoff
-                              }}
-                            />
-                          )}
-                        </div>
-
-                        {/* 2. Key Takeaway: rewritten as 2 short plain-language sentences (no jargon in sentence 1) */}
-                        <div className="p-4 sm:p-5 rounded-2xl bg-amber-950/30 border border-amber-600/40 text-slate-100 flex items-start gap-3 shadow-md">
-                          <span className="text-2xl sm:text-3xl shrink-0 mt-0.5">💡</span>
-                          <div>
-                            <span className="font-black text-amber-300 text-base sm:text-lg block mb-1">
-                              Key Takeaway:
-                            </span>
-                            <p className="text-base sm:text-lg text-slate-100 font-medium leading-relaxed">
-                              <AnnotateGlossaryText text={keyTakeawaySentence} />
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* 3. Counterfactual Opponent Analysis: What if you had faced the other bot archetypes? */}
-                        {activeGameBots.length > 1 && (() => {
-                          const otherBots = activeGameBots.filter(b => b.id !== activeBot.id);
-                          if (otherBots.length === 0) return null;
-
-                          return (
-                            <div className="bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-indigo-900/50 shadow-lg space-y-3">
-                              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-                                <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-                                  <span>🧠</span>
-                                  <span>Counterfactual Matchup Intelligence</span>
-                                </span>
-                                <span className="text-[11px] font-mono text-slate-400">
-                                  Tested against your move: {String(lastRoundResult.playerAction)}
-                                </span>
-                              </div>
-
-                              <p className="text-xs text-slate-300 leading-relaxed">
-                                How would your decision of <strong className="text-white">{String(lastRoundResult.playerAction)}</strong> have performed if you had faced the other bot archetypes in this scenario?
-                              </p>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                                {otherBots.map(bot => {
-                                  const altDecision = bot.decide({
-                                    round: currentRound,
-                                    totalRounds,
-                                    history: history.map(h => ({
-                                      round: h.round,
-                                      playerAction: h.playerAction,
-                                      botAction: h.botAction,
-                                      playerPayoff: h.playerPayoff,
-                                      botPayoff: h.botPayoff,
-                                      playerValuation: h.playerValuation,
-                                      botValuation: h.botValuation
-                                    })),
-                                    botValuation: selectedModuleId === 24 ? cvBotSignal : botValuation,
-                                    studentValuation: selectedModuleId === 24 ? cvPlayerSignal : studentValuation
-                                  });
-
-                                  // Format alt action string
-                                  const altActionStr = typeof altDecision.action === 'object'
-                                    ? JSON.stringify(altDecision.action)
-                                    : String(altDecision.action);
-
-                                  return (
-                                    <div key={bot.id} className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between space-y-2">
-                                      <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          <span className="text-xl p-1 rounded-lg bg-slate-950 border border-slate-800 shrink-0">{bot.avatar}</span>
-                                          <div className="min-w-0">
-                                            <div className="text-xs font-bold text-white truncate">{bot.name}</div>
-                                            <div className={`text-[10px] font-medium truncate ${bot.color}`}>{bot.title}</div>
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      <div className="p-2 rounded-lg bg-slate-950/80 border border-slate-800 text-xs space-y-1">
-                                        <div className="flex justify-between items-center text-[11px]">
-                                          <span className="text-slate-400">Would have chosen:</span>
-                                          <span className="font-mono font-bold text-amber-300 truncate max-w-[140px]">{altActionStr}</span>
-                                        </div>
-                                        <div className="text-[10px] text-slate-400 italic line-clamp-2">
-                                          "{altDecision.rationale}"
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })()}
-
-                        {/* Standings Summary Card */}
-                        {matchRounds > 1 && (
-                          <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                                Cumulative Match Standings
-                              </span>
-                              <div className="text-base sm:text-lg font-black text-white font-mono mt-0.5">
-                                <span className="text-emerald-400">You: {isDollarGame ? `$${playerTotal.toFixed(2)}` : `${playerTotal} pts`}</span>
-                                <span className="text-slate-500 mx-2">vs</span>
-                                <span className={activeBot.color}>{activeBot.name}: {isDollarGame ? `$${botTotal.toFixed(2)}` : `${botTotal} pts`}</span>
-                              </div>
-                            </div>
-                            <span className={`text-xs font-bold px-3 py-1.5 rounded-xl border self-start sm:self-auto ${
-                              playerTotal >= botTotal
-                                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800'
-                                : 'bg-slate-900 text-slate-300 border-slate-800'
-                            }`}>
-                              {playerTotal >= botTotal ? '✓ Leading Match' : 'Bot Ahead'}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Main Large Action Buttons (all at least 56px tall, full width on phones) */}
-                        <div className="pt-2 space-y-3.5">
+                        {/* Primary Large Action Buttons */}
+                        <div className="pt-1 space-y-3">
                           {currentRound < totalRounds ? (
                             <button
                               type="button"
@@ -5953,27 +5726,203 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                           >
                             <span>🔍 Explore Deeper Analysis (Step 4) →</span>
                           </button>
+                        </div>
 
-                          {/* Open What-If Laboratory Button */}
-                          <button
-                            type="button"
-                            onClick={() => onOpenWhatIfSandbox && onOpenWhatIfSandbox(selectedModuleId)}
-                            className="w-full min-h-[56px] py-4 px-6 text-base sm:text-lg font-bold bg-blue-950/70 hover:bg-blue-900/80 text-blue-200 border border-blue-700/60 rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow"
-                          >
-                            <span>∫ Launch What-If Sandbox (Game {currentModuleIndex}: {activeModule.shortTitle}) →</span>
-                          </button>
+                        {/* Collapsed 'Go deeper' section in Step 3 keeping all content reachable */}
+                        <div className="pt-2">
+                          <details className="group bg-slate-950/90 rounded-2xl border border-slate-800 overflow-hidden transition-all shadow-md">
+                            <summary className="min-h-[52px] px-4 sm:px-5 py-3.5 font-bold text-sm sm:text-base text-slate-200 cursor-pointer flex items-center justify-between hover:bg-slate-900 select-none">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-lg">🔍</span>
+                                <span>Go deeper: Opponent analysis, visualizer & theoretical notes</span>
+                              </div>
+                              <span className="text-slate-400 group-open:rotate-90 transition-transform font-mono text-sm">▸</span>
+                            </summary>
+                            <div className="p-4 sm:p-5 border-t border-slate-800 space-y-4 bg-slate-900/40">
+                              {/* Opponent Bot Strategy Thought Bubble */}
+                              <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-indigo-500/40 shadow-md flex items-start gap-3.5">
+                                <div className="relative shrink-0">
+                                  <span className="text-3xl p-2 rounded-xl bg-slate-900 border border-slate-800 block">
+                                    {activeBot.avatar}
+                                  </span>
+                                  <span className="absolute -bottom-1 -right-1 text-sm">💭</span>
+                                </div>
+                                <div className="flex-1 min-w-0 space-y-1">
+                                  <div className="flex flex-wrap items-center justify-between gap-1">
+                                    <span className={`text-xs font-black uppercase tracking-wider ${activeBot.color} break-words`}>
+                                      {activeBot.name}&apos;s Strategy Thought
+                                    </span>
+                                    <span className="text-[10px] font-mono font-bold text-slate-400 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 shrink-0">
+                                      {totalRounds > 1 ? `Round ${currentRound} Decision` : 'Match Decision'}
+                                    </span>
+                                  </div>
+                                  <div className="bg-slate-900/90 border border-slate-800/80 rounded-xl p-3 text-sm sm:text-base text-slate-200 italic font-medium leading-relaxed">
+                                    💭 &ldquo;{lastRoundResult.botThought || activeBot.getAnticipationThought(currentRound, history)}&rdquo;
+                                  </div>
+                                </div>
+                              </div>
 
-                          {/* Skip to Game N Button */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              markGameCompleted(selectedModuleId);
-                              resetExperiment(undefined, nextModule.id);
-                            }}
-                            className="w-full min-h-[56px] py-4 px-6 text-base sm:text-lg font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all"
-                          >
-                            <span>Skip to Game {nextModuleIndex} of {totalModulesCount} ({nextModule.shortTitle}) →</span>
-                          </button>
+                              {/* Interactive Payoff Matrix / Mechanism Visualizer with Highlighted Outcome Cell */}
+                              <div className="w-full max-w-full overflow-hidden">
+                                {[1, 3, 4, 6, 13, 15, 17, 18].includes(selectedModuleId) ? (
+                                  <InteractiveMatrixVisualizer
+                                    gameId={selectedModuleId}
+                                    botName={activeBot.name}
+                                    botAvatar={activeBot.avatar}
+                                    playedOutcome={{
+                                      playerAction: String(lastRoundResult.playerAction),
+                                      botAction: String(lastRoundResult.botAction),
+                                      playerPayoff: lastRoundResult.playerPayoff,
+                                      botPayoff: lastRoundResult.botPayoff
+                                    }}
+                                    isDollarGame={isDollarGame}
+                                  />
+                                ) : (
+                                  <SequentialVisualizer
+                                    gameId={selectedModuleId}
+                                    botName={activeBot.name}
+                                    botAvatar={activeBot.avatar}
+                                    studentValuation={studentValuation}
+                                    botValuation={botValuation}
+                                    ultimatumOffer={ultimatumOffer}
+                                    trustInvestment={trustInvestment}
+                                    auctionBid={selectedModuleId === 8 ? fpAuctionBid : auctionBid}
+                                    bertrandPrice={bertrandPrice}
+                                    beautyGuess={beautyGuess}
+                                    publicGoodsContr={publicGoodsContr}
+                                    centipedeNode={centipedeNode}
+                                    launchChoice={launchChoice}
+                                    deterrenceChoice={deterrenceChoice}
+                                    pieDemand={pieDemand}
+                                    signalingType={signalingType}
+                                    signalingChoice={signalingChoice}
+                                    buyerTrustChoice={lastRoundResult ? (lastRoundResult.botAction === 'Trust' ? 'Trust' : "Don't Trust") : undefined}
+                                    cournotQuantity={cournotQuantity}
+                                    botCournotQuantity={activeBot.id === 'cournot_cartel' ? 22.5 : activeBot.id === 'cournot_aggressive' ? 35 : 30}
+                                    hotellingLocation={hotellingLocation}
+                                    botHotellingLocation={activeBot.id === 'hotelling_pier' ? 15 : activeBot.id === 'hotelling_flank' ? (hotellingLocation < 50 ? 80 : 20) : 50}
+                                    blottoAllocations={{ a: blottoA, b: blottoB, c: blottoC }}
+                                    botBlottoAllocations={activeBot.id === 'blotto_blitz' || activeBot.id === 'blotto_clausewitz' ? { a: 50, b: 50, c: 0 } : activeBot.id === 'blotto_feint' ? { a: 60, b: 0, c: 40 } : { a: 34, b: 33, c: 33 }}
+                                    cvBid={cvBid}
+                                    botCvBid={activeBot.id === 'cv_naive' ? cvBotSignal : activeBot.id === 'cv_hubris' ? cvBotSignal + 2 : Math.max(10, cvBotSignal - 6)}
+                                    cvTrueValue={cvTrueValue}
+                                    cvPlayerSignal={cvPlayerSignal}
+                                    cvBotSignal={cvBotSignal}
+                                    playedOutcome={{
+                                      playerAction: String(lastRoundResult.playerAction),
+                                      botAction: String(lastRoundResult.botAction),
+                                      playerPayoff: lastRoundResult.playerPayoff,
+                                      botPayoff: lastRoundResult.botPayoff
+                                    }}
+                                  />
+                                )}
+                              </div>
+
+                              {/* Counterfactual Opponent Matchup Intelligence (other bots) */}
+                              {activeGameBots.length > 1 && (() => {
+                                const otherBots = activeGameBots.filter(b => b.id !== activeBot.id);
+                                if (otherBots.length === 0) return null;
+
+                                return (
+                                  <div className="bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-indigo-900/50 shadow-lg space-y-3">
+                                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                                      <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span>🧠</span>
+                                        <span>Counterfactual Matchup Intelligence</span>
+                                      </span>
+                                      <span className="text-[11px] font-mono text-slate-400">
+                                        Tested against your move: {String(lastRoundResult.playerAction)}
+                                      </span>
+                                    </div>
+
+                                    <p className="text-xs text-slate-300 leading-relaxed">
+                                      How would your decision of <strong className="text-white">{String(lastRoundResult.playerAction)}</strong> have performed if you had faced the other bot archetypes in this scenario?
+                                    </p>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                      {otherBots.map(bot => {
+                                        const altDecision = bot.decide({
+                                          round: currentRound,
+                                          totalRounds,
+                                          history: history.map(h => ({
+                                            round: h.round,
+                                            playerAction: h.playerAction,
+                                            botAction: h.botAction,
+                                            playerPayoff: h.playerPayoff,
+                                            botPayoff: h.botPayoff,
+                                            playerValuation: h.playerValuation,
+                                            botValuation: h.botValuation
+                                          })),
+                                          botValuation: selectedModuleId === 24 ? cvBotSignal : botValuation,
+                                          studentValuation: selectedModuleId === 24 ? cvPlayerSignal : studentValuation
+                                        });
+
+                                        const altActionStr = typeof altDecision.action === 'object'
+                                          ? JSON.stringify(altDecision.action)
+                                          : String(altDecision.action);
+
+                                        return (
+                                          <div key={bot.id} className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between space-y-2">
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="flex items-center gap-2 min-w-0">
+                                                <span className="text-xl p-1 rounded-lg bg-slate-950 border border-slate-800 shrink-0">{bot.avatar}</span>
+                                                <div className="min-w-0">
+                                                  <div className="text-xs font-bold text-white truncate">{bot.name}</div>
+                                                  <div className={`text-[10px] font-medium truncate ${bot.color}`}>{bot.title}</div>
+                                                </div>
+                                              </div>
+                                            </div>
+
+                                            <div className="p-2 rounded-lg bg-slate-950/80 border border-slate-800 text-xs space-y-1">
+                                              <div className="flex justify-between items-center text-[11px]">
+                                                <span className="text-slate-400">Would have chosen:</span>
+                                                <span className="font-mono font-bold text-amber-300 truncate max-w-[140px]">{altActionStr}</span>
+                                              </div>
+                                              <div className="text-[10px] text-slate-400 italic line-clamp-2">
+                                                "{altDecision.rationale}"
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              {/* Standings Summary Card */}
+                              {matchRounds > 1 && (
+                                <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                  <div>
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                                      Cumulative Match Standings
+                                    </span>
+                                    <div className="text-base sm:text-lg font-black text-white font-mono mt-0.5">
+                                      <span className="text-emerald-400">You: {isDollarGame ? `$${playerTotal.toFixed(2)}` : `${playerTotal} pts`}</span>
+                                      <span className="text-slate-500 mx-2">vs</span>
+                                      <span className={activeBot.color}>{activeBot.name}: {isDollarGame ? `$${botTotal.toFixed(2)}` : `${botTotal} pts`}</span>
+                                    </div>
+                                  </div>
+                                  <span className={`text-xs font-bold px-3 py-1.5 rounded-xl border self-start sm:self-auto ${
+                                    playerTotal >= botTotal
+                                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800'
+                                      : 'bg-slate-900 text-slate-300 border-slate-800'
+                                  }`}>
+                                    {playerTotal >= botTotal ? '✓ Leading Match' : 'Bot Ahead'}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Open What-If Laboratory Button */}
+                              <button
+                                type="button"
+                                onClick={() => onOpenWhatIfSandbox && onOpenWhatIfSandbox(selectedModuleId)}
+                                className="w-full min-h-[48px] py-3 px-4 text-sm font-bold bg-blue-950/70 hover:bg-blue-900/80 text-blue-200 border border-blue-700/60 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow"
+                              >
+                                <span>∫ Launch What-If Sandbox (Game {currentModuleIndex}: {activeModule.shortTitle}) →</span>
+                              </button>
+                            </div>
+                          </details>
                         </div>
                       </div>
                     );
