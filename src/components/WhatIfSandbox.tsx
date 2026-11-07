@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { GameConfig } from '../types';
-import { GameRoleContextCard, GameTakeawaysAndProofCard } from './sandbox/GamePedagogyCard';
+import { WhatIfMissionBanner, WhatIfMathProofExpander } from './sandbox/GamePedagogyCard';
+import { evaluateGameVerdict, MissionVerdict } from './sandbox/missionEngine';
 import { getCurriculumNumber } from '../data/curriculumOrder';
+import { PhaseSpace2DVisualizer } from './sandbox/visualizers/PhaseSpace2DVisualizer';
+import { AuctionSurplusVisualizer } from './sandbox/visualizers/AuctionSurplusVisualizer';
+import { CommonsResourceVisualizer } from './sandbox/visualizers/CommonsResourceVisualizer';
+import { ReactionFunctionVisualizer } from './sandbox/visualizers/ReactionFunctionVisualizer';
+import { TerritoryStripVisualizer } from './sandbox/visualizers/TerritoryStripVisualizer';
 
 interface WhatIfSandboxProps {
   game: GameConfig;
@@ -299,12 +305,156 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
   const [trustMultFactor, setTrustMultFactor] = useState<number>(3);
   const [trusteeReturnRate, setTrusteeReturnRate] = useState<number>(40);
 
+  // Reset all sandbox values to their initial defaults
+  const handleResetToDefaults = () => {
+    // Reset 2x2 matrix
+    setMatrix(getInitialMatrix());
+    // Reset individual game sliders
+    setVal(initialValuation);
+    setMyBid(initialBid);
+    setCompetitorBid(6);
+    setBeautyGuess(33);
+    setAssumedClassAvg(45);
+    setMyContr(5);
+    setPeerAvgContr(4);
+    setPublicMultiplier(1.6);
+    setDiscountDelta(0.75);
+    setCentipedePassProb(65);
+    setCournotQ1(30);
+    setCournotQ2(30);
+    setCournotCost(10);
+    setCournotDemandA(100);
+    setHotellingX1(40);
+    setHotellingX2(60);
+    setBlottoA(34);
+    setBlottoB(33);
+    setBlottoC(33);
+    setCvTrueV(50);
+    setCvPlayerSignal(55);
+    setCvMyBid(52);
+    setCvRivalBid(48);
+    setDollarP1Bid(0.80);
+    setDollarP2Bid(0.90);
+    setTravelerClaim1(98);
+    setTravelerClaim2(100);
+    setTravelerRewardR(2);
+    setFisheryEffortP1(4);
+    setFisheryEffortP2(4);
+    setLemonBuyerPrice(5000);
+    setPdTemptation(3);
+    setPdReward(2);
+    setPdPunishment(1);
+    setPdSucker(0);
+    setSeqMarketVal(4);
+    setSeqDuopolyVal(2);
+    setSeqCostToEnter(1);
+    setSeqFirstMoveChoice('Launch');
+    setBertrand2x2LowMargin(1);
+    setBertrand2x2HighMargin(2);
+    setHasPriceMatchPolicy(false);
+    setPromoMyDay('Monday');
+    setPromoFriShare(50);
+    setDeterCapacityInvested(true);
+    setDeterCapacityCost(1.5);
+    setPieTotalAmount(10);
+    setPieP1ThreatPoint(1);
+    setPieP2ThreatPoint(1);
+    setPieP1Power(0.5);
+    setSignalCostHigh(2);
+    setSignalCostLow(6);
+    setSignalWageHigh(8);
+    setSignalWageLow(3);
+    setStagRewardS(10);
+    setHareRewardH(4);
+    setPartnerStagProb(50);
+    setBertrandP1(35);
+    setBertrandP2(35);
+    setBertrandMC(10);
+    setHdResourceVal(6);
+    setHdInjuryCost(20);
+    setUltimatumPropose(4);
+    setUltimatumMAO(3);
+    setPenniesMatchH(3);
+    setPenniesMatchT(1);
+    setBattleOperaA(3);
+    setBattleFootballB(3);
+    setTrustSentAmt(5);
+    setTrustMultFactor(3);
+    setTrusteeReturnRate(40);
+  };
+
   // Load a preset into the matrix editor
   const loadPreset = (key: string) => {
     if (PRESETS[key]) {
       setMatrix({ ...PRESETS[key] });
     }
   };
+
+  // Real-time Dilemma Verdict & Mission Evaluation
+  const getCurrentVerdict = (): MissionVerdict => {
+    if (activeTab === 'matrix_solver') {
+      const isCoopNash = (pureNE.r1c1 && matrix.a11 > matrix.a22) || (pureNE.r2c2 && matrix.a22 > matrix.a11);
+      if (isCoopNash) {
+        return {
+          isSolved: true,
+          statusText: "DILEMMA SOLVED",
+          verdictHeadline: "Cooperative Cell is a Stable Nash Equilibrium",
+          explanation: "Neither player has an incentive to deviate unilaterally from the high-payoff mutual outcome.",
+          welfareChangeText: "Stable Mutual Equilibrium",
+          isParetoOptimal: true
+        };
+      } else if (pureCount > 0) {
+        return {
+          isSolved: false,
+          statusText: "NASH FOUND (TRAP ACTIVE)",
+          verdictHeadline: `${pureCount} Pure Strategy Nash Equilibrium Found`,
+          explanation: "Best responses intersect at stable cell(s). Adjust payoffs to see if higher mutual welfare can become stable."
+        };
+      } else if (hasMixedNE) {
+        return {
+          isSolved: false,
+          statusText: "MIXED STRATEGY EQUILIBRIUM",
+          verdictHeadline: `Mixed Equilibrium: P1 plays R1 at ${(pStar * 100).toFixed(0)}%, P2 plays C1 at ${(qStar * 100).toFixed(0)}%`,
+          explanation: "No single pure cell is stable; players must randomize to keep rivals indifferent."
+        };
+      } else {
+        return {
+          isSolved: false,
+          statusText: "CYCLICAL UNSTABLE",
+          verdictHeadline: "No Stable Equilibrium Found",
+          explanation: "Best response cycle loops endlessly without a fixed point."
+        };
+      }
+    }
+
+    return evaluateGameVerdict(game.id, {
+      temptation: pdTemptation,
+      reward: pdReward,
+      punishment: pdPunishment,
+      sucker: pdSucker,
+      duopolyVal: seqDuopolyVal,
+      costToEnter: seqCostToEnter,
+      hasPriceMatchPolicy,
+      delta: discountDelta,
+      myBid,
+      trueVal: val,
+      competitorBid,
+      myContr,
+      multiplier: publicMultiplier,
+      resourceVal: hdResourceVal,
+      injuryCost: hdInjuryCost,
+      propose: ultimatumPropose,
+      mao: ultimatumMAO,
+      cvMyBid,
+      cvTrueV,
+      cvRivalBid,
+      effortP1: fisheryEffortP1,
+      effortP2: fisheryEffortP2,
+      buyerPrice: lemonBuyerPrice
+    });
+  };
+
+  const currentVerdict = getCurrentVerdict();
 
   return (
     <div className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 p-4 shadow-xl space-y-4 font-sans text-xs">
@@ -329,80 +479,127 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
           </div>
         </div>
 
-        {/* Tab Switcher - Only displayed for games where 2x2 matrix analysis is actually relevant */}
-        {isMatrixGame && game.id !== 999 && (
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 self-start sm:self-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab('game_simulator')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'game_simulator'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <span>📈</span>
-              <span>Simulation Model</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('matrix_solver')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'matrix_solver'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <span>⚖️</span>
-              <span>Custom 2×2 Sandbox</span>
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          {/* Tab Switcher - Only displayed for games where 2x2 matrix analysis is actually relevant */}
+          {isMatrixGame && game.id !== 999 && (
+            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveTab('game_simulator')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'game_simulator'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <span>📈</span>
+                <span>Simulation Model</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('matrix_solver')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'matrix_solver'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <span>⚖️</span>
+                <span>Custom 2×2 Sandbox</span>
+              </button>
+            </div>
+          )}
+
+          {/* Reset to Default Button */}
+          <button
+            type="button"
+            onClick={handleResetToDefaults}
+            title="Reset all slider values and parameters to their starting positions"
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 shrink-0 shadow-sm"
+          >
+            <span className="text-sm">↺</span>
+            <span>Reset to Default</span>
+          </button>
+        </div>
       </div>
+
+      {/* Prominent Guiding Question, Challenge Mission & Live Dilemma Verdict */}
+      <WhatIfMissionBanner
+        gameId={game.id}
+        gameTitle={game.title}
+        gameCategory={game.category}
+        verdict={currentVerdict}
+      />
 
       {/* ========================================================================= */}
       {/* TAB 1: UNIVERSAL 2X2 PAYOFF MATRIX SLIDER & REAL-TIME NASH SOLVER */}
       {/* ========================================================================= */}
       {activeTab === 'matrix_solver' && (
         <div className="space-y-4">
-          {/* Preset Buttons */}
-          <div className="flex items-center justify-between flex-wrap gap-2 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <span className="text-[11px] font-mono text-slate-400 font-bold uppercase tracking-wider">
-              Classic Dilemma Presets:
-            </span>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {[
-                { key: 'pd', label: "Prisoner's Dilemma" },
-                { key: 'stag', label: 'Stag Hunt' },
-                { key: 'hawk', label: 'Hawk-Dove' },
-                { key: 'battle', label: 'Battle of Sexes' },
-                { key: 'pennies', label: 'Matching Pennies' },
-                { key: 'price2x2', label: 'Price Duopoly' }
-              ].map(p => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => loadPreset(p.key)}
-                  className="px-2 py-1 rounded-md text-[11px] font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 cursor-pointer transition-all"
-                >
-                  {p.label}
-                </button>
-              ))}
+          {/* Preset Buttons: only show cross-game archetypes if in the general Custom Tool (999). For specific games, show current game baseline reset. */}
+          {game.id === 999 ? (
+            <div className="flex items-center justify-between flex-wrap gap-2 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+              <span className="text-[11px] font-mono text-slate-400 font-bold uppercase tracking-wider">
+                Canonical 2×2 Archetypes:
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { key: 'pd', label: "Prisoner's Dilemma" },
+                  { key: 'stag', label: 'Stag Hunt' },
+                  { key: 'hawk', label: 'Hawk-Dove' },
+                  { key: 'battle', label: 'Battle of Sexes' },
+                  { key: 'pennies', label: 'Matching Pennies' },
+                  { key: 'price2x2', label: 'Price Duopoly' }
+                ].map(p => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => loadPreset(p.key)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 cursor-pointer transition-all active:scale-95"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center justify-between flex-wrap gap-2 bg-slate-950/70 px-3 py-2 rounded-xl border border-slate-800/80">
+              <span className="text-xs text-slate-300">
+                Matrix parameters for <strong className="text-white">{game.title}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setMatrix(getInitialMatrix())}
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 cursor-pointer transition-all active:scale-95 flex items-center gap-1"
+              >
+                <span>↺</span>
+                <span>Reset to {game.shortTitle || game.title} Baseline</span>
+              </button>
+            </div>
+          )}
 
           {/* Interactive Payoff Sliders Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 2x2 Visual Payoff Matrix with Live Cell Glow */}
-            <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  Interactive Strategic Normal Form
-                </span>
-                <span className="text-[10px] font-mono text-amber-400 font-bold">
-                  {pureCount > 0 ? `★ ${pureCount} Pure Nash Found` : 'No Pure Nash (Mixed Only)'}
-                </span>
-              </div>
+            {/* Left Column: Live 2D Strategy Phase Map & Payoff Matrix */}
+            <div className="space-y-3">
+              <PhaseSpace2DVisualizer
+                r1Label={matrix.r1Label}
+                r2Label={matrix.r2Label}
+                c1Label={matrix.c1Label}
+                c2Label={matrix.c2Label}
+                a11={matrix.a11} a12={matrix.a12} a21={matrix.a21} a22={matrix.a22}
+                b11={matrix.b11} b12={matrix.b12} b21={matrix.b21} b22={matrix.b22}
+              />
+
+              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    Interactive Strategic Normal Form
+                  </span>
+                  <span className="text-[10px] font-mono text-amber-400 font-bold">
+                    {pureCount > 0 ? `★ ${pureCount} Pure Nash Found` : 'No Pure Nash (Mixed Only)'}
+                  </span>
+                </div>
 
               {/* 2x2 Matrix Grid */}
               <div className="space-y-2">
@@ -514,6 +711,7 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
                   {pureCount === 0 && 'Pure conflict / anti-coordination: no pure strategy pair is immune to mutual out-guessing. Players must randomize according to the mixed Nash probabilities below.'}
                 </div>
               </div>
+            </div>
             </div>
 
             {/* Payoff Sliders for Real-Time Sensitivity Analysis */}
@@ -693,6 +891,12 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
               </p>
             )}
           </div>
+
+          {/* Go deeper: Formal Analytical Proof */}
+          <WhatIfMathProofExpander
+            gameId={game.id}
+            gameTitle={game.title}
+          />
         </div>
       )}
 
@@ -701,12 +905,6 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
       {/* ========================================================================= */}
       {activeTab === 'game_simulator' && (
         <div className="space-y-4">
-          {/* PANEL A: Role Context & Strategic Decision Problem */}
-          <GameRoleContextCard
-            gameId={game.id}
-            gameTitle={game.title}
-            gameCategory={game.category}
-          />
 
           {/* PRISONER'S DILEMMA (1) */}
           {game.id === 1 && (() => {
@@ -805,196 +1003,148 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
                   </div>
                 </div>
 
-                {/* Main Interactive Grid: Live 2x2 Matrix + Parameter Sliders */}
+                {/* Main Interactive Stage: 2D Strategy Phase Map + Payoff Sliders */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-                  {/* Left: Visual 2x2 Payoff Matrix */}
-                  <div className="lg:col-span-5 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-2.5">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
-                      <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                        Live 2×2 Payoff Matrix
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        (You, Partner)
-                      </span>
-                    </div>
+                  {/* Left: 2D Strategy Phase Space + Matrix Grid */}
+                  <div className="lg:col-span-6 space-y-3">
+                    <PhaseSpace2DVisualizer
+                      r1Label="Coop"
+                      r2Label="Defect"
+                      c1Label="Coop"
+                      c2Label="Defect"
+                      a11={pdReward} a12={pdSucker} a21={pdTemptation} a22={pdPunishment}
+                      b11={pdReward} b12={pdTemptation} b21={pdSucker} b22={pdPunishment}
+                    />
 
-                    <div className="grid grid-cols-3 gap-1.5 text-center text-xs font-mono">
-                      {/* Top header row */}
-                      <div className="p-1"></div>
-                      <div className="p-1 text-[10px] text-amber-400 font-bold uppercase truncate">
-                        Partner: Coop
-                      </div>
-                      <div className="p-1 text-[10px] text-amber-400 font-bold uppercase truncate">
-                        Partner: Defect
-                      </div>
+                    {/* Compact 2x2 Matrix Grid with Live Glow */}
+                    <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-2">
+                      <div className="grid grid-cols-3 gap-1.5 text-center text-xs font-mono">
+                        <div className="p-1"></div>
+                        <div className="p-1 text-[10px] text-amber-400 font-bold uppercase truncate">Partner: Coop</div>
+                        <div className="p-1 text-[10px] text-amber-400 font-bold uppercase truncate">Partner: Defect</div>
 
-                      {/* Row 1: You Cooperate */}
-                      <div className="p-2 text-[10px] text-blue-400 font-bold uppercase flex items-center justify-center">
-                        You: Coop
-                      </div>
-                      <div className="p-2.5 rounded-lg bg-slate-800/60 border border-slate-700/80 flex flex-col items-center justify-center relative">
-                        <span className="font-bold text-white text-sm">
-                          <strong className="text-blue-300">{pdReward}</strong>, <strong className="text-amber-300">{pdReward}</strong>
-                        </span>
-                        <span className="text-[9px] text-emerald-400 font-sans mt-0.5">Social Optimum</span>
-                      </div>
-                      <div className="p-2.5 rounded-lg bg-slate-800/60 border border-slate-700/80 flex flex-col items-center justify-center">
-                        <span className="font-bold text-white text-sm">
-                          <strong className="text-blue-300">{pdSucker}</strong>, <strong className="text-amber-300">{pdTemptation}</strong>
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-sans mt-0.5">Sucker's Payoff</span>
-                      </div>
+                        {/* Row 1: Coop */}
+                        <div className="p-1.5 text-[10px] text-blue-400 font-bold uppercase flex items-center justify-center">You: Coop</div>
+                        <div className={`p-2 rounded-lg border flex flex-col items-center justify-center transition-all ${
+                          !defectionDominates && pdReward >= pdTemptation ? 'bg-emerald-950/60 border-emerald-400 ring-2 ring-emerald-400/60 shadow-lg' : 'bg-slate-800/60 border-slate-700/80'
+                        }`}>
+                          <span className="font-bold text-white text-sm">
+                            <strong className="text-blue-300">{pdReward}</strong>, <strong className="text-amber-300">{pdReward}</strong>
+                          </span>
+                          <span className="text-[9px] text-emerald-400 font-sans">Social Optimum</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700/80 flex flex-col items-center justify-center">
+                          <span className="font-bold text-white text-sm">
+                            <strong className="text-blue-300">{pdSucker}</strong>, <strong className="text-amber-300">{pdTemptation}</strong>
+                          </span>
+                          <span className="text-[9px] text-slate-400 font-sans">Sucker</span>
+                        </div>
 
-                      {/* Row 2: You Defect */}
-                      <div className="p-2 text-[10px] text-blue-400 font-bold uppercase flex items-center justify-center">
-                        You: Defect
+                        {/* Row 2: Defect */}
+                        <div className="p-1.5 text-[10px] text-blue-400 font-bold uppercase flex items-center justify-center">You: Defect</div>
+                        <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700/80 flex flex-col items-center justify-center">
+                          <span className="font-bold text-white text-sm">
+                            <strong className="text-blue-300">{pdTemptation}</strong>, <strong className="text-amber-300">{pdSucker}</strong>
+                          </span>
+                          <span className="text-[9px] text-amber-400 font-sans">Temptation</span>
+                        </div>
+                        <div className={`p-2 rounded-lg border flex flex-col items-center justify-center transition-all ${
+                          defectionDominates ? 'bg-rose-950/60 border-rose-500 ring-2 ring-rose-500/60 shadow-lg' : 'bg-slate-800/60 border-slate-700/80'
+                        }`}>
+                          <span className="font-bold text-white text-sm">
+                            <strong className="text-rose-300">{pdPunishment}</strong>, <strong className="text-rose-300">{pdPunishment}</strong>
+                          </span>
+                          <span className="text-[9px] text-rose-300 font-sans font-bold flex items-center gap-1">★ Nash</span>
+                        </div>
                       </div>
-                      <div className="p-2.5 rounded-lg bg-slate-800/60 border border-slate-700/80 flex flex-col items-center justify-center">
-                        <span className="font-bold text-white text-sm">
-                          <strong className="text-blue-300">{pdTemptation}</strong>, <strong className="text-amber-300">{pdSucker}</strong>
-                        </span>
-                        <span className="text-[9px] text-amber-400 font-sans mt-0.5">Temptation Payoff</span>
-                      </div>
-                      <div className="p-2.5 rounded-lg bg-rose-950/40 border-2 border-rose-500/80 flex flex-col items-center justify-center relative shadow-xs">
-                        <span className="font-bold text-white text-sm">
-                          <strong className="text-rose-300">{pdPunishment}</strong>, <strong className="text-rose-300">{pdPunishment}</strong>
-                        </span>
-                        <span className="text-[9px] text-rose-300 font-sans font-bold mt-0.5 flex items-center gap-1">
-                          ★ Nash Equilibrium
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="text-[10px] text-slate-400 bg-slate-950/60 p-2 rounded-lg border border-slate-800/60 flex items-center justify-between">
-                      <span>Blue = Your Payoff</span>
-                      <span>Amber = Partner Payoff</span>
                     </div>
                   </div>
 
-                  {/* Right: Sliders with clear descriptions */}
-                  <div className="lg:col-span-7 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                  {/* Right: Direct Scrubbing Sliders & Metric Chips */}
+                  <div className="lg:col-span-6 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
                       <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                        Payoff Calibration Sliders
+                        Direct Payoff Scrubbers
                       </span>
-                      <span className="text-[10px] text-slate-400">
-                        Adjust payoffs to see when the dilemma resolves
-                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">Drag to mutate equilibrium</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="space-y-2.5 text-xs">
                       {/* Temptation (T) */}
-                      <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-1.5">
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
                         <div className="flex justify-between items-center text-[11px]">
-                          <span className="font-semibold text-amber-300">Temptation (T):</span>
-                          <span className="font-mono font-bold text-amber-400">{pdTemptation} pts</span>
+                          <span className="font-bold text-amber-300">Temptation to Cheat (T):</span>
+                          <span className="font-mono font-black text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60">{pdTemptation} pts</span>
                         </div>
                         <input
                           type="range" min="1" max="10" step="1" value={pdTemptation}
                           onChange={e => setPdTemptation(parseInt(e.target.value, 10))}
-                          className="w-full h-1.5 bg-slate-800 rounded accent-amber-500 cursor-pointer"
+                          className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
                         />
-                        <p className="text-[10px] text-slate-400">
-                          Reward when you cheat while partner cooperates.
-                        </p>
                       </div>
 
                       {/* Reward (R) */}
-                      <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-1.5">
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
                         <div className="flex justify-between items-center text-[11px]">
-                          <span className="font-semibold text-emerald-300">Reward (R):</span>
-                          <span className="font-mono font-bold text-emerald-400">{pdReward} pts</span>
+                          <span className="font-bold text-emerald-300">Cooperation Reward (R):</span>
+                          <span className="font-mono font-black text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">{pdReward} pts</span>
                         </div>
                         <input
                           type="range" min="0" max="8" step="1" value={pdReward}
                           onChange={e => setPdReward(parseInt(e.target.value, 10))}
-                          className="w-full h-1.5 bg-slate-800 rounded accent-emerald-500 cursor-pointer"
+                          className="w-full h-2 bg-slate-800 rounded accent-emerald-500 cursor-pointer"
                         />
-                        <p className="text-[10px] text-slate-400">
-                          Mutual gain when both players cooperate.
-                        </p>
                       </div>
 
                       {/* Punishment (P) */}
-                      <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-1.5">
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
                         <div className="flex justify-between items-center text-[11px]">
-                          <span className="font-semibold text-rose-300">Punishment (P):</span>
-                          <span className="font-mono font-bold text-rose-400">{pdPunishment} pts</span>
+                          <span className="font-bold text-rose-300">Mutual Betrayal Penalty (P):</span>
+                          <span className="font-mono font-black text-rose-400 bg-rose-950/60 px-2 py-0.5 rounded border border-rose-800/60">{pdPunishment} pts</span>
                         </div>
                         <input
                           type="range" min="-3" max="5" step="1" value={pdPunishment}
                           onChange={e => setPdPunishment(parseInt(e.target.value, 10))}
-                          className="w-full h-1.5 bg-slate-800 rounded accent-rose-500 cursor-pointer"
+                          className="w-full h-2 bg-slate-800 rounded accent-rose-500 cursor-pointer"
                         />
-                        <p className="text-[10px] text-slate-400">
-                          Mutual loss when both players cheat/defect.
-                        </p>
                       </div>
 
-                      {/* Sucker's Payoff (S) */}
-                      <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-1.5">
+                      {/* Sucker (S) */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
                         <div className="flex justify-between items-center text-[11px]">
-                          <span className="font-semibold text-slate-300">Sucker's Payoff (S):</span>
-                          <span className="font-mono font-bold text-slate-400">{pdSucker} pts</span>
+                          <span className="font-bold text-slate-300">Sucker Loss (S):</span>
+                          <span className="font-mono font-black text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700">{pdSucker} pts</span>
                         </div>
                         <input
                           type="range" min="-4" max="4" step="1" value={pdSucker}
                           onChange={e => setPdSucker(parseInt(e.target.value, 10))}
-                          className="w-full h-1.5 bg-slate-800 rounded accent-slate-500 cursor-pointer"
+                          className="w-full h-2 bg-slate-800 rounded accent-slate-500 cursor-pointer"
                         />
-                        <p className="text-[10px] text-slate-400">
-                          Your loss when you cooperate but get betrayed.
-                        </p>
+                      </div>
+                    </div>
+
+                    {/* Glanceable Unboxed Metric Chips */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-800 text-center font-mono">
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Temptation Gap</span>
+                        <span className={`text-xs font-black ${cheatGainVsCoop > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          {cheatGainVsCoop > 0 ? `+${cheatGainVsCoop}` : `${cheatGainVsCoop}`}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Defense Cushion</span>
+                        <span className={`text-xs font-black ${cheatGainVsDefect > 0 ? 'text-rose-400' : 'text-cyan-400'}`}>
+                          {cheatGainVsDefect > 0 ? `+${cheatGainVsDefect}` : `${cheatGainVsDefect}`}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Welfare Cost</span>
+                        <span className="text-xs font-black text-rose-400">
+                          {socialLoss} pts
+                        </span>
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Analytical Breakdown Metrics */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-400 block font-sans">
-                      Incentive to Betray Coop:
-                    </span>
-                    <span className={`font-bold text-sm ${cheatGainVsCoop > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                      {cheatGainVsCoop > 0 ? `+${cheatGainVsCoop} pts` : `${cheatGainVsCoop} pts`}
-                      <span className="text-slate-400 text-xs ml-1 font-normal font-sans">(T − R)</span>
-                    </span>
-                    <p className="text-[10px] text-slate-400 font-sans">
-                      {cheatGainVsCoop > 0 ? 'Unilateral temptation to cheat' : 'Cooperation is self-rewarding'}
-                    </p>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-400 block font-sans">
-                      Incentive to Protect Against Defect:
-                    </span>
-                    <span className={`font-bold text-sm ${cheatGainVsDefect > 0 ? 'text-rose-400' : 'text-cyan-400'}`}>
-                      {cheatGainVsDefect > 0 ? `+${cheatGainVsDefect} pts` : `${cheatGainVsDefect} pts`}
-                      <span className="text-slate-400 text-xs ml-1 font-normal font-sans">(P − S)</span>
-                    </span>
-                    <p className="text-[10px] text-slate-400 font-sans">
-                      {cheatGainVsDefect > 0 ? 'Defensive cushion against betrayal' : 'Vulnerable to panic'}
-                    </p>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-400 block font-sans">
-                      Collective Welfare Forfeited:
-                    </span>
-                    <span className="text-rose-400 font-bold text-sm">
-                      {socialLoss} pts forfeited
-                    </span>
-                    <p className="text-[10px] text-slate-400 font-sans">
-                      Social cost of mutual defection 2×(R − P)
-                    </p>
-                  </div>
-                </div>
-
-                {/* Theoretical Insight Callout */}
-                <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed">
-                  <strong className="text-white">Why this model matters: </strong>
-                  Whenever <strong className="text-amber-300 font-mono">T &gt; R</strong> and <strong className="text-rose-300 font-mono">P &gt; S</strong>, Defection is a <em>strictly dominant strategy</em>—meaning a rational player achieves a higher personal payoff by choosing Defect regardless of what the opponent chooses. Because both players reason identically, they end up at the Pareto-inferior Nash equilibrium (<strong>{pdPunishment}, {pdPunishment}</strong>) instead of the socially optimal cooperation outcome (<strong>{pdReward}, {pdReward}</strong>).
                 </div>
               </div>
             );
@@ -1327,84 +1477,120 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
             const isWinner = myBid >= competitorBid;
             const clearingPrice = isSecondPrice ? competitorBid : myBid;
             const profit = isWinner ? Math.round((val - clearingPrice) * 100) / 100 : 0;
-
-            const maxGraphBid = 12;
-            const points: { b: number; x: number; y: number; profit: number }[] = [];
-            for (let b = 0; b <= maxGraphBid; b += 0.5) {
-              const win = b >= competitorBid;
-              const price = isSecondPrice ? competitorBid : b;
-              const p = win ? val - price : 0;
-              const x = 28 + (b / maxGraphBid) * (360 - 56);
-              const y = 140 - 28 - ((p - (-4)) / (8 - (-4))) * (140 - 56);
-              points.push({ b, x, y, profit: p });
-            }
-
-            const pathD = points.reduce((acc, pt, idx) => `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`, '');
-            const zeroY = 140 - 28 - ((0 - (-4)) / (8 - (-4))) * (140 - 56);
-            const curX = 28 + (myBid / maxGraphBid) * (360 - 56);
-            const curY = 140 - 28 - ((profit - (-4)) / (8 - (-4))) * (140 - 56);
+            const optimalBid = isSecondPrice ? val : Math.round(val * 0.75 * 10) / 10;
+            const bidSurplus = val - clearingPrice;
 
             return (
-              <div className="space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                  <span className="font-bold text-white text-sm">
-                    {isSecondPrice ? 'Second-Price Vickrey Auction Curves' : 'First-Price Auction Curves'}
-                  </span>
-                  <span className="font-mono text-emerald-400 font-bold">
-                    Profit: ${profit.toFixed(2)}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Your Valuation (v):</span>
-                      <span className="font-mono font-bold text-blue-400">${val.toFixed(1)}</span>
-                    </div>
-                    <input
-                      type="range" min="1" max="10" step="0.5" value={val}
-                      onChange={e => setVal(parseFloat(e.target.value))}
-                      className="w-full h-2 bg-slate-800 rounded accent-blue-500 cursor-pointer"
-                    />
+              <div className="space-y-4 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl">
+                {/* Header Strip with Live Metric Chips */}
+                <div className="flex justify-between items-center flex-wrap gap-2 border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-sm">
+                      {isSecondPrice ? 'Second-Price Vickrey Auction' : 'First-Price Sealed-Bid Auction'}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">
+                      {isSecondPrice ? 'Truth-Telling DSE (b* = v)' : 'Optimal Shading (b* = 3/4 v)'}
+                    </span>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Your Bid (b):</span>
-                      <span className="font-mono font-bold text-white">${myBid.toFixed(1)}</span>
-                    </div>
-                    <input
-                      type="range" min="0" max="12" step="0.5" value={myBid}
-                      onChange={e => setMyBid(parseFloat(e.target.value))}
-                      className="w-full h-2 bg-slate-800 rounded accent-indigo-500 cursor-pointer"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Rival's Bid:</span>
-                      <span className="font-mono font-bold text-amber-400">${competitorBid.toFixed(1)}</span>
-                    </div>
-                    <input
-                      type="range" min="0" max="12" step="0.5" value={competitorBid}
-                      onChange={e => setCompetitorBid(parseFloat(e.target.value))}
-                      className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
-                    />
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-slate-400">
+                      Clearing: <strong className="text-amber-300 font-bold">${clearingPrice.toFixed(2)}</strong>
+                    </span>
+                    <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-lg border ${
+                      profit > 0
+                        ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                        : isWinner && profit < 0
+                        ? 'bg-rose-950 text-rose-300 border-rose-800'
+                        : 'bg-slate-900 text-slate-400 border-slate-800'
+                    }`}>
+                      {profit > 0 ? `Won: +$${profit.toFixed(2)}` : isWinner && profit < 0 ? `Winner's Curse: -$${Math.abs(profit).toFixed(2)}` : 'Lost: $0.00'}
+                    </span>
                   </div>
                 </div>
 
-                {/* SVG Curve */}
-                <div className="bg-slate-900 p-2 rounded-xl border border-slate-800">
-                  <svg width="100%" height={140} viewBox="0 0 360 140" className="overflow-visible">
-                    <line x1={28} y1={zeroY} x2={332} y2={zeroY} stroke="#334155" strokeDasharray="3 3" />
-                    <line x1={28 + (val / maxGraphBid) * 304} y1={28} x2={28 + (val / maxGraphBid) * 304} y2={112} stroke="#3b82f6" strokeDasharray="2 2" />
-                    <line x1={28 + (competitorBid / maxGraphBid) * 304} y1={28} x2={28 + (competitorBid / maxGraphBid) * 304} y2={112} stroke="#f59e0b" strokeDasharray="2 2" />
-                    <path d={pathD} fill="none" stroke="#10b981" strokeWidth="2.5" />
-                    <circle cx={curX} cy={curY} r="5" fill="#3b82f6" stroke="#ffffff" strokeWidth="2" />
-                  </svg>
-                  <div className="flex justify-between text-[9px] font-mono text-slate-500 px-2 mt-1">
-                    <span>$0.00 Bid</span>
-                    <span className="text-blue-400 font-bold">Valuation: ${val.toFixed(1)}</span>
-                    <span className="text-amber-400 font-bold">Rival Bid: ${competitorBid.toFixed(1)}</span>
-                    <span>$12.00 Bid</span>
+                {/* 2-Column Visual Stage + Direct Scrubbers */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                  {/* Left: Live Interactive SVG Surplus Curve */}
+                  <div className="lg:col-span-6 space-y-2">
+                    <AuctionSurplusVisualizer
+                      isSecondPrice={isSecondPrice}
+                      myBid={myBid}
+                      trueValuation={val}
+                      competitorBid={competitorBid}
+                      maxBidRange={12}
+                      title={isSecondPrice ? "Vickrey Payoff & Dominance" : "1st-Price Surplus Tradeoff"}
+                    />
+                  </div>
+
+                  {/* Right: Direct Scrubbing Sliders & Metric Chips */}
+                  <div className="lg:col-span-6 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Live Auction Parameters
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">Drag to observe bid curve</span>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      {/* Valuation */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-blue-300">Your Private Valuation (v):</span>
+                          <span className="font-mono font-black text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/60">${val.toFixed(1)}</span>
+                        </div>
+                        <input
+                          type="range" min="1" max="10" step="0.5" value={val}
+                          onChange={e => setVal(parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-800 rounded accent-blue-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Your Bid */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-indigo-300">Your Bid (b):</span>
+                          <span className="font-mono font-black text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/60">${myBid.toFixed(1)}</span>
+                        </div>
+                        <input
+                          type="range" min="0" max="12" step="0.5" value={myBid}
+                          onChange={e => setMyBid(parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-800 rounded accent-indigo-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Rival Bid */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-amber-300">Rival's Bid:</span>
+                          <span className="font-mono font-black text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60">${competitorBid.toFixed(1)}</span>
+                        </div>
+                        <input
+                          type="range" min="0" max="12" step="0.5" value={competitorBid}
+                          onChange={e => setCompetitorBid(parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Glanceable Metric Chips */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-800 text-center font-mono">
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Nash Optimum</span>
+                        <span className="text-xs font-black text-emerald-400">${optimalBid.toFixed(1)}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Surplus Margin</span>
+                        <span className={`text-xs font-black ${bidSurplus >= 0 ? 'text-blue-400' : 'text-rose-400'}`}>
+                          {bidSurplus >= 0 ? `+$${bidSurplus.toFixed(1)}` : `-$${Math.abs(bidSurplus).toFixed(1)}`}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Auction Result</span>
+                        <span className={`text-xs font-black ${isWinner ? 'text-emerald-400' : 'text-slate-400'}`}>
+                          {isWinner ? 'Winner' : 'Outbid'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1635,52 +1821,108 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
             const sharedReturn = (total * publicMultiplier) / 2;
             const myPayoff = (20 - myContr) + sharedReturn;
             const peerPayoff = (20 - peerAvgContr) + sharedReturn;
+            const privateReturn = publicMultiplier / 2;
+            const freeRideDominant = privateReturn < 1.0;
+            const maxSurplus = 20 * publicMultiplier;
+
             return (
-              <div className="space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                  <span className="font-bold text-white text-sm">Common Pool & Public Goods Return Surface</span>
-                  <div className="flex items-center gap-3 text-xs font-mono">
-                    <span className="text-emerald-400 font-bold">You: {myPayoff.toFixed(1)} pts</span>
-                    <span className="text-slate-400">Peer: {peerPayoff.toFixed(1)} pts</span>
+              <div className="space-y-4 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl">
+                {/* Header Strip with Live Metric Chips */}
+                <div className="flex justify-between items-center flex-wrap gap-2 border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-sm">Public Goods & Commons Free-Riding Dilemma</span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      freeRideDominant ? 'bg-rose-950 text-rose-300 border-rose-800' : 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                    }`}>
+                      {freeRideDominant ? 'Free-Riding Strictly Dominates (MPCR < 1)' : 'Cooperation Dominant (MPCR ≥ 1)'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-emerald-400 font-bold">You: {myPayoff.toFixed(1)} pts</span>
+                    <span className="text-xs font-mono text-slate-400">Peer: {peerPayoff.toFixed(1)} pts</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Your Contribution / Boats:</span>
-                      <span className="font-mono font-bold text-blue-400">{myContr}</span>
-                    </div>
-                    <input
-                      type="range" min="0" max="20" step="1" value={myContr}
-                      onChange={e => setMyContr(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-blue-500 cursor-pointer"
+
+                {/* 2-Column Visual Stage + Direct Scrubbers */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                  {/* Left: Commons Growth vs Harvest Visualizer */}
+                  <div className="lg:col-span-6 space-y-2">
+                    <CommonsResourceVisualizer
+                      effortP1={myContr / 2}
+                      effortP2={peerAvgContr / 2}
+                      carryingCapacity={100}
+                      title="Public Pool Multiplier & Social Surplus"
                     />
                   </div>
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Rival's Contribution / Boats:</span>
-                      <span className="font-mono font-bold text-amber-400">{peerAvgContr}</span>
+
+                  {/* Right: Direct Scrubbing Sliders & Metric Chips */}
+                  <div className="lg:col-span-6 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Contribution Scrubbers
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">Scrub to alter return</span>
                     </div>
-                    <input
-                      type="range" min="0" max="20" step="1" value={peerAvgContr}
-                      onChange={e => setPeerAvgContr(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Public Multiplier (r):</span>
-                      <span className="font-mono font-bold text-emerald-400">{publicMultiplier.toFixed(1)}x</span>
+
+                    <div className="space-y-2.5 text-xs">
+                      {/* Your Contribution */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-blue-300">Your Contribution:</span>
+                          <span className="font-mono font-black text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/60">{myContr} / 20 tokens</span>
+                        </div>
+                        <input
+                          type="range" min="0" max="20" step="1" value={myContr}
+                          onChange={e => setMyContr(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-slate-800 rounded accent-blue-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Peer Contribution */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-amber-300">Peer's Contribution:</span>
+                          <span className="font-mono font-black text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60">{peerAvgContr} / 20 tokens</span>
+                        </div>
+                        <input
+                          type="range" min="0" max="20" step="1" value={peerAvgContr}
+                          onChange={e => setPeerAvgContr(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Public Multiplier */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-emerald-300">Synergy Multiplier (r):</span>
+                          <span className="font-mono font-black text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">{publicMultiplier.toFixed(1)}x</span>
+                        </div>
+                        <input
+                          type="range" min="1.0" max="3.0" step="0.1" value={publicMultiplier}
+                          onChange={e => setPublicMultiplier(parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-800 rounded accent-emerald-500 cursor-pointer"
+                        />
+                      </div>
                     </div>
-                    <input
-                      type="range" min="1.0" max="3.0" step="0.1" value={publicMultiplier}
-                      onChange={e => setPublicMultiplier(parseFloat(e.target.value))}
-                      className="w-full h-2 bg-slate-800 rounded accent-emerald-500 cursor-pointer"
-                    />
+
+                    {/* Glanceable Metric Chips */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-800 text-center font-mono">
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Marginal Return</span>
+                        <span className={`text-xs font-black ${privateReturn >= 1 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {privateReturn.toFixed(2)}x
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Total Pool Pot</span>
+                        <span className="text-xs font-black text-cyan-400">{total} tokens</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Social Optimum</span>
+                        <span className="text-xs font-black text-emerald-400">{maxSurplus.toFixed(0)} pts</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-[11px] text-slate-300">
-                  Private return per token conserved is <strong className="text-emerald-400 font-mono">{(publicMultiplier / 2).toFixed(2)} pts</strong> vs <strong className="text-rose-400 font-mono">1.00 pt</strong> private retention. Because marginal private benefit &lt; 1.0, defection strictly dominates in one-shot play even though full cooperation yields +{(20 * publicMultiplier).toFixed(1)} pts!
                 </div>
               </div>
             );
@@ -1744,69 +1986,107 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
             const trustsStag = partnerStagProb >= riskDomThreshold;
 
             return (
-              <div className="space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                  <span className="font-bold text-white text-sm">Stag Hunt Coordination: Payoff vs Risk Dominance</span>
-                  <span className={`font-mono font-bold text-xs px-2 py-0.5 rounded border ${
-                    trustsStag ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : 'bg-amber-950 text-amber-300 border-amber-800'
-                  }`}>
-                    {trustsStag ? '✓ Hunt Stag (Payoff Dominant)' : '⚠️ Hunt Hare (Risk Dominant Safety)'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Mutual Stag Reward (S):</span>
-                      <span className="font-mono font-bold text-emerald-400">+{stagRewardS} pts</span>
-                    </div>
-                    <input
-                      type="range" min="6" max="16" step="1" value={stagRewardS}
-                      onChange={e => setStagRewardS(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-emerald-500 cursor-pointer"
-                    />
+              <div className="space-y-4 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl">
+                {/* Header Strip with Live Metric Chips */}
+                <div className="flex justify-between items-center flex-wrap gap-2 border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-sm">Stag Hunt Coordination: Payoff vs Risk Dominance</span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      trustsStag ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : 'bg-amber-950 text-amber-300 border-amber-800'
+                    }`}>
+                      {trustsStag ? '★ Payoff Dominant (Hunt Stag)' : '⚠️ Risk Dominant Safety (Hunt Hare)'}
+                    </span>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Safe Hare Reward (H):</span>
-                      <span className="font-mono font-bold text-amber-400">+{hareRewardH} pts</span>
-                    </div>
-                    <input
-                      type="range" min="2" max="6" step="1" value={hareRewardH}
-                      onChange={e => setHareRewardH(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Partner Trust Probability (p):</span>
-                      <span className="font-mono font-bold text-cyan-400">{partnerStagProb}%</span>
-                    </div>
-                    <input
-                      type="range" min="0" max="100" step="5" value={partnerStagProb}
-                      onChange={e => setPartnerStagProb(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-cyan-500 cursor-pointer"
-                    />
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-emerald-400 font-bold">E[Stag]: {expStag.toFixed(1)} pts</span>
+                    <span className="text-xs font-mono text-amber-400 font-bold">E[Hare]: {expHare.toFixed(1)} pts</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-xs font-mono">
-                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-sans">E[Hunt Stag]:</span>
-                    <span className="text-emerald-400 font-bold">{expStag.toFixed(1)} pts</span>
+                {/* 2-Column Visual Stage + Direct Scrubbers */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                  {/* Left: 2D Strategy Phase Space */}
+                  <div className="lg:col-span-6 space-y-2">
+                    <PhaseSpace2DVisualizer
+                      r1Label="Stag"
+                      r2Label="Hare"
+                      c1Label="Stag"
+                      c2Label="Hare"
+                      a11={S} a12={0} a21={H} a22={H}
+                      b11={S} b12={H} b21={0} b22={H}
+                    />
                   </div>
-                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-sans">E[Hunt Hare]:</span>
-                    <span className="text-amber-400 font-bold">{expHare.toFixed(1)} pts (Guaranteed)</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-sans">Risk-Dominance Hurdle (p*):</span>
-                    <span className="text-white font-bold">{riskDomThreshold}% trust needed</span>
-                  </div>
-                </div>
 
-                <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-[11px] text-slate-300">
-                  Because hunting Stag yields 0 pts if your partner panics and hunts Hare, rational agents require at least <strong className="text-cyan-300 font-mono">{riskDomThreshold}%</strong> confidence in their partner's cooperation (p* = H/S) to justify the risk. When confidence falls below this threshold, coordination collapses to the risk-dominant, suboptimal Hare equilibrium.
+                  {/* Right: Direct Scrubbing Sliders & Metric Chips */}
+                  <div className="lg:col-span-6 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Payoff & Trust Scrubbers
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">Scrub partner belief</span>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      {/* Stag Reward */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-emerald-300">Mutual Stag Reward (S):</span>
+                          <span className="font-mono font-black text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">+{stagRewardS} pts</span>
+                        </div>
+                        <input
+                          type="range" min="6" max="16" step="1" value={stagRewardS}
+                          onChange={e => setStagRewardS(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-slate-800 rounded accent-emerald-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Safe Hare Reward */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-amber-300">Safe Hare Reward (H):</span>
+                          <span className="font-mono font-black text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60">+{hareRewardH} pts</span>
+                        </div>
+                        <input
+                          type="range" min="2" max="6" step="1" value={hareRewardH}
+                          onChange={e => setHareRewardH(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Partner Trust Probability */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-cyan-300">Belief Partner Plays Stag (p):</span>
+                          <span className="font-mono font-black text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/60">{partnerStagProb}%</span>
+                        </div>
+                        <input
+                          type="range" min="0" max="100" step="5" value={partnerStagProb}
+                          onChange={e => setPartnerStagProb(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-slate-800 rounded accent-cyan-500 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Glanceable Metric Chips */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-800 text-center font-mono">
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Trust Hurdle (p*)</span>
+                        <span className="text-xs font-black text-white">{riskDomThreshold}%</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Expected Advantage</span>
+                        <span className={`text-xs font-black ${expStag >= expHare ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          {expStag >= expHare ? `+${(expStag - expHare).toFixed(1)} pts` : `-${(expHare - expStag).toFixed(1)} pts`}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Equilibrium Type</span>
+                        <span className={`text-xs font-black ${trustsStag ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          {trustsStag ? 'Stag/Stag' : 'Hare/Hare'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -2291,70 +2571,119 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
             const cournotNashQ = Math.max(0, (cournotDemandA - cournotCost) / 3);
             const marketP = Math.max(0, cournotDemandA - (cournotQ1 + cournotQ2));
             const myProfit = Math.round(cournotQ1 * (marketP - cournotCost));
+            const rivalProfit = Math.round(cournotQ2 * (marketP - cournotCost));
+            const atNash = Math.abs(cournotQ1 - cournotNashQ) <= 1.5 && Math.abs(cournotQ2 - cournotNashQ) <= 1.5;
+
             return (
-              <div className="space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                  <span className="font-bold text-white text-sm">Cournot Reaction Curves & Best Responses</span>
-                  <span className="font-mono text-emerald-400 font-bold">Cournot-Nash: {cournotNashQ.toFixed(1)} units</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Demand Intercept (A):</span>
-                      <span className="font-mono font-bold text-cyan-400">{cournotDemandA}</span>
-                    </div>
-                    <input
-                      type="range" min="60" max="140" step="5" value={cournotDemandA}
-                      onChange={e => setCournotDemandA(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-cyan-500 cursor-pointer"
-                    />
+              <div className="space-y-4 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl">
+                {/* Header Strip with Live Metric Chips */}
+                <div className="flex justify-between items-center flex-wrap gap-2 border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-sm">Cournot Quantity Duopoly & Reaction Cross</span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      atNash ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : 'bg-blue-950 text-blue-300 border-blue-800'
+                    }`}>
+                      {atNash ? '★ Cournot-Nash Fixed Point' : 'Disequilibrium Dynamics'}
+                    </span>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Marginal Cost (c):</span>
-                      <span className="font-mono font-bold text-rose-400">{cournotCost}</span>
-                    </div>
-                    <input
-                      type="range" min="0" max="30" step="2" value={cournotCost}
-                      onChange={e => setCournotCost(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-rose-500 cursor-pointer"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Your Output (q1):</span>
-                      <span className="font-mono font-bold text-blue-400">{cournotQ1}</span>
-                    </div>
-                    <input
-                      type="range" min="5" max="45" step="1" value={cournotQ1}
-                      onChange={e => setCournotQ1(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-blue-500 cursor-pointer"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Rival's Output (q2):</span>
-                      <span className="font-mono font-bold text-amber-400">{cournotQ2}</span>
-                    </div>
-                    <input
-                      type="range" min="5" max="45" step="1" value={cournotQ2}
-                      onChange={e => setCournotQ2(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
-                    />
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-blue-400 font-bold">P1 Profit: ${myProfit}</span>
+                    <span className="text-xs font-mono text-amber-400 font-bold">P2 Profit: ${rivalProfit}</span>
+                    <span className="text-xs font-mono text-cyan-300 font-bold">P: ${marketP.toFixed(1)}</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-xs font-mono">
-                  <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-sans">Market Price (P):</span>
-                    <span className="text-white font-bold">${marketP.toFixed(2)}</span>
+
+                {/* 2-Column Visual Stage + Direct Scrubbers */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                  {/* Left: Reaction Curves Visualizer */}
+                  <div className="lg:col-span-6 space-y-2">
+                    <ReactionFunctionVisualizer
+                      q1={cournotQ1}
+                      q2={cournotQ2}
+                      cost={cournotCost}
+                      demandA={cournotDemandA}
+                      title="Best-Response Reaction Curves"
+                    />
                   </div>
-                  <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-sans">Your Profit:</span>
-                    <span className="text-blue-400 font-bold">${myProfit.toFixed(2)}</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-sans">Your Optimal Response:</span>
-                    <span className="text-emerald-400 font-bold">{bestResponseQ1.toFixed(1)} units</span>
+
+                  {/* Right: Direct Scrubbing Sliders & Metric Chips */}
+                  <div className="lg:col-span-6 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Market & Output Scrubbers
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">Drag to shift equilibrium</span>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      {/* Your Output */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-blue-300">Your Output (q1):</span>
+                          <span className="font-mono font-black text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/60">{cournotQ1} units</span>
+                        </div>
+                        <input
+                          type="range" min="5" max="45" step="1" value={cournotQ1}
+                          onChange={e => setCournotQ1(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-slate-800 rounded accent-blue-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Rival Output */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-amber-300">Rival's Output (q2):</span>
+                          <span className="font-mono font-black text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60">{cournotQ2} units</span>
+                        </div>
+                        <input
+                          type="range" min="5" max="45" step="1" value={cournotQ2}
+                          onChange={e => setCournotQ2(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Demand Intercept & Cost row */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div className="bg-slate-950/70 p-2 rounded-lg border border-slate-800 space-y-1">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="font-bold text-cyan-300">Demand A:</span>
+                            <span className="font-mono text-cyan-400 font-bold">{cournotDemandA}</span>
+                          </div>
+                          <input
+                            type="range" min="60" max="140" step="5" value={cournotDemandA}
+                            onChange={e => setCournotDemandA(parseInt(e.target.value, 10))}
+                            className="w-full h-1.5 bg-slate-800 rounded accent-cyan-500 cursor-pointer"
+                          />
+                        </div>
+                        <div className="bg-slate-950/70 p-2 rounded-lg border border-slate-800 space-y-1">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="font-bold text-rose-300">Marginal Cost:</span>
+                            <span className="font-mono text-rose-400 font-bold">${cournotCost}</span>
+                          </div>
+                          <input
+                            type="range" min="0" max="30" step="2" value={cournotCost}
+                            onChange={e => setCournotCost(parseInt(e.target.value, 10))}
+                            className="w-full h-1.5 bg-slate-800 rounded accent-rose-500 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Glanceable Metric Chips */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-800 text-center font-mono">
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Nash Quantity</span>
+                        <span className="text-xs font-black text-emerald-400">{cournotNashQ.toFixed(1)} u</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Best Response</span>
+                        <span className="text-xs font-black text-cyan-400">{bestResponseQ1.toFixed(1)} u</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Market Price</span>
+                        <span className="text-xs font-black text-amber-400">${marketP.toFixed(1)}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2365,39 +2694,96 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
           {game.id === 22 && (() => {
             const midpoint = (hotellingX1 + hotellingX2) / 2;
             const p1Share = hotellingX1 <= hotellingX2 ? midpoint : 100 - midpoint;
+            const p2Share = 100 - p1Share;
+            const atMinimumDiff = Math.abs(hotellingX1 - 50) <= 3 && Math.abs(hotellingX2 - 50) <= 3;
+
             return (
-              <div className="space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                  <span className="font-bold text-white text-sm">Hotelling Beach Catchment Simulator</span>
-                  <span className="font-mono text-blue-400 font-bold">Your Share: {p1Share.toFixed(1)}%</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Your Location (x1):</span>
-                      <span className="font-mono font-bold text-blue-400">{hotellingX1}</span>
-                    </div>
-                    <input
-                      type="range" min="0" max="100" step="1" value={hotellingX1}
-                      onChange={e => setHotellingX1(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-blue-500 cursor-pointer"
-                    />
+              <div className="space-y-4 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl">
+                {/* Header Strip with Live Metric Chips */}
+                <div className="flex justify-between items-center flex-wrap gap-2 border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-sm">Hotelling Linear City & Spatial Competition</span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      atMinimumDiff ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : 'bg-blue-950 text-blue-300 border-blue-800'
+                    }`}>
+                      {atMinimumDiff ? '★ Principle of Minimum Differentiation (Center 50)' : 'Spatial Divergence'}
+                    </span>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Rival's Location (x2):</span>
-                      <span className="font-mono font-bold text-amber-400">{hotellingX2}</span>
-                    </div>
-                    <input
-                      type="range" min="0" max="100" step="1" value={hotellingX2}
-                      onChange={e => setHotellingX2(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
-                    />
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-blue-400 font-bold">You: {p1Share.toFixed(1)}%</span>
+                    <span className="text-xs font-mono text-amber-400 font-bold">Rival: {p2Share.toFixed(1)}%</span>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-300 leading-relaxed bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
-                  Moving closer to the rival captures their side of the midpoint without forfeiting your outer flank. This unilateral incentive creates the Principle of Minimum Differentiation, forcing both vendors to location 50.
-                </p>
+
+                {/* 2-Column Visual Stage + Direct Scrubbers */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                  {/* Left: Territory Strip Visualizer */}
+                  <div className="lg:col-span-6 space-y-2">
+                    <TerritoryStripVisualizer
+                      pos1={hotellingX1}
+                      pos2={hotellingX2}
+                      label1="Your Cart"
+                      label2="Rival Cart"
+                      title="Beachfront Catchment & Customer Split"
+                    />
+                  </div>
+
+                  {/* Right: Direct Scrubbing Sliders & Metric Chips */}
+                  <div className="lg:col-span-6 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Cart Location Scrubbers
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">Position 0 to 100 km</span>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      {/* Your Location */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-blue-300">Your Location (x1):</span>
+                          <span className="font-mono font-black text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/60">{hotellingX1} km</span>
+                        </div>
+                        <input
+                          type="range" min="0" max="100" step="1" value={hotellingX1}
+                          onChange={e => setHotellingX1(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-slate-800 rounded accent-blue-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Rival Location */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-amber-300">Rival's Location (x2):</span>
+                          <span className="font-mono font-black text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60">{hotellingX2} km</span>
+                        </div>
+                        <input
+                          type="range" min="0" max="100" step="1" value={hotellingX2}
+                          onChange={e => setHotellingX2(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Glanceable Metric Chips */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-800 text-center font-mono">
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Territory Midpoint</span>
+                        <span className="text-xs font-black text-cyan-400">{midpoint.toFixed(1)} km</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Nash Center</span>
+                        <span className="text-xs font-black text-emerald-400">50.0 km</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Catchment Lead</span>
+                        <span className={`text-xs font-black ${p1Share >= 50 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {p1Share >= 50 ? `+${(p1Share - 50).toFixed(1)}%` : `-${(50 - p1Share).toFixed(1)}%`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             );
           })()}
@@ -2676,56 +3062,97 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
             const p1NetProfit = Math.round(fisheryEffortP1 * (catchPerBoat - boatOperatingCost));
             const p2NetProfit = Math.round(fisheryEffortP2 * (catchPerBoat - boatOperatingCost));
             const stockHealthPct = Math.round((stockRemaining / carryingCapacity) * 100);
+            const isSustainable = totalEffort <= 6;
+
             return (
-              <div className="space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                  <span className="font-bold text-white text-sm">Bioeconomic Fishery Stock Dynamics</span>
-                  <div className="flex items-center gap-3 text-xs font-mono">
-                    <span className={`font-bold ${p1NetProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              <div className="space-y-4 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl">
+                {/* Header Strip with Live Metric Chips */}
+                <div className="flex justify-between items-center flex-wrap gap-2 border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-sm">Bioeconomic Fishery Stock Dynamics & Biomass Growth</span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      isSustainable ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : 'bg-rose-950 text-rose-300 border-rose-800'
+                    }`}>
+                      {isSustainable ? '✓ Sustainable Harvest (Effort ≤ 6)' : '⚠️ Overfishing Trap (Stock Depletion)'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs font-mono font-bold ${p1NetProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                       You: ${p1NetProfit}
                     </span>
-                    <span className="text-slate-400">Rival: ${p2NetProfit}</span>
-                    <span className={`font-bold ${stockHealthPct > 35 ? 'text-cyan-400' : 'text-rose-400'}`}>
+                    <span className="text-xs font-mono text-slate-400">Rival: ${p2NetProfit}</span>
+                    <span className={`text-xs font-mono font-bold ${stockHealthPct > 35 ? 'text-cyan-400' : 'text-rose-400'}`}>
                       Stock: {stockHealthPct}%
                     </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Your Fleet (Trawlers):</span>
-                      <span className="font-mono font-bold text-blue-400">{fisheryEffortP1} boats</span>
-                    </div>
-                    <input
-                      type="range" min="0" max="10" step="1" value={fisheryEffortP1}
-                      onChange={e => setFisheryEffortP1(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-blue-500 cursor-pointer"
+
+                {/* 2-Column Visual Stage + Direct Scrubbers */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                  {/* Left: Commons Logistic Growth & Harvest Visualizer */}
+                  <div className="lg:col-span-6 space-y-2">
+                    <CommonsResourceVisualizer
+                      effortP1={fisheryEffortP1}
+                      effortP2={fisheryEffortP2}
+                      carryingCapacity={carryingCapacity}
+                      title="Logistic Biomass Regeneration vs Catch Rate"
                     />
                   </div>
-                  <div>
-                    <div className="flex justify-between text-[11px]">
-                      <span>Rival Fleet (Trawlers):</span>
-                      <span className="font-mono font-bold text-amber-400">{fisheryEffortP2} boats</span>
+
+                  {/* Right: Direct Scrubbing Sliders & Metric Chips */}
+                  <div className="lg:col-span-6 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Fleet Effort Scrubbers
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">Trawler boats launched</span>
                     </div>
-                    <input
-                      type="range" min="0" max="10" step="1" value={fisheryEffortP2}
-                      onChange={e => setFisheryEffortP2(parseInt(e.target.value, 10))}
-                      className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-xs font-mono">
-                  <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-sans">Total Effort:</span>
-                    <span className="text-white font-bold">{totalEffort} trawlers</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-sans">Remaining Biomass:</span>
-                    <span className={`${stockRemaining < 25 ? 'text-rose-400' : 'text-emerald-400'} font-bold`}>{stockRemaining} tons</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block font-sans">Catch Per Boat:</span>
-                    <span className="text-cyan-400 font-bold">${catchPerBoat.toFixed(1)}</span>
+
+                    <div className="space-y-2.5 text-xs">
+                      {/* Your Fleet */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-blue-300">Your Fleet:</span>
+                          <span className="font-mono font-black text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/60">{fisheryEffortP1} trawlers</span>
+                        </div>
+                        <input
+                          type="range" min="0" max="10" step="1" value={fisheryEffortP1}
+                          onChange={e => setFisheryEffortP1(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-slate-800 rounded accent-blue-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Rival Fleet */}
+                      <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="font-bold text-amber-300">Rival Fleet:</span>
+                          <span className="font-mono font-black text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60">{fisheryEffortP2} trawlers</span>
+                        </div>
+                        <input
+                          type="range" min="0" max="10" step="1" value={fisheryEffortP2}
+                          onChange={e => setFisheryEffortP2(parseInt(e.target.value, 10))}
+                          className="w-full h-2 bg-slate-800 rounded accent-amber-500 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Glanceable Metric Chips */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-800 text-center font-mono">
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Total Effort</span>
+                        <span className="text-xs font-black text-white">{totalEffort} boats</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Remaining Biomass</span>
+                        <span className={`text-xs font-black ${stockRemaining < 25 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          {stockRemaining} tons
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                        <span className="text-[9px] text-slate-400 block font-sans">Catch Per Boat</span>
+                        <span className="text-xs font-black text-cyan-400">${catchPerBoat.toFixed(1)}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2781,8 +3208,8 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
             );
           })()}
 
-          {/* PANEL D: Executive Insights & Expandable Formal Mathematical Proof */}
-          <GameTakeawaysAndProofCard
+          {/* Go deeper: Formal Equilibrium Proof & Analytical Assumptions */}
+          <WhatIfMathProofExpander
             gameId={game.id}
             gameTitle={game.title}
           />

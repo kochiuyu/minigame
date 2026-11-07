@@ -1,96 +1,133 @@
-# Implementation Plan: Top 6 High-Impact Improvements for DOTE3090 Game Theory Lab
+# What-If Lab Overhaul: Interactive Visual Simulator & Payoff Response Maps
 
-This plan outlines the 6 highest-impact, student-centered improvements for the DOTE3090 Game Theory Experiment Lab, ranked by value for university students and designed to fit into single, focused builds.
+Transform the What-If Laboratory from a text-heavy dashboard into an interactive, visual-first economic simulator. The centerpiece of every game becomes a live, dynamic payoff response map or equilibrium curve that reacts instantly to direct scrubbing sliders, replacing dense paragraphs with visual meters, coordinate landscapes, and glanceable metric chips.
 
 ---
 
-## Ranked Improvement Roadmap
+## User Review & Critical Decisions
+
+> [!IMPORTANT]
+> The plan strictly adheres to the 3 decisions confirmed by the user in Phase 1:
+> 1. **Visual Centerpiece**: A live interactive graph / payoff response map (reaction curve coordinates, equilibrium fixed points, and response surfaces) dominating the screen.
+> 2. **Drastic Text Reduction**: Replace multi-line explanatory paragraphs and narrative cards with visual gauges, status indicators, and compact metric chips.
+> 3. **Engaging Interaction**: Direct scrubbing sliders and interactive visual markers that animate the graphs and equilibrium coordinates in real time.
+
+---
+
+## 1. Overview & Core Concept
+
+- **The Problem**: Currently, students opening the What-If Lab encounter multiple stacked panels with heavy paragraphs ("Role Context", "Strategic Tension", "Why this model matters", analytical derivations). This cognitive overload drives users away before they explore the dynamics.
+- **The Solution**: A visual laboratory where game theory comes alive graphically. Students drag policy and payoff sliders and directly watch the reaction curves shift, equilibrium points migrate across $(p, q)$ coordinate space, and harvest curves cross sustainability thresholds.
+- **Key Value**: Immediate spatial and visual intuition for Nash equilibria, strategic dominance, and mechanism design—learning by seeing rather than reading walls of text.
+
+---
+
+## 2. User Experience & Visual Design
+
+### 2.1 The Two-Zone Visual Stage Layout
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ RANKED IMPROVEMENT ROADMAP (BY VALUE FOR STUDENTS)                          │
+│ WHAT-IF VISUAL SIMULATOR (Game Title)                                      │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ 1. [Fun & Clarity]     Visual "Payoff Radar & Regret Flash" in Step 3       │
-│ 2. [Simpler Text]      3-Bullet "TL;DR Executive Briefing" on Step 1 Rules  │
-│ 3. [Mobile Layout]     Sticky Thumb-Friendly Action Dock on Step 2 Choices  │
-│ 4. [Bot Balance]       Adaptive Bounded Rationality & Opponent Thought Bubbles│
-│ 5. [Instructor Portal] Real-Time Classroom Distribution & Equilibrium Gap   │
-│ 6. [Fun & Retention]   Equilibrium Mastery Streaks & Tier Completion Badges │
+│ 1-Line Mission Headline & Status Gauge: [======|=====] 78% Cooperation     │
+├──────────────────────────────────────┬──────────────────────────────────────┤
+│ LIVE VISUAL GRAPH (60% Width)        │ INTERACTIVE LEVERS & GAUGES (40%)    │
+│                                      │                                      │
+│  q (P2)                              │ ⚡ Quick Scenario Chips              │
+│   1 ┌───────────────────────────┐    │ [ Baseline ] [ Tipping ] [ Enforce ] │
+│     │            ★ Nash (p*,q*) │    │                                      │
+│     │           ↗ (Cooperation) │    │ Direct Scrubbing Sliders:            │
+│     │                           │    │ • Cheating Gain (T):  ──●──── 3.0    │
+│     │                           │    │ • Mutual Reward (R):  ────●── 3.5    │
+│     │ ↙ Defect                  │    │ • Penalty Fine (P):   ──●──── 1.0    │
+│   0 └───────────────────────────┘    │                                      │
+│     0                         1 p(P1)│ Live Gauges & Glanceable Chips:      │
+│   Live Reaction Curves & Heatmap     │ • Stability:  [ Stable Nash ]        │
+│   Point animates in real-time as     │ • Social Surplus: +$4.00 (+100%)     │
+│   sliders are scrubbed.              │ • Defection Advantage: -0.50 (Dead)  │
+├──────────────────────────────────────┴──────────────────────────────────────┤
+│ 📐 Go deeper: Analytical Proof & Case Study (Collapsed single-line drawer)   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+### 2.2 Game-Specific Visual Centerpieces
 
-### Rank 1: Visual "Payoff Radar & Regret Flash" (Step 3: Outcome & Results)
-- **Pedagogical Value**: Immediate intuitive feedback on strategic optimality without reading paragraphs of numbers.
-- **One-Sentence Description**: Displays an instant visual matrix comparison directly after a round resolves showing "What You Earned vs. What You Could Have Earned (Counterfactual Regret)", turning raw point totals into instantaneous strategic intuition.
-- **Key Deliverables**:
-  - Color-coded payoff difference highlight (Green for optimal, Amber for unexploited surplus).
-  - One-line takeaway: e.g., *"By pricing at $3.00 instead of $4.00, you captured +$1.00 more than undercutting."*
-- **Files Likely Affected**:
-  - `src/components/SoloLabView.tsx`
-  - `src/components/InteractiveMatrixVisualizer.tsx`
+1. **Matrix Games (Prisoner's Dilemma, Stag Hunt, Hawk-Dove, Battle of Sexes, Matching Pennies, 2x2 Price)**:
+   - **Live 2D Strategy Phase Space $(p, q)$**:
+     - Coordinates: $p = \text{Prob}(R_1)$ on X-axis, $q = \text{Prob}(C_1)$ on Y-axis.
+     - Dynamic vector flow field and Nash equilibrium markers $(\star)$ that move smoothly across the plane as payoffs are scrubbed.
+     - Immediate visual demonstration of when the defection sink $(0, 0)$ flips into a cooperative basin of attraction $(1, 1)$.
+2. **Auction Games (Vickrey 2nd-Price & 1st-Price Auctions)**:
+   - **Live Bidding Profit & Surplus Curve**:
+     - Plotting expected surplus $E[\pi]$ against bid $b \in [0, 10]$.
+     - Highlighting the dominant truthful point $b = v$ (Game 7) or the shaded peak $b^* = \frac{N-1}{N} v$ (Game 8).
+3. **Public Goods & Resource Commons (Games 12 & 27)**:
+   - **Renewable Stock Reproduction vs. Harvest S-Curve**:
+     - Natural logistic growth parabola $g(S)$ plotted against fishing effort line $H(E, S)$.
+     - Real-time visual intersection showing Sustainable Yield vs. Extinction Collapse.
+4. **Duopolies (Cournot & Bertrand, Games 14 & 21)**:
+   - **Live Reaction Function Cross $(R_1(q_2), R_2(q_1))$**:
+     - Visual intersection showing the Cournot equilibrium output migrating as marginal costs or market size sliders move.
+5. **Linear City & Bargaining (Hotelling & Split-the-Pie, Games 9 & 22)**:
+   - **Interactive Beach Strip & Surplus Splitter**:
+     - Live vendor territory split visualizer with moving market boundary line.
 
----
+### 2.3 Radical Text Reduction
 
-### Rank 2: 3-Bullet "TL;DR Executive Briefing" (Step 1: Rules & Setup)
-- **Pedagogical Value**: Eliminates cognitive overload so students can start playing within 10 seconds.
-- **One-Sentence Description**: Condenses the narrative story on Step 1 into three 10-word bullet chips (Your Role, Available Choices, Win Condition) by default, keeping the detailed background story accessible under a clean "Historical / Market Context" expander.
-- **Key Deliverables**:
-  - Standardized 3-chip banner at top of Step 1 (`Role` | `Choice` | `Win Condition`).
-  - Narrative text collapsed by default into an expandable card.
-- **Files Likely Affected**:
-  - `src/data/gameStories.ts`
-  - `src/components/SoloLabView.tsx`
-
----
-
-### Rank 3: Sticky Thumb-Friendly Mobile Action Dock (Step 2: Choice Arena)
-- **Pedagogical Value**: Effortless one-handed classroom play on student smartphones.
-- **One-Sentence Description**: Anchors decision buttons and bid/price sliders into a persistent bottom dock on mobile screens so students never have to scroll past diagrams or rule text to submit their choices.
-- **Key Deliverables**:
-  - Fixed mobile bottom-bar container (`sticky bottom-0 z-20`) for primary action buttons.
-  - Safe padding offset to prevent overlapping content.
-- **Files Likely Affected**:
-  - `src/components/SoloLabView.tsx`
+- **Removed**: Multi-paragraph narrative summaries, redundant role descriptions, verbose "why this matters" commentary.
+- **Replaced with**:
+  - Compact **Equilibrium Meter**: Visual status bar (`[====|====]`) indicating distance to Pareto efficiency.
+  - **Single-Line Punchy Verdict**: Concise 12-to-15 word summary directly below the graph.
+  - **Glanceable Numeric Metric Chips**: High-contrast, unboxed figures with colored indicators (`+$2.00 surplus`, `Nash: Stable`, `Friction: Neutralized`).
 
 ---
 
-### Rank 4: Adaptive Bounded Rationality & Opponent Thought Bubbles (Bot Balance)
-- **Pedagogical Value**: Realistic human-like play that teaches students how people actually deviate from pure Nash equilibria.
-- **One-Sentence Description**: Rebalances bot decision distributions across the 8 tiers so entry-level opponents exhibit human bounded rationality (e.g. Level-1 Keynesian guesses, fair-minded Ultimatum offers) while displaying animated thought bubbles before decisions.
-- **Key Deliverables**:
-  - Adjusted noise and heuristic weights in `botEngine.ts`.
-  - Dynamic anticipation thought bubble rendered during the bot's turn.
-- **Files Likely Affected**:
-  - `src/services/botEngine.ts`
-  - `src/components/SoloLabView.tsx`
+## 3. Key Product Decisions & Trade-Offs
+
+- **Decision 1: SVG Coordinate Landscapes vs. Heavy Canvas Libraries**
+  - *Chosen Approach*: Clean, lightweight, reactive SVG visualizers rendered directly in React with Tailwind CSS.
+  - *Why*: Instant zero-latency 60fps responsiveness on mobile devices and desktop without loading external heavy chart bundles (like Chart.js or D3), keeping the app lightweight and accessible.
+- **Decision 2: Direct Scrubbing with Immediate Vector Updates**
+  - *Chosen Approach*: Native HTML range inputs styled as sleek scrubbing bars that mutate state directly on `onChange`, updating SVG coordinates simultaneously.
+  - *Why*: Provides tactile, immediate cause-and-effect learning where students physically feel the tipping points.
+- **Decision 3: Preserving Academic Rigor in a Collapsed Drawer**
+  - *Chosen Approach*: Keep the full formal mathematical proof, analytical assumptions, and market design case studies inside a collapsed drawer at the bottom.
+  - *Why*: Satisfies advanced students and instructors without cluttering the interactive visual workspace for everyday learners.
 
 ---
 
-### Rank 5: Real-Time Classroom Distribution Heatmap & "Equilibrium Gap" (Instructor Portal)
-- **Pedagogical Value**: Instantly gives instructors the data needed to lead rich classroom debriefs.
-- **One-Sentence Description**: Adds a live 1-click visual histogram showing aggregated student choices compared against the theoretical Nash prediction on the instructor projector view, highlighting behavioral anomalies in real time.
-- **Key Deliverables**:
-  - Live frequency distribution chart overlaying theoretical equilibrium benchmark.
-  - One-click "Projector Spotlight" toggle for full-screen classroom presentation.
-- **Files Likely Affected**:
-  - `src/components/InstructorDashboard.tsx`
+## 4. Technical Architecture & Data Strategy
+
+### Component Hierarchy & Module Breakdown
+
+```
+src/components/sandbox/
+├── WhatIfVisualStage.tsx          # Master visual stage router (renders SVG centerpieces)
+├── visualizers/
+│   ├── PhaseSpace2DVisualizer.tsx # Live (p, q) Nash coordinate landscape for 2x2 games
+│   ├── AuctionSurplusVisualizer.tsx# Expected profit curves for 1st & 2nd price auctions
+│   ├── CommonsResourceVisualizer.tsx # Logistic growth vs harvest curves for fishery & public goods
+│   ├── ReactionFunctionVisualizer.tsx # Duopoly reaction curve intersections
+│   └── TerritoryStripVisualizer.tsx   # Hotelling linear beach & bargaining territory
+├── missionEngine.ts               # Verdict logic & numerical evaluation
+└── GamePedagogyCard.tsx           # Compact banner & collapsed proof drawer
+```
+
+### Key Technical Sequences
+
+1. User scrubs a slider (e.g., Temptation $T$ in Prisoner's Dilemma).
+2. React state updates immediately with no debounce lag.
+3. SVG coordinate transforms calculate new $(p^*, q^*)$ fixed points and curve intersections.
+4. Visual equilibrium marker $(\star)$ and flow arrows re-render at 60fps with CSS transition smoothing.
+5. Single-line verdict and efficiency meter update reactively.
 
 ---
 
-### Rank 6: Equilibrium Mastery Streaks & Tier Completion Badges (Fun & Retention)
-- **Pedagogical Value**: Sustains student engagement and motivation throughout the 28-game curriculum.
-- **One-Sentence Description**: Introduces a lightweight mastery tracker that records completed games and consecutive quiz scores with unlockable tier badges, rewarding students for completing the curriculum.
-- **Key Deliverables**:
-  - Visual tier progress bar in top navigation.
-  - Milestone unlock toasts upon completing each of the 8 curriculum tiers.
-- **Files Likely Affected**:
-  - `src/components/SoloLabView.tsx`
-  - `src/components/Header.tsx`
+## 5. Verification Plan
 
----
-
-## Implementation Strategy & Next Steps
-
-Each improvement is fully decoupled and sized for a single focused build turn. Please review and select which improvement you would like to proceed with first.
+1. **Compilation**: Verify build with `compile_applet` and type-checking with `lint_applet`.
+2. **Visual & Interaction Verification**:
+   - Check that scrubbing sliders smoothly moves the equilibrium point across the phase space graph.
+   - Verify that text clutter is eliminated and layout fits cleanly on phone and desktop screens.
+   - Verify that clicking "Quick Scenarios" snaps the graph to key economic milestones.
