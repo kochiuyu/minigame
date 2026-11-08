@@ -25,6 +25,7 @@ export type Submission = { round: number; choice: Choice };
 export type VisibleOffer = { round: number; choice: Choice; fromBot: boolean };
 export type CentipedeDecision = { round: number; choice: 'Take' | 'Pass' };
 export type CentipedePath = { round: number; moves: Record<string, 'Take' | 'Pass'>; exitNode?: number; fallback?: boolean };
+export type PracticeCentipedePath = { node: number; moves: Record<string, 'Take' | 'Pass'>; exitNode?: number };
 export type RepeatedTurn = { own: 'Cooperate' | 'Defect'; other: 'Cooperate' | 'Defect'; ownPoints: number; otherPoints: number; bot: boolean };
 export type RepeatedPath = { round: number; turns: Record<string, RepeatedTurn> };
 export type MatchResult = {
@@ -295,6 +296,38 @@ export function centipedeExitNode(first: Choice, second: Choice): number {
   const firstTake = first === 'Pass All' ? 7 : Number(first.slice(-1));
   const secondTake = second === 'Pass All' ? 7 : Number(second.slice(-1));
   return Math.min(firstTake, secondTake);
+}
+
+// Complete one student move, then resolve bot turns until the student moves again or the chain ends.
+export function advancePracticeCentipede(
+  path: PracticeCentipedePath,
+  studentRole: Role,
+  studentMove?: 'Take' | 'Pass',
+  botMove: () => 'Take' | 'Pass' = () => Math.random() < 0.5 ? 'Take' : 'Pass',
+): PracticeCentipedePath {
+  if (path.exitNode || path.node < 1 || path.node > 6) return path;
+  let node = path.node;
+  const moves = { ...path.moves };
+  let studentUsed = false;
+  while (node <= 6) {
+    const actorRole = node % 2 ? 'first' : 'second';
+    const isStudent = actorRole === studentRole;
+    if (isStudent && studentUsed) break;
+    if (isStudent && !studentMove) break;
+    const move = isStudent ? studentMove! : botMove();
+    if (move !== 'Take' && move !== 'Pass') throw new Error('Invalid Centipede move.');
+    moves[node] = move;
+    if (isStudent) studentUsed = true;
+    if (move === 'Take') return { node: node + 1, moves, exitNode: node };
+    node++;
+  }
+  return { node, moves, ...(node === 7 ? { exitNode: 7 } : {}) };
+}
+
+export function practiceCentipedePoints(exitNode: number, studentRole: Role): [number, number] {
+  const points = [[2, 0], [1, 4], [4, 2], [3, 6], [6, 4], [5, 8], [8, 8]][exitNode - 1];
+  if (!points) throw new Error('Invalid Centipede exit node.');
+  return studentRole === 'first' ? [points[0], points[1]] : [points[1], points[0]];
 }
 
 export function pairParticipants(participants: Record<string, Participant>, round: number): Record<string, Assignment> {
