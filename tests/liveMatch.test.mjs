@@ -1,6 +1,43 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, commonValueBid, commonValueOutcome, contributionAmount, cournotPoints, cournotQuantity, dollarAuctionBid, dollarAuctionPoints, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, travelerClaim, travelerPoints, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, commonValueBid, commonValueOutcome, contributionAmount, cournotPoints, cournotQuantity, dollarAuctionBid, dollarAuctionPoints, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, lemonsOffer, lemonsPayoff, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareLemonsResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, travelerClaim, travelerPoints, trawlerAmount } from '../src/liveMatch.ts';
+
+test('Lemons Market gives the seller private quality and sequential sale choices', () => {
+  assert.equal(lemonsOffer('Offer 1000'), 1000);
+  assert.equal(lemonsOffer('Offer 9000'), 9000);
+  assert.equal(lemonsOffer('Offer 1100'), null);
+  assert.deepEqual(lemonsPayoff(5000, 'Low', true), [0, 2000]);
+  assert.deepEqual(lemonsPayoff(7500, 'High', true), [1500, 500]);
+  assert.deepEqual(lemonsPayoff(5000, 'High', false), [0, 0]);
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second', quality: 'Low' } };
+  const buyer = { a: { round: 1, choice: 'Offer 5000' } };
+  const offers = prepareLemonsResponses(assignments, buyer, 1);
+  assert.deepEqual(offers.b, { round: 1, choice: 'Offer 5000', fromBot: false });
+  const choices = { ...buyer, b: { round: 1, choice: 'Accept' } };
+  const results = resolveResults(assignments, choices, 1, 28, offers);
+  assert.deepEqual([results.a.ownPoints, results.b.ownPoints], [0, 2000]);
+  assert.equal(results.a.lemons.quality, 'Low');
+  assert.equal(results.a.opponentKind, 'student');
+  const summary = summarizeRound(assignments, choices, results, 1, 28);
+  assert.equal(summary.outcomes[1].count, 1);
+  assert.equal(summary.choiceCounts.reduce((n, item) => n + item.count, 0), 2);
+  const csv = buildReportCsv(() => 'Lemons Market', [summary], { 1: { summary, aliases: { a: 'A', b: 'B' }, results } });
+  assert.match(csv, /"Car quality","Purchase offer","Sale accepted"/);
+  assert.match(csv, /"Low","5000","Yes"/);
+  const missedSeller = resolveResults(assignments, buyer, 1, 28, offers).a;
+  assert.equal(missedSeller.opponentKind, 'bot');
+  assert.equal(missedSeller.ownPoints, 0);
+  const rejected = resolveResults(assignments, { ...buyer, b: { round: 1, choice: 'Reject' } }, 1, 28, offers);
+  assert.deepEqual([rejected.a.ownPoints, rejected.b.ownPoints], [0, 0]);
+  assert.equal(rejected.a.lemons.accepted, false);
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 28, step: 'respond' },
+    participants: { a: { alias: 'A' }, b: { alias: 'B' } }, assignments, choices, offers }, true);
+  assert.equal(finished.config.phase, 'finished');
+  assert.equal(finished.results.a[1].lemons.quality, 'Low');
+  assert.equal(finished.config.summaries[1].outcomes[1].count, 1);
+  assert.equal(randomChoice(28).startsWith('Offer '), true);
+});
 
 test('Traveler claims score ties, lower-claim bonus, pair results, fallback, and CSV', () => {
   assert.equal(LIVE_GAMES.find(game => game.id === 26)?.options.length, 99);

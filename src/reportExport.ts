@@ -13,6 +13,7 @@ const HEADER = [
   'Private survey signal', 'Rival survey signal', 'Common true value', 'Won common-value auction',
   'Own dollar bid', 'Rival dollar bid', 'Won dollar auction',
   'Own traveler claim', 'Rival traveler claim', 'Lower claim', 'Claim adjustment',
+  'Car quality', 'Purchase offer', 'Sale accepted',
 ];
 
 function csvCell(value: ReportRow[number]): string {
@@ -52,6 +53,7 @@ function resultRow(round: number, game: string, alias: string, result?: MatchRes
     game === "Traveler's Dilemma" && result?.opponentChoice ? Number(result.opponentChoice.slice(6)) : '',
     game === "Traveler's Dilemma" && result?.opponentChoice ? Math.min(Number(result.ownChoice.slice(6)), Number(result.opponentChoice.slice(6))) : '',
     game === "Traveler's Dilemma" && result?.opponentChoice ? result.ownPoints - Math.min(Number(result.ownChoice.slice(6)), Number(result.opponentChoice.slice(6))) : '',
+    result?.lemons?.quality, result?.lemons?.offer, result?.lemons ? (result.lemons.accepted ? 'Yes' : 'No') : '',
   ];
 }
 

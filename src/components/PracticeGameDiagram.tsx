@@ -15,6 +15,11 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, centipedePath, valuation }: Props) {
+  if (gameId === 28) return <div data-game-diagram="lemons" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
+    <h3 className="font-bold text-slate-100">How a car sale scores</h3>
+    <p>The seller alone knows whether the car is High or Low quality. High quality is worth $7,000 to the seller and $9,000 to the buyer; Low quality is worth $3,000 and $5,000. The buyer offers a price, then the seller accepts or rejects.</p>
+    <p>On a sale, buyer profit = buyer value minus price; seller profit = price minus seller value. Rejection earns $0 for both. A high-quality seller may refuse a price that a low-quality seller accepts.</p>
+  </div>;
   if (gameId === 26) {
     const own = travelerClaim(result?.ownChoice || choice);
     const bot = result?.botChoice ? travelerClaim(result.botChoice) : null;
