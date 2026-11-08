@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPrice, cournotQuantity, hotellingLocation, centipedeTurnResults, classParticipants, contributionAmount, demandAmount, finishRound, gameFor, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomAuctionValue, randomBeautyGuess, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeRound, trawlerAmount,
+  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPrice, commonValueBid, commonValueOutcome, cournotQuantity, hotellingLocation, centipedeTurnResults, classParticipants, contributionAmount, demandAmount, finishRound, gameFor, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomAuctionValue, randomSurveySignal, randomBeautyGuess, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeRound, trawlerAmount,
 } from '../liveMatch';
 import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, PracticeCentipedePath, RepeatedPath, RepeatedTurn, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
@@ -47,10 +47,11 @@ export function FirebaseLiveClass() {
   const [practiceChoice, setPracticeChoice] = useState<Choice>('Cooperate');
   const [practiceRole, setPracticeRole] = useState<'first' | 'second'>('first');
   const [practiceBotOffer, setPracticeBotOffer] = useState<Choice>(() => randomChoice(30));
-  const [practiceResult, setPracticeResult] = useState<{ ownChoice: Choice; botChoice: Choice | null; points: number; groupTotal?: number; botContributions?: number[]; beauty?: { botGuesses: number[]; average: number; target: number; distance: number; winner: boolean }; signaling?: { quality: 'High' | 'Low'; signal: boolean; trusted: boolean } } | null>(null);
+  const [practiceResult, setPracticeResult] = useState<{ ownChoice: Choice; botChoice: Choice | null; points: number; groupTotal?: number; botContributions?: number[]; beauty?: { botGuesses: number[]; average: number; target: number; distance: number; winner: boolean }; signaling?: { quality: 'High' | 'Low'; signal: boolean; trusted: boolean }; commonValue?: { signal: number; otherSignal: number; trueValue: number; won: boolean } } | null>(null);
   const [practiceRepeatedTurns, setPracticeRepeatedTurns] = useState<RepeatedTurn[]>([]);
   const [practiceCentipede, setPracticeCentipede] = useState<PracticeCentipedePath>({ node: 1, moves: {} });
   const [practiceValuation, setPracticeValuation] = useState(() => randomAuctionValue());
+  const [practiceSurvey, setPracticeSurvey] = useState(() => randomSurveySignal());
   const [practiceQuality, setPracticeQuality] = useState<'High' | 'Low'>(() => Math.random() < 0.5 ? 'High' : 'Low');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -83,6 +84,7 @@ export function FirebaseLiveClass() {
     setPracticeRepeatedTurns([]);
     setPracticeCentipede({ node: 1, moves: {} });
     setPracticeValuation(randomAuctionValue());
+    setPracticeSurvey(randomSurveySignal());
     setPracticeQuality(Math.random() < 0.5 ? 'High' : 'Low');
   }, [config?.gameId]);
 
@@ -156,7 +158,7 @@ export function FirebaseLiveClass() {
       ? { round: config.round, kind: 'class', opponentAlias: 'Class', role: 'first' }
       : config.gameId === 12
       ? { round: config.round, kind: 'group', groupId: user.uid, groupSize: 1, opponentAlias: 'Public goods group', role: 'first' }
-      : { round: config.round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(config.gameId) ? { valuation: randomAuctionValue() } : {}), ...(config.gameId === 10 ? { quality: Math.random() < 0.5 ? 'High' as const : 'Low' as const } : {}) };
+      : { round: config.round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(config.gameId) ? { valuation: randomAuctionValue() } : {}), ...(config.gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...(config.gameId === 10 ? { quality: Math.random() < 0.5 ? 'High' as const : 'Low' as const } : {}) };
     set(ref(db, `${ROOT}/assignments/${user.uid}`), fallback).catch(() => {
       // A human assignment may have reached the server before this listener updated.
     });
@@ -274,6 +276,14 @@ export function FirebaseLiveClass() {
   }
 
   function playBot() {
+    if (practiceGameId === 24) {
+      const botBid = randomSurveySignal();
+      const botSignal = randomSurveySignal();
+      const outcome = commonValueOutcome(commonValueBid(practiceChoice) ?? 10, botBid, practiceSurvey, botSignal, true);
+      setPracticeResult({ ownChoice: practiceChoice, botChoice: `Bid ${botBid}`, points: outcome.ownPoints,
+        commonValue: { signal: practiceSurvey, otherSignal: botSignal, trueValue: outcome.value, won: outcome.won } });
+      return;
+    }
     if (practiceGameId === 11) {
       const botGuesses = Array.from({ length: 3 }, () => randomBeautyGuess());
       const outcome = beautyContest([guessAmount(practiceChoice) ?? 0, ...botGuesses]);
@@ -420,6 +430,7 @@ export function FirebaseLiveClass() {
           setPracticeRepeatedTurns([]);
           setPracticeCentipede({ node: 1, moves: {} });
           setPracticeValuation(randomAuctionValue());
+          setPracticeSurvey(randomSurveySignal());
           setPracticeQuality(Math.random() < 0.5 ? 'High' : 'Low');
         }} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
           {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
@@ -452,6 +463,7 @@ export function FirebaseLiveClass() {
         {practiceGameId === 10 && practiceRole === 'first' && <p className="rounded-lg bg-blue-950 p-3">Your private product quality: <strong>{practiceQuality}</strong>. <button type="button" onClick={() => { setPracticeQuality(Math.random() < 0.5 ? 'High' : 'Low'); setPracticeResult(null); }} className="ml-2 underline">Draw new quality</button></p>}
         {practiceGameId === 19 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot invested {investAmount(practiceBotOffer)} points, tripled to {(investAmount(practiceBotOffer) ?? 0) * 3}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(19)); setPracticeChoice('Return 0'); setPracticeResult(null); }} className="ml-2 underline">New investment</button></p>}
         {(practiceGameId === 7 || practiceGameId === 8) && <p className="rounded-lg border border-blue-700 bg-blue-950/50 p-3">Your private artwork value: <strong>{practiceValuation} points</strong>. The bot cannot see it. <button type="button" onClick={() => { setPracticeValuation(randomAuctionValue()); setPracticeResult(null); }} className="ml-2 underline">Draw new value</button></p>}
+        {practiceGameId === 24 && <p className="rounded-lg border border-blue-700 bg-blue-950/50 p-3">Your private seismic survey signal: <strong>${practiceSurvey}</strong>. The bot cannot see it. <button type="button" onClick={() => { setPracticeSurvey(randomSurveySignal()); setPracticeResult(null); }} className="ml-2 underline">New survey</button></p>}
         {practiceGameId === 20 ? <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_140px]">
           <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} centipedePath={practiceCentipede} valuation={practiceValuation} />
           <div className="space-y-3" role="status">
@@ -473,6 +485,9 @@ export function FirebaseLiveClass() {
         </div> : practiceGameId === 7 || practiceGameId === 8 ? <div className="space-y-2">
           <label htmlFor="practice-bid" className="block font-semibold">Your sealed bid: {auctionBid(practiceChoice) ?? 0}</label>
           <input id="practice-bid" type="range" min="0" max="12" step="1" value={auctionBid(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Bid ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
+        </div> : practiceGameId === 24 ? <div className="space-y-2">
+          <label htmlFor="practice-common-bid" className="block font-semibold">Your sealed bid: ${commonValueBid(practiceChoice) ?? 10}</label>
+          <input id="practice-common-bid" type="range" min="10" max="90" step="1" value={commonValueBid(practiceChoice) ?? 10} onChange={event => { setPracticeChoice(`Bid ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
         </div> : practiceGameId === 14 ? <div className="space-y-2">
           <label htmlFor="practice-price" className="block font-semibold">Your price: ${bertrandPrice(practiceChoice) ?? 10}</label>
           <input id="practice-price" type="range" min="10" max="50" step="1" value={bertrandPrice(practiceChoice) ?? 10} onChange={event => { setPracticeChoice(`Price ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
@@ -513,8 +528,9 @@ export function FirebaseLiveClass() {
         {practiceGameId === 20 ? null : practiceGameId === 6 && practiceRepeatedTurns.length === 5 ? <button onClick={() => { setPracticeRepeatedTurns([]); setPracticeResult(null); }} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">New five-turn match</button>
           : <button onClick={playBot} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">{practiceGameId === 6 ? `Play turn ${practiceRepeatedTurns.length + 1} of 5` : 'Play random bot'}</button>}
         {practiceResult && (practiceGameId === 7 || practiceGameId === 8) && <p role="status">You bid {auctionBid(practiceResult.ownChoice)}; the bot bid {auctionBid(practiceResult.botChoice || 'Bid 0')}. {((practiceGameId === 8 ? firstPriceAuctionPayoff : auctionPayoff)(auctionBid(practiceResult.ownChoice) ?? 0, auctionBid(practiceResult.botChoice || 'Bid 0') ?? 0, practiceValuation, true)).won ? `You won and paid ${practiceGameId === 8 ? auctionBid(practiceResult.ownChoice) : auctionBid(practiceResult.botChoice || 'Bid 0')}.` : 'The bot won.'} Your score: {practiceResult.points} {practiceResult.points === 1 ? 'point' : 'points'}.</p>}
+        {practiceResult?.commonValue && <p role="status">Your signal was {practiceResult.commonValue.signal}; the bot's signal was {practiceResult.commonValue.otherSignal}. You bid {commonValueBid(practiceResult.ownChoice)}; the bot bid {commonValueBid(practiceResult.botChoice || 'Bid 10')}. True value was {practiceResult.commonValue.trueValue}. {practiceResult.commonValue.won ? 'You won.' : 'The bot won.'} Your profit: ${practiceResult.points}.</p>}
         {practiceResult?.beauty && <p role="status">You guessed {guessAmount(practiceResult.ownChoice)}; bots guessed {practiceResult.beauty.botGuesses.join(', ')}. Class average {practiceResult.beauty.average.toFixed(2)}; target {practiceResult.beauty.target.toFixed(2)}. You were {practiceResult.beauty.winner ? 'closest' : 'not closest'} and earned {practiceResult.points} {practiceResult.points === 1 ? 'point' : 'points'}.</p>}
-        {practiceResult && practiceGameId !== 7 && practiceGameId !== 8 && practiceGameId !== 11 && <p role="status">{practiceGameId === 10
+        {practiceResult && practiceGameId !== 7 && practiceGameId !== 8 && practiceGameId !== 11 && practiceGameId !== 24 && <p role="status">{practiceGameId === 10
           ? `Product quality was ${practiceResult.signaling?.quality}. Seller chose ${practiceResult.signaling?.signal ? 'Signal' : 'No Signal'}; buyer chose ${practiceResult.signaling?.trusted ? 'Trust' : 'Do Not Trust'}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
           : practiceGameId === 9
           ? `You demanded ${demandAmount(practiceResult.ownChoice)}; the bot demanded ${demandAmount(practiceResult.botChoice || 'Demand 0')}. ${((demandAmount(practiceResult.ownChoice) ?? 0) + (demandAmount(practiceResult.botChoice || 'Demand 0') ?? 0)) <= 10 ? 'Deal reached.' : 'Deal failed; both take the 1-point outside option.'} You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
@@ -655,6 +671,7 @@ export function FirebaseLiveClass() {
               {currentResult.group ? <p>You contributed {contributionAmount(currentResult.ownChoice)} points. Your group pool was {currentResult.group.totalContribution}, including {currentResult.group.bots} bot contributions. You earned {currentResult.ownPoints} points.</p> : <>
                 <p>{currentResult.beauty ? `You chose ${currentResult.ownChoice}.` : `You chose ${currentResult.ownChoice}; ${currentResult.opponentAlias} chose ${currentResult.opponentChoice}.`}</p>
                 {currentResult.auction && <p>Your value was {currentResult.auction.valuation}. {currentResult.auction.won ? `You won and paid ${currentResult.auction.price}.` : `${currentResult.opponentAlias} won and paid ${currentResult.auction.price}.`}</p>}
+                {currentResult.commonValue && <p>Your survey signal was ${currentResult.commonValue.signal}; the rival signal was ${currentResult.commonValue.otherSignal}. True lease value was ${currentResult.commonValue.trueValue}. {currentResult.commonValue.won ? 'You won the lease.' : `${currentResult.opponentAlias} won the lease.`}</p>}
                 {currentResult.beauty && <p>Average {currentResult.beauty.average.toFixed(2)}; target {currentResult.beauty.target.toFixed(2)}; your distance {currentResult.beauty.distance.toFixed(2)}.</p>}
                 <p>You earned {currentResult.ownPoints} {currentResult.ownPoints === 1 ? 'point' : 'points'}{currentResult.beauty ? '.' : `; your opponent earned ${currentResult.opponentPoints}.`}</p>
               </>}
@@ -669,7 +686,7 @@ export function FirebaseLiveClass() {
               {!(staged && config.step === 'respond') && !(repeated && repeatedTurn > 1) && <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/assignments/${user.uid}`),
                 classwide ? { round, kind: 'class', opponentAlias: 'Class', role: 'first' }
                   : publicGoods ? { round, kind: 'group', groupId: user.uid, groupSize: 1, opponentAlias: 'Public goods group', role: 'first' }
-                  : { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(game.id) ? { valuation: randomAuctionValue() } : {}), ...(game.id === 10 ? { quality: Math.random() < 0.5 ? 'High' as const : 'Low' as const } : {}) }))} className="text-sm underline">{classwide ? 'Try joining contest' : 'Try bot fallback'}</button>}
+                  : { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(game.id) ? { valuation: randomAuctionValue() } : {}), ...(game.id === 24 ? { valuation: randomSurveySignal() } : {}), ...(game.id === 10 ? { quality: Math.random() < 0.5 ? 'High' as const : 'Low' as const } : {}) }))} className="text-sm underline">{classwide ? 'Try joining contest' : 'Try bot fallback'}</button>}
             </div>
           ) : repeated ? (
             <div className="space-y-3">
@@ -716,6 +733,7 @@ export function FirebaseLiveClass() {
               {roleLabel && <p className="text-sm text-blue-200">Your role: {roleLabel}</p>}
               {signaling && !isResponder && <p className="rounded-lg bg-blue-950 p-3">Your private product quality: <strong>{currentAssignment.quality || 'High'}</strong>. The buyer sees only your signal.</p>}
               {(game.id === 7 || game.id === 8) && <p className="rounded-lg bg-blue-950 p-3">Your private artwork value this round: <strong>{currentAssignment.valuation} points</strong>. Bid any whole amount from 0 to 12.</p>}
+              {game.id === 24 && <p className="rounded-lg bg-blue-950 p-3">Your private seismic survey signal: <strong>${currentAssignment.valuation}</strong>. The true lease value is revealed after bidding.</p>}
               {centipede && <p className="rounded-lg bg-blue-950 p-3 text-sm">Choose your complete plan before seeing your partner's plan. You will Pass until the Take node you select; Pass All means you never take. The first Take ends the chain.</p>}
               {ultimatum && isResponder && visibleOffer && <p className="rounded-lg bg-blue-950 p-3">{visibleOffer.fromBot ? 'Random bot' : currentAssignment.opponentAlias} offered you {visibleOffer.choice.slice(6)} of 10 points. Accept to take those points, or reject so both get 0.</p>}
               {entry && isResponder && visibleOffer && <p className="rounded-lg bg-blue-950 p-3">{visibleOffer.fromBot ? 'Random bot' : currentAssignment.opponentAlias} chose {visibleOffer.choice}. Now decide whether to Enter or Stay Out.</p>}
@@ -733,6 +751,9 @@ export function FirebaseLiveClass() {
               </div> : game.id === 7 || game.id === 8 ? <div className="space-y-2">
                 <label htmlFor="live-bid" className="block font-semibold">Your sealed bid: {auctionBid(choice) ?? 0}</label>
                 <input id="live-bid" type="range" min="0" max="12" step="1" value={auctionBid(choice) ?? 0} onChange={event => setChoice(`Bid ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
+              </div> : game.id === 24 ? <div className="space-y-2">
+                <label htmlFor="live-common-bid" className="block font-semibold">Your private bid: ${commonValueBid(choice) ?? 10}</label>
+                <input id="live-common-bid" type="range" min="10" max="90" step="1" value={commonValueBid(choice) ?? 10} onChange={event => setChoice(`Bid ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
               </div> : game.id === 14 ? <div className="space-y-2">
                 <label htmlFor="live-price" className="block font-semibold">Your private price: ${bertrandPrice(choice) ?? 10}</label>
                 <input id="live-price" type="range" min="10" max="50" step="1" value={bertrandPrice(choice) ?? 10} onChange={event => setChoice(`Price ${Number(event.target.value)}`)} className="w-full accent-blue-500" />

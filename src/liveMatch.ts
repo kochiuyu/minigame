@@ -1,4 +1,4 @@
-export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 27 | 29 | 30;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 27 | 29 | 30;
 export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Signal' | 'No Signal' | 'Trust' | 'Do Not Trust' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Price ${number}` | `Quantity ${number}` | `Location ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
@@ -40,6 +40,7 @@ export type MatchResult = {
   opponentKind: 'student' | 'bot' | 'group' | 'class';
   fallback: boolean;
   auction?: { valuation: number; winningBid: number; price: number; won: boolean };
+  commonValue?: { signal: number; otherSignal: number; trueValue: number; won: boolean };
   beauty?: { average: number; target: number; distance: number; winner: boolean };
   exitNode?: number; // Centipede: 1–6 for a Take, 7 when both pass all nodes.
   centipedeMoves?: Record<string, 'Take' | 'Pass'>;
@@ -152,6 +153,17 @@ export const FISHERY_TRAWLERS = Array.from({ length: 11 }, (_, index) => `Trawle
 export const BERTRAND_PRICES = Array.from({ length: 41 }, (_, index) => `Price ${index + 10}` as Choice) as [Choice, Choice, ...Choice[]];
 export const COURNOT_QUANTITIES = Array.from({ length: 36 }, (_, index) => `Quantity ${index + 10}` as Choice) as [Choice, Choice, ...Choice[]];
 export const HOTELLING_LOCATIONS = Array.from({ length: 101 }, (_, index) => `Location ${index}` as Choice) as [Choice, Choice, ...Choice[]];
+export const COMMON_VALUE_BIDS = Array.from({ length: 81 }, (_, index) => `Bid ${index + 10}` as Choice) as [Choice, Choice, ...Choice[]];
+export const randomSurveySignal = (): number => 10 + randomIndex(81);
+export function commonValueBid(choice: Choice): number | null {
+  return /^Bid (?:[1-8][0-9]|90)$/.test(choice) ? Number(choice.slice(4)) : null;
+}
+export function commonValueOutcome(ownBid: number, otherBid: number, ownSignal: number, otherSignal: number, winTie: boolean): { value: number; won: boolean; ownPoints: number; otherPoints: number } {
+  if (![ownBid, otherBid, ownSignal, otherSignal].every(value => Number.isInteger(value) && value >= 10 && value <= 90)) throw new Error('Invalid common-value auction input.');
+  const value = (ownSignal + otherSignal) / 2;
+  const won = ownBid > otherBid || (ownBid === otherBid && winTie);
+  return { value, won, ownPoints: won ? value - ownBid : 0, otherPoints: won ? 0 : value - otherBid };
+}
 export function hotellingLocation(choice: Choice): number | null {
   return /^Location (?:100|[1-9]?[0-9])$/.test(choice) ? Number(choice.slice(9)) : null;
 }
@@ -215,6 +227,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 21, title: 'Cournot Duopoly', options: COURNOT_QUANTITIES, rules: 'You and a rival firm privately choose whole-unit production quantities from 10 to 45. Market price depends on combined output.', payoffs: 'Market price = max(0, 100 − combined output). Each firm earns quantity × (market price − 10) / 100 dollars. At 30 units each, profit is $9.00 each.' },
   { id: 22, title: 'Hotelling Beach', options: HOTELLING_LOCATIONS, rules: 'You and a rival privately choose a whole-number stand location from 0 to 100 on a beach with uniformly distributed customers.', payoffs: 'Each customer visits the closer stand. The midpoint between stands divides the market; matching locations split it equally. Your score is your market share in points out of 100.' },
   { id: 23, title: 'Colonel Blotto', options: BLOTTO_DEPLOYMENTS, rules: 'Choose how to deploy 100 troops across Fronts A, B, and C. Each number in a deployment plan is the troop count for one front. Your opponent chooses secretly.', payoffs: 'More troops wins a front. Win more fronts than your opponent: +1 point; lose more: −1 point; equal front wins: 0 points.' },
+  { id: 24, title: 'Common-Value Auction', options: COMMON_VALUE_BIDS, rules: 'Each bidder sees a private seismic survey signal from $10 to $90. Secretly bid a whole dollar from $10 to $90 for one shared oil lease. The true value is the average of both signals, revealed after bidding.', payoffs: 'The highest bidder wins and pays their own bid. Winner profit = true value − bid; loser profit = $0. A tied bid goes to the first paired bidder.' },
   { id: 27, title: 'Renewable Fishery', options: FISHERY_TRAWLERS, rules: 'You and one partner secretly deploy 0–10 trawlers each. More boats can earn more, but heavy combined effort depletes the shared fishery. Each class round is an independent catch.', payoffs: 'Total boats 0–8: 2 points profit per boat · 9–12: 0.9 per boat · 13–20: −0.5 per boat. Both fleets face the same stock condition.' },
   { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], rules: 'You and the bot each choose one move without seeing the other choice. Each move beats one other move.', payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
   { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], rules: 'The Proposer offers part of a 10-point pot. The Responder sees the offer and accepts or rejects it.', payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
@@ -295,6 +308,7 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
   switch (gameId) {
     case 7:
     case 8:
+    case 24:
       throw new Error('Auction scoring requires private valuations.');
     case 10:
       throw new Error('Signaling scoring requires private seller quality.');
@@ -462,10 +476,10 @@ export function pairParticipants(participants: Record<string, Participant>, roun
     const first = uids[i];
     const second = uids[i + 1];
     if (!second) {
-      assignments[first] = { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 10 ? { quality: Math.random() < 0.5 ? 'High' : 'Low' as const } : {}) };
+      assignments[first] = { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...(gameId === 10 ? { quality: Math.random() < 0.5 ? 'High' : 'Low' as const } : {}) };
     } else {
-      assignments[first] = { round, kind: 'student', opponentUid: second, opponentAlias: participants[second].alias, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 10 ? { quality: Math.random() < 0.5 ? 'High' : 'Low' as const } : {}) };
-      assignments[second] = { round, kind: 'student', opponentUid: first, opponentAlias: participants[first].alias, role: 'second', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}) };
+      assignments[first] = { round, kind: 'student', opponentUid: second, opponentAlias: participants[second].alias, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...(gameId === 10 ? { quality: Math.random() < 0.5 ? 'High' : 'Low' as const } : {}) };
+      assignments[second] = { round, kind: 'student', opponentUid: first, opponentAlias: participants[first].alias, role: 'second', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}) };
     }
   }
   return assignments;
@@ -503,6 +517,7 @@ export function resolveResults(
   if (gameId === 12) return resolvePublicGoodsResults(assignments, choices, round);
   if (gameId === 11) return resolveBeautyResults(assignments, choices, round);
   if (gameId === 7 || gameId === 8) return resolveAuctionResults(assignments, choices, round, gameId);
+  if (gameId === 24) return resolveCommonValueResults(assignments, choices, round);
   if (gameId === 20) return resolveCentipedeResults(assignments, choices, round);
   if (gameId === 10) return resolveSignalingResults(assignments, choices, offers, round);
   if (gameId === 2 || gameId === 5) return resolveSequentialResults(assignments, choices, offers, round, gameId);
@@ -542,6 +557,28 @@ function resolveBeautyResults(assignments: Record<string, Assignment>, choices: 
     round, ownChoice: item.choice, ownPoints: outcome.scores[index], opponentAlias: 'Class', opponentKind: 'class', fallback: false,
     beauty: { average: outcome.average, target: outcome.target, distance: outcome.distances[index], winner: outcome.winners[index] },
   } as MatchResult]));
+}
+
+function resolveCommonValueResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, MatchResult> {
+  const results: Record<string, MatchResult> = {};
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    const signal = assignment.valuation;
+    const ownChoice = choices[uid]?.round === round ? choices[uid].choice : null;
+    const ownBid = ownChoice ? commonValueBid(ownChoice) : null;
+    if (assignment.round !== round || signal === undefined || !Number.isInteger(signal) || signal < 10 || signal > 90 || ownBid === null) continue;
+    const partnerUid = assignment.kind === 'student' ? assignment.opponentUid : undefined;
+    const partnerChoice = partnerUid && choices[partnerUid]?.round === round ? choices[partnerUid].choice : null;
+    const partnerBid = partnerChoice ? commonValueBid(partnerChoice) : null;
+    const fallback = assignment.kind === 'student' && partnerBid === null;
+    const otherBid = partnerBid ?? 10 + randomIndex(81);
+    const otherSignal = partnerBid !== null && partnerUid ? assignments[partnerUid]?.valuation ?? randomSurveySignal() : randomSurveySignal();
+    const outcome = commonValueOutcome(ownBid, otherBid, signal, otherSignal, assignment.role !== 'second');
+    results[uid] = { round, ownChoice: ownChoice!, opponentChoice: `Bid ${otherBid}`, ownPoints: outcome.ownPoints,
+      opponentPoints: outcome.otherPoints, opponentAlias: fallback ? BOT_ALIAS : assignment.opponentAlias,
+      opponentKind: fallback ? 'bot' : assignment.kind, fallback,
+      commonValue: { signal, otherSignal, trueValue: outcome.value, won: outcome.won } };
+  }
+  return results;
 }
 
 function resolveAuctionResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number, gameId: 7 | 8): Record<string, MatchResult> {
@@ -891,12 +928,14 @@ export function summarizeRound(
   const submitted = Object.entries(choices).filter(([uid, item]) =>
     item.round === round && assignments[uid]?.round === round);
   const finished = Object.entries(results).filter(([, item]) => item.round === round);
-  const choiceCounts = game.options.map(option => ({
+  const choiceCounts = (gameId === 24 ? Array.from({ length: 9 }, (_, index) => `${10 + index * 10}–${Math.min(90, 19 + index * 10)}`) : game.options).map(option => ({
     label: option,
-    count: submitted.filter(([, item]) => item.choice === option).length,
+    count: submitted.filter(([, item]) => gameId === 24
+      ? (() => { const bid = commonValueBid(item.choice); const [low, high] = option.split('–').map(Number); return bid !== null && bid >= low && bid <= high; })()
+      : item.choice === option).length,
   }));
 
-  const outcomeNames = gameId === 7 || gameId === 8 ? ['Winner gains points', 'Winner breaks even', 'Winner loses points']
+  const outcomeNames = gameId === 7 || gameId === 8 || gameId === 24 ? ['Winner gains points', 'Winner breaks even', 'Winner loses points']
     : gameId === 10 ? ['Signal + Trust', 'Signal + No trust', 'No signal + Trust', 'No signal + No trust']
     : gameId === 9 ? ['Deal reached', 'Deal failed']
     : gameId === 14 ? ['Same price: split market', 'Different prices: one firm wins']
@@ -925,7 +964,7 @@ export function summarizeRound(
     const other = results[assignment.opponentUid];
     if (own?.round !== round || other?.round !== round || own.opponentKind !== 'student' || other.opponentKind !== 'student') continue;
     studentPairs++;
-    const index = gameId === 7 || gameId === 8 ? (() => { const winner = own.auction?.won ? own : other; return winner.ownPoints > 0 ? 0 : winner.ownPoints < 0 ? 2 : 1; })()
+    const index = gameId === 7 || gameId === 8 || gameId === 24 ? (() => { const winner = own.auction?.won || own.commonValue?.won ? own : other; return winner.ownPoints > 0 ? 0 : winner.ownPoints < 0 ? 2 : 1; })()
       : gameId === 9 ? ((demandAmount(own.ownChoice) || 0) + (demandAmount(other.ownChoice) || 0) <= 10 ? 0 : 1)
       : gameId === 14 ? (own.ownChoice === other.ownChoice ? 0 : 1)
       : gameId === 21 ? (() => { const total = (cournotQuantity(own.ownChoice) || 0) + (cournotQuantity(other.ownChoice) || 0); return total < 60 ? 0 : total === 60 ? 1 : 2; })()
