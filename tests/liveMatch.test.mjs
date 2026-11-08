@@ -101,6 +101,29 @@ test('two-choice live games use their published payoff matrices for both roles',
   }
 });
 
+test('Promotion Timing scores clashes and different days across a live round', () => {
+  assert.deepEqual(LIVE_GAMES.find(game => game.id === 4).options, ['Monday', 'Wednesday', 'Friday']);
+  for (const own of ['Monday', 'Wednesday', 'Friday']) {
+    for (const other of ['Monday', 'Wednesday', 'Friday'])
+      assert.deepEqual(pointsFor(4, own, other), own === other ? [0, 0] : [1, 1]);
+  }
+  const assignments = {
+    a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    c: { round: 1, kind: 'student', opponentUid: 'd', opponentAlias: 'D', role: 'first' },
+    d: { round: 1, kind: 'student', opponentUid: 'c', opponentAlias: 'C', role: 'second' },
+  };
+  const choices = { a: { round: 1, choice: 'Monday' }, b: { round: 1, choice: 'Monday' },
+    c: { round: 1, choice: 'Wednesday' }, d: { round: 1, choice: 'Friday' } };
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 4 },
+    participants: { a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' }, d: { alias: 'D' } }, assignments, choices }, true);
+  assert.equal(finished.config.phase, 'finished');
+  assert.deepEqual(Object.values(finished.archive[1].results).map(item => item.ownPoints), [0, 0, 1, 1]);
+  assert.deepEqual(finished.config.summaries[1].outcomes, [
+    { label: 'Same day clash', count: 1 }, { label: 'Different days', count: 1 },
+  ]);
+});
+
 test('Rock–Paper–Scissors scores every move and the bot can choose all three', () => {
   const moves = ['Rock', 'Paper', 'Scissors'];
   const expected = [
