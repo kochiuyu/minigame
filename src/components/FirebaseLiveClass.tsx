@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, LIVE_GAMES, finishRound, gameFor, pairParticipants, pointsFor, randomChoice, resolveResults, submissionProgress, summarizeRound,
+  BOT_ALIAS, LIVE_GAMES, finishRound, gameFor, pairParticipants, pointsFor, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound,
 } from '../liveMatch';
 import type { Assignment, Choice, GameId, LiveRoom, MatchResult, Participant, RoomConfig, RoundArchive, Submission } from '../liveMatch';
 import { FinalAnalysis, RoundAnalysis } from './RoundAnalysis';
@@ -177,6 +177,11 @@ export function FirebaseLiveClass() {
     setPracticeResult({ ownChoice: practiceChoice, botChoice, points });
   }
 
+  function saveAlias(next: string) {
+    setAlias(next);
+    sessionStorage.setItem('liveAlias', next);
+  }
+
   const round = config?.round || 0;
   const legacyClass = Boolean(config && !config.totalRounds);
   const currentAssignment = assignment?.round === round ? assignment : null;
@@ -233,7 +238,12 @@ export function FirebaseLiveClass() {
         <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-3">
           <h2 className="text-lg font-bold">Join a class round</h2>
           <label htmlFor="live-alias" className="block text-sm font-bold">Classroom alias</label>
-          <input id="live-alias" value={alias} maxLength={30} onChange={event => { setAlias(event.target.value); sessionStorage.setItem('liveAlias', event.target.value); }} placeholder="Choose an alias (no student ID)" className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white" />
+          <input id="live-alias" value={alias} maxLength={30} onChange={event => saveAlias(event.target.value)} aria-describedby="alias-help" placeholder="Choose an alias (no student ID)" className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white" />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => saveAlias(randomStudentAlias())} className="rounded-lg bg-slate-700 px-4 py-2 font-semibold">🎲 Random alias</button>
+            <button type="button" disabled={!alias.trim()} onClick={() => saveAlias(shuffleAliasIcon(alias))} className="rounded-lg bg-slate-700 px-4 py-2 font-semibold disabled:opacity-50">✨ New icon</button>
+          </div>
+          <p id="alias-help" className="text-sm text-slate-300">Try a fun name and icon, shuffle again, or type your own before joining.</p>
           <button disabled={busy || !alias.trim()} onClick={() => run(() => signInAnonymously(auth))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Join as student</button>
           <div className="border-t border-slate-700 pt-3">
             <button disabled={busy} onClick={() => run(() => signInWithPopup(auth, new GoogleAuthProvider()))} className="rounded-lg bg-purple-600 px-4 py-3 font-bold disabled:opacity-50">Instructor: sign in with Google</button>

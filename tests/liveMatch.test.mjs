@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LIVE_GAMES, finishRound, pairParticipants, pointsFor, randomChoice, resolveResults, submissionProgress, summarizeClass, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, LIVE_GAMES, finishRound, pairParticipants, pointsFor, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeClass, summarizeRound } from '../src/liveMatch.ts';
 
 const cases = [
   [1, [[2, 2], [0, 3], [3, 0], [1, 1]]],
@@ -194,4 +194,19 @@ test('a round with no choices can be skipped and does not break final release', 
   assert.equal(done.config.phase, 'finished');
   assert.equal(done.config.summaries[1].submitted, 0);
   assert.equal(done.results.a[2].round, 2);
+});
+
+test('students can generate a short emoji alias and change its icon before joining', () => {
+  for (let i = 0; i < 100; i++) {
+    const alias = randomStudentAlias();
+    const originalIcon = ALIAS_ICONS.find(icon => alias.startsWith(`${icon} `));
+    assert.ok(originalIcon);
+    assert.ok(alias.length <= 30);
+    assert.match(alias, / [1-9][0-9]{2}$/);
+    const changed = shuffleAliasIcon(alias);
+    assert.ok(changed.length <= 30);
+    assert.notEqual(changed.split(' ')[0], originalIcon);
+    assert.equal(changed.slice(changed.indexOf(' ') + 1), alias.slice(alias.indexOf(' ') + 1));
+  }
+  assert.ok(shuffleAliasIcon('A'.repeat(30)).length <= 30);
 });
