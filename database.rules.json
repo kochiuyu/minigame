@@ -15,6 +15,15 @@
             ".read": "auth != null && auth.uid === $uid",
             ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('rooms/DOTE-3090/config/open').val() === true && root.child('rooms/DOTE-3090/config/revealed').val() !== true",
             ".validate": "newData.hasChildren(['alias', 'choice', 'round']) && newData.child('alias').isString() && newData.child('alias').val().length > 0 && newData.child('alias').val().length <= 30 && newData.child('round').val() === root.child('rooms/DOTE-3090/config/round').val() && (newData.child('choice').val() === 'Cooperate' || newData.child('choice').val() === 'Defect')",
+            "alias": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+            },
+            "choice": {
+              ".validate": "newData.val() === 'Cooperate' || newData.val() === 'Defect'"
+            },
+            "round": {
+              ".validate": "newData.val() === root.child('rooms/DOTE-3090/config/round').val()"
+            },
             "$other": {
               ".validate": false
             }
@@ -24,4 +33,3 @@
     }
   }
 }
-
