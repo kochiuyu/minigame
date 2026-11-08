@@ -52,6 +52,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
           <tr><th scope="row" className="py-2 font-normal">{personal.opponentAlias}</th><td>{personal.opponentChoice}</td><td>{personal.opponentPoints}</td></tr>
         </tbody>
       </table> : <p className="text-sm text-slate-300">No personal result is available for this round.</p>}
+      {personal?.exitNode && <p className="mt-2 text-sm text-blue-200">{personal.exitNode === 7 ? 'Both players passed all six nodes.' : `The chain ended with Take at Node ${personal.exitNode}.`}</p>}
       {personal?.fallback && <p className="text-sm text-amber-300 mt-2">{personal.group
         ? `${personal.group.missing} group member${personal.group.missing === 1 ? '' : 's'} did not contribute, so random bots filled those seats.`
         : 'Your partner did not submit, so a random bot took their place.'}</p>}
@@ -121,7 +122,7 @@ function PersonAnalysis({ analysis, title }: { analysis: ReturnType<typeof summa
           <td className="pr-2">{gameFor(item.gameId).title}</td>
           <td className="pr-2">{item.result?.ownChoice || 'No choice'}</td>
           <td className="pr-2">{item.result?.group ? `Group pool ${item.result.group.totalContribution} (${item.result.group.bots} bots)`
-            : item.result ? `${item.result.opponentAlias} (${item.result.opponentChoice})` : '—'}</td>
+            : item.result ? `${item.result.opponentAlias} (${item.result.opponentChoice})${item.result.exitNode ? ` · ${item.result.exitNode === 7 ? 'Both passed' : `Ended at Node ${item.result.exitNode}`}` : ''}` : '—'}</td>
           <td>{item.result?.ownPoints ?? '—'}</td>
         </tr>)}</tbody>
       </table>
@@ -231,3 +232,4 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
     </details>)}
   </div>;
 }
+
