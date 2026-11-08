@@ -1,4 +1,4 @@
-import { contributionAmount, gameFor, offerAmount, pointsFor, publicGoodsPoints } from '../liveMatch';
+import { contributionAmount, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount } from '../liveMatch';
 import type { Choice, GameId, Role } from '../liveMatch';
 
 type PracticeResult = { ownChoice: Choice; botChoice: Choice | null; groupTotal?: number } | null;
@@ -21,6 +21,18 @@ export function PracticeGameDiagram({ gameId, choice, role, botOffer, result }: 
         You keep {10 - contribution} + 0.4 × group pool = your score
       </div>
       {result?.groupTotal !== undefined && <p>Your practice pool was {result.groupTotal} points, so your score was {publicGoodsPoints(contribution, result.groupTotal)}.</p>}
+    </div>;
+  }
+  if (gameId === 19) {
+    const investment = investAmount(role === 'first' ? choice : botOffer) ?? 0;
+    const returned = returnAmount(role === 'second' ? choice : result?.botChoice || 'Return 0') ?? 0;
+    return <div data-game-diagram="tree" className="space-y-2 border-t border-slate-700 pt-3 text-center">
+      <h3 className="font-bold text-slate-100">Decision tree</h3>
+      <p className="rounded-lg border border-blue-700 bg-blue-950/50 p-2">Investor sends {investment} of 10</p>
+      <p aria-hidden="true">↓</p>
+      <p className="rounded-lg border border-slate-600 bg-slate-800 p-2">Trustee receives {investment * 3} and chooses a return</p>
+      <p aria-hidden="true">↓</p>
+      <p>At return {returned}: Investor {10 - investment + returned} / Trustee {investment * 3 - returned}</p>
     </div>;
   }
   if (gameId !== 30) {

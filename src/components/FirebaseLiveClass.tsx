@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, contributionAmount, finishRound, gameFor, groupParticipants, offerAmount, pairParticipants, pointsFor, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound,
+  BOT_ALIAS, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, contributionAmount, finishRound, gameFor, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomReturn, returnAmount, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound,
 } from '../liveMatch';
 import type { Assignment, Choice, GameId, LiveRoom, MatchResult, Participant, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
@@ -49,13 +49,19 @@ export function FirebaseLiveClass() {
   useEffect(() => setChoice(game.options[0]), [game.id]);
   useEffect(() => {
     if (game.id === 30 && assignment?.role) setChoice(assignment.role === 'second' ? 'Accept' : 'Offer 5');
+    if (game.id === 19 && assignment?.role) setChoice(assignment.role === 'second' ? 'Return 0' : 'Invest 5');
   }, [game.id, assignment?.role]);
+  useEffect(() => {
+    if (game.id !== 19 || !assignment || assignment.round !== config?.round) return;
+    if (assignment.role === 'first' || (config.step === 'respond' && visibleOffer?.round === config.round))
+      setChoice(assignment.role === 'first' ? 'Invest 5' : 'Return 0');
+  }, [game.id, config?.round, config?.step, assignment?.round, assignment?.role, visibleOffer?.round, visibleOffer?.choice]);
   useEffect(() => {
     if (!config?.gameId) return;
     setPracticeGameId(config.gameId);
     setPracticeChoice(gameFor(config.gameId).options[0]);
     setPracticeRole('first');
-    setPracticeBotOffer(randomChoice(30));
+    setPracticeBotOffer(randomChoice(config.gameId === 19 ? 19 : 30));
     setPracticeResult(null);
   }, [config?.gameId]);
 
@@ -110,7 +116,7 @@ export function FirebaseLiveClass() {
   }, [user, config, participant, alias]);
 
   useEffect(() => {
-    if (!user?.isAnonymous || config?.phase !== 'playing' || !participant || assignment !== null || (config.gameId === 30 && config.step === 'respond')) return;
+    if (!user?.isAnonymous || config?.phase !== 'playing' || !participant || assignment !== null || ((config.gameId === 30 || config.gameId === 19) && config.step === 'respond')) return;
     const fallback: Assignment = config.gameId === 12
       ? { round: config.round, kind: 'group', groupId: user.uid, groupSize: 1, opponentAlias: 'Public goods group', role: 'first' }
       : { round: config.round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' };
@@ -147,7 +153,7 @@ export function FirebaseLiveClass() {
       offers: null,
       ...(!config.totalRounds ? { results: null } : {}),
       'config/phase': 'playing',
-      'config/step': config.gameId === 30 ? 'offer' : null,
+      'config/step': config.gameId === 30 || config.gameId === 19 ? 'offer' : null,
     }));
   }
 
@@ -155,8 +161,10 @@ export function FirebaseLiveClass() {
     await run(async () => {
       await runTransaction(ref(db, ROOT), current => {
         const room = current as LiveRoom | null;
-        if (!room?.config || room.config.phase !== 'playing' || room.config.gameId !== 30 || room.config.step !== 'offer') return;
-        return { ...room, offers: prepareUltimatumResponses(room.assignments || {}, room.choices || {}, room.config.round),
+        if (!room?.config || room.config.phase !== 'playing' || ![19, 30].includes(room.config.gameId) || room.config.step !== 'offer') return;
+        return { ...room, offers: room.config.gameId === 19
+          ? prepareTrustResponses(room.assignments || {}, room.choices || {}, room.config.round)
+          : prepareUltimatumResponses(room.assignments || {}, room.choices || {}, room.config.round),
           config: { ...room.config, step: 'respond' } };
       }, { applyLocally: false });
     });
@@ -171,7 +179,7 @@ export function FirebaseLiveClass() {
         return {
           ...room,
           config: { ...room.config, phase: 'revealed' },
-          results: resolveResults(room.assignments || {}, room.choices || {}, room.config.round, room.config.gameId || 1),
+          results: resolveResults(room.assignments || {}, room.choices || {}, room.config.round, room.config.gameId || 1, room.offers || {}),
         };
       }, { applyLocally: false });
     });
@@ -207,6 +215,15 @@ export function FirebaseLiveClass() {
         points: publicGoodsPoints(ownContribution, groupTotal), groupTotal, botContributions });
       return;
     }
+    if (practiceGameId === 19) {
+      const investment = practiceRole === 'first' ? practiceChoice : practiceBotOffer;
+      const amount = investAmount(investment) ?? 0;
+      const returned = practiceRole === 'first' ? randomReturn(amount) : practiceChoice;
+      const [points] = pointsFor(19, practiceRole === 'first' ? investment : returned,
+        practiceRole === 'first' ? returned : investment, practiceRole);
+      setPracticeResult({ ownChoice: practiceChoice, botChoice: practiceRole === 'first' ? returned : investment, points });
+      return;
+    }
     const actualBotChoice = practiceGameId === 30
       ? practiceRole === 'first' ? Math.random() < 0.5 ? 'Accept' : 'Reject' : practiceBotOffer
       : randomChoice(practiceGameId);
@@ -239,8 +256,10 @@ export function FirebaseLiveClass() {
   const groupSizes = new Map(roundAssignments.filter(item => item.kind === 'group' && item.groupId).map(item => [item.groupId, item.groupSize || 1]));
   const plannedBotSeats = Array.from(groupSizes.values()).reduce((sum, size) => sum + PUBLIC_GOODS_GROUP_SIZE - size, 0);
   const ultimatum = game.id === 30;
+  const trust = game.id === 19;
+  const staged = ultimatum || trust;
   const isResponder = currentAssignment?.role === 'second';
-  const isMyStep = !ultimatum || (config?.step === 'offer' ? !isResponder : isResponder);
+  const isMyStep = !staged || (config?.step === 'offer' ? !isResponder : isResponder);
   const stepStudents = Object.keys(participants).filter(uid => assignments[uid]?.round === round && (config?.step === 'offer' ? assignments[uid].role !== 'second' : assignments[uid].role === 'second'));
   const stepSubmitted = stepStudents.filter(uid => submissions[uid]?.round === round).length;
 
@@ -262,7 +281,7 @@ export function FirebaseLiveClass() {
           setPracticeGameId(id);
           setPracticeChoice(gameFor(id).options[0]);
           setPracticeRole('first');
-          setPracticeBotOffer(randomChoice(30));
+          setPracticeBotOffer(randomChoice(id === 19 ? 19 : 30));
           setPracticeResult(null);
         }} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
           {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
@@ -272,22 +291,28 @@ export function FirebaseLiveClass() {
           <div className="mt-3 space-y-2 text-slate-300">
             <p>{practiceGame.rules}</p>
             <p><strong className="text-slate-100">Points:</strong> {practiceGame.payoffs}</p>
-            <p><strong className="text-slate-100">Random bot:</strong> {practiceGameId === 30
+            <p><strong className="text-slate-100">Random bot:</strong> {practiceGameId === 19
+              ? 'As Investor, it returns a random whole amount from 0 to three times your investment. As Trustee, it invests a random whole amount from 0 to 10.'
+              : practiceGameId === 30
               ? 'As Proposer, the bot accepts or rejects with equal chance. As Responder, it offers a random amount from 0 to 10 in half-point steps.'
               : 'The bot picks each available choice with equal chance.'}</p>
             <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} />
           </div>
         </details>
-        {practiceGameId === 30 ? <label className="block text-sm font-bold">Practice role
-          <select value={practiceRole} onChange={event => { const role = event.target.value as 'first' | 'second'; setPracticeRole(role); setPracticeChoice(role === 'first' ? 'Offer 5' : 'Accept'); setPracticeBotOffer(randomChoice(30)); setPracticeResult(null); }} className="mt-2 w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
-            <option value="first">Proposer</option><option value="second">Responder</option>
+        {([19, 30] as number[]).includes(practiceGameId) ? <label className="block text-sm font-bold">Practice role
+          <select value={practiceRole} onChange={event => { const role = event.target.value as 'first' | 'second'; setPracticeRole(role); setPracticeChoice(practiceGameId === 19 ? role === 'first' ? 'Invest 5' : 'Return 0' : role === 'first' ? 'Offer 5' : 'Accept'); setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="mt-2 w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
+            <option value="first">{practiceGameId === 19 ? 'Investor' : 'Proposer'}</option><option value="second">{practiceGameId === 19 ? 'Trustee' : 'Responder'}</option>
           </select>
         </label> : practiceGame.roles && <p className="text-sm text-slate-300">Your role: {practiceGame.roles[0]}</p>}
         {practiceGameId === 30 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot offered you {practiceBotOffer.slice(6)} of 10 points. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(30)); setPracticeResult(null); }} className="ml-2 underline">New offer</button></p>}
+        {practiceGameId === 19 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot invested {investAmount(practiceBotOffer)} points, tripled to {(investAmount(practiceBotOffer) ?? 0) * 3}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(19)); setPracticeChoice('Return 0'); setPracticeResult(null); }} className="ml-2 underline">New investment</button></p>}
         {practiceGameId === 12 ? <div className="space-y-2">
           <label htmlFor="practice-contribution" className="block font-semibold">Contribute {contributionAmount(practiceChoice) ?? 0} of 10 points</label>
           <input id="practice-contribution" type="range" min="0" max="10" step="1" value={contributionAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Contribute ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
           <p className="text-sm text-slate-300">You keep {10 - (contributionAmount(practiceChoice) ?? 0)} points before the group pool pays out.</p>
+        </div> : practiceGameId === 19 ? <div className="space-y-2">
+          <label htmlFor="practice-trust" className="block font-semibold">{practiceRole === 'first' ? `Invest ${investAmount(practiceChoice) ?? 0} of 10 points` : `Return ${returnAmount(practiceChoice) ?? 0} of ${(investAmount(practiceBotOffer) ?? 0) * 3} points`}</label>
+          <input id="practice-trust" type="range" min="0" max={practiceRole === 'first' ? 10 : (investAmount(practiceBotOffer) ?? 0) * 3} step="1" value={practiceRole === 'first' ? investAmount(practiceChoice) ?? 0 : returnAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(practiceRole === 'first' ? `Invest ${Number(event.target.value)}` : `Return ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
         </div> : practiceGameId === 30 && practiceRole === 'first' ? <div className="space-y-2">
           <label htmlFor="practice-offer" className="block font-semibold">Offer to bot: {offerAmount(practiceChoice) ?? 0} of 10 points</label>
           <input id="practice-offer" type="range" min="0" max="10" step="0.5" value={offerAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Offer ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
@@ -301,7 +326,9 @@ export function FirebaseLiveClass() {
           ))}
         </fieldset>}
         <button onClick={playBot} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">Play random bot</button>
-        {practiceResult && <p role="status">{practiceGameId === 12
+        {practiceResult && <p role="status">{practiceGameId === 19
+          ? `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} points.`
+          : practiceGameId === 12
           ? `You contributed ${contributionAmount(practiceResult.ownChoice) ?? 0}; the three bots contributed ${practiceResult.botContributions?.join(', ')}. The group pool was ${practiceResult.groupTotal}. You earned ${practiceResult.points} points.`
           : `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} points.`}</p>}
       </div>}
@@ -364,10 +391,10 @@ export function FirebaseLiveClass() {
               {config?.phase === 'playing' && <>
                 <p>{publicGoods ? `${groupSizes.size} groups of four · ${plannedBotSeats} planned bot seats`
                   : `${roundAssignments.filter(item => item.kind === 'student').length / 2} student pairs · ${roundAssignments.filter(item => item.kind === 'bot').length} bot matches`}</p>
-              <p role="status" className="font-semibold">{ultimatum ? `${stepSubmitted} of ${stepStudents.length} ${config.step === 'offer' ? 'proposers offered' : 'responders decided'}` : `${progress.submitted} of ${progress.joined} joined students submitted`}</p>
-                {(ultimatum ? stepStudents.length > 0 && stepSubmitted === stepStudents.length : progress.allSubmitted) ? <p className="rounded-lg border border-emerald-600 bg-emerald-950/50 p-3 text-emerald-200">Everyone in this step has submitted. {ultimatum && config.step === 'offer' ? 'Let responders see their offers.' : lastRound ? 'Finish the class to show the full report.' : 'Choose whether to reveal this round before continuing.'}</p>
+              <p role="status" className="font-semibold">{staged ? `${stepSubmitted} of ${stepStudents.length} ${config.step === 'offer' ? trust ? 'investors invested' : 'proposers offered' : trust ? 'trustees returned' : 'responders decided'}` : `${progress.submitted} of ${progress.joined} joined students submitted`}</p>
+                {(staged ? stepStudents.length > 0 && stepSubmitted === stepStudents.length : progress.allSubmitted) ? <p className="rounded-lg border border-emerald-600 bg-emerald-950/50 p-3 text-emerald-200">Everyone in this step has submitted. {staged && config.step === 'offer' ? trust ? 'Let trustees see the investments.' : 'Let responders see their offers.' : lastRound ? 'Finish the class to show the full report.' : 'Choose whether to reveal this round before continuing.'}</p>
                   : <p className="text-sm text-slate-300">Choices stay hidden until you reveal them. You can end the round early; a bot will fill {publicGoods ? 'each missing group seat' : 'a missing partner'} in the results.</p>}
-                {ultimatum && config.step === 'offer' ? <button disabled={busy} onClick={startResponses} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Show offers to responders</button>
+                {staged && config.step === 'offer' ? <button disabled={busy} onClick={startResponses} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">{trust ? 'Show investments to trustees' : 'Show offers to responders'}</button>
                 : legacyClass ? <button disabled={busy || legacySummary.submitted === 0} onClick={revealLegacy} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Reveal results</button>
                   : lastRound ? <button disabled={busy} onClick={() => endRound(true)} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Finish class and show all results</button>
                   : <div className="flex flex-wrap gap-3">
@@ -392,8 +419,8 @@ export function FirebaseLiveClass() {
                       const status = config.phase === 'lobby' ? 'Waiting for round'
                         : submissions[uid]?.round === round ? 'Submitted'
                         : config.phase === 'revealed' ? 'No choice'
-                        : assignments[uid]?.round === round ? ultimatum && config.step === 'offer' && assignments[uid].role === 'second' ? 'Waiting for offer'
-                          : ultimatum && config.step === 'respond' && assignments[uid].role !== 'second' ? 'Waiting for response' : 'Waiting for choice' : 'Joining round';
+                        : assignments[uid]?.round === round ? staged && config.step === 'offer' && assignments[uid].role === 'second' ? trust ? 'Waiting for investment' : 'Waiting for offer'
+                          : staged && config.step === 'respond' && assignments[uid].role !== 'second' ? trust ? 'Waiting for return' : 'Waiting for response' : 'Waiting for choice' : 'Joining round';
                       return <li key={uid} className="flex justify-between gap-3 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm">
                         <span className="truncate" title={student.alias}>{student.alias}</span>
                         <span className={status === 'Submitted' ? 'shrink-0 text-emerald-300' : 'shrink-0 text-amber-200'}>{status}</span>
@@ -427,17 +454,17 @@ export function FirebaseLiveClass() {
             </div> : <p>{currentSubmission ? 'Calculating your result…' : 'No choice submitted this round.'}</p>
           ) : !currentAssignment ? (
             <div className="space-y-2">
-              <p>{ultimatum && config.step === 'respond' ? 'Offers are already with responders. You can join the next round.'
+              <p>{staged && config.step === 'respond' ? trust ? 'Investments are already with trustees. You can join the next round.' : 'Offers are already with responders. You can join the next round.'
                 : publicGoods ? 'Finding your group. If you joined late, three random bots will fill the other seats.'
                   : 'Finding your match. If you joined after pairing, a bot will take the other seat.'}</p>
-              {!(ultimatum && config.step === 'respond') && <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/assignments/${user.uid}`),
+              {!(staged && config.step === 'respond') && <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/assignments/${user.uid}`),
                 publicGoods ? { round, kind: 'group', groupId: user.uid, groupSize: 1, opponentAlias: 'Public goods group', role: 'first' }
                   : { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' }))} className="text-sm underline">Try bot fallback</button>}
             </div>
-          ) : ultimatum && !isMyStep ? (
-            <p>{currentSubmission ? `Your ${currentSubmission.choice} is locked. Waiting for the response step to finish.` : isResponder ? 'Waiting for the proposer to make an offer.' : 'Your turn has passed. Waiting for the responder.'}</p>
-          ) : ultimatum && isResponder && (!visibleOffer || visibleOffer.round !== round) ? (
-            <p>Loading your offer…</p>
+          ) : staged && !isMyStep ? (
+            <p>{currentSubmission ? `Your ${currentSubmission.choice} is locked. Waiting for the second step to finish.` : isResponder ? trust ? 'Waiting for the investor to choose an amount.' : 'Waiting for the proposer to make an offer.' : 'Your turn has passed. Waiting for the other student.'}</p>
+          ) : staged && isResponder && (!visibleOffer || visibleOffer.round !== round) ? (
+            <p>Loading {trust ? 'your investment' : 'your offer'}…</p>
           ) : currentSubmission ? (
             <p>Your {currentSubmission.choice} choice is locked for round {round}{publicGoods ? ' in your group' : ` against ${currentAssignment.opponentAlias}`}. Waiting for the instructor to reveal results.</p>
           ) : (
@@ -446,11 +473,15 @@ export function FirebaseLiveClass() {
               {publicGoods && <p className="text-sm text-blue-200">{(currentAssignment.groupSize || 1) - 1} classmates and {PUBLIC_GOODS_GROUP_SIZE - (currentAssignment.groupSize || 1)} random bots share your pool. A bot fills any seat whose student does not contribute.</p>}
               {roleLabel && <p className="text-sm text-blue-200">Your role: {roleLabel}</p>}
               {ultimatum && isResponder && visibleOffer && <p className="rounded-lg bg-blue-950 p-3">{visibleOffer.fromBot ? 'Random bot' : currentAssignment.opponentAlias} offered you {visibleOffer.choice.slice(6)} of 10 points. Accept to take those points, or reject so both get 0.</p>}
+              {trust && isResponder && visibleOffer && <p className="rounded-lg bg-blue-950 p-3">{visibleOffer.fromBot ? 'Random bot' : currentAssignment.opponentAlias} invested {investAmount(visibleOffer.choice)} points. You received {(investAmount(visibleOffer.choice) ?? 0) * 3} points and can return any whole amount from 0 to that total.</p>}
               <p className="text-sm text-slate-300">{game.payoffs}</p>
               {publicGoods ? <div className="space-y-2">
                 <label htmlFor="live-contribution" className="block font-semibold">Contribute {contributionAmount(choice) ?? 0} of 10 points</label>
                 <input id="live-contribution" type="range" min="0" max="10" step="1" value={contributionAmount(choice) ?? 0} onChange={event => setChoice(`Contribute ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
                 <p className="text-sm text-slate-300">You keep {10 - (contributionAmount(choice) ?? 0)} points before the shared pool pays out.</p>
+              </div> : trust ? <div className="space-y-2">
+                <label htmlFor="live-trust" className="block font-semibold">{isResponder ? `Return ${returnAmount(choice) ?? 0} of ${(investAmount(visibleOffer?.choice || 'Invest 0') ?? 0) * 3} points` : `Invest ${investAmount(choice) ?? 0} of 10 points`}</label>
+                <input id="live-trust" type="range" min="0" max={isResponder ? (investAmount(visibleOffer?.choice || 'Invest 0') ?? 0) * 3 : 10} step="1" value={isResponder ? returnAmount(choice) ?? 0 : investAmount(choice) ?? 0} onChange={event => setChoice(isResponder ? `Return ${Number(event.target.value)}` : `Invest ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
               </div> : ultimatum && !isResponder ? <div className="space-y-2">
                 <label htmlFor="live-offer" className="block font-semibold">Offer to responder: {offerAmount(choice) ?? 5} of 10 points</label>
                 <input id="live-offer" type="range" min="0" max="10" step="0.5" value={offerAmount(choice) ?? 5} onChange={event => setChoice(`Offer ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
@@ -459,7 +490,7 @@ export function FirebaseLiveClass() {
                 <legend className="sr-only">Your class choice</legend>
                 {(ultimatum ? ['Accept', 'Reject'] as const : game.options).map(option => <label key={option} className="flex gap-2 items-center"><input type="radio" name="live-choice" checked={choice === option} onChange={() => setChoice(option)} />{option}</label>)}
               </fieldset>}
-              <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/choices/${user.uid}`), { choice: ultimatum ? isResponder ? choice === 'Reject' ? 'Reject' : 'Accept' : choice.startsWith('Offer ') ? choice : 'Offer 5' : choice, round }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Lock {publicGoods ? 'contribution' : ultimatum ? isResponder ? 'response' : 'offer' : 'choice'}</button>
+              <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/choices/${user.uid}`), { choice: trust ? isResponder ? choice.startsWith('Return ') ? choice : 'Return 0' : choice.startsWith('Invest ') ? choice : 'Invest 5' : ultimatum ? isResponder ? choice === 'Reject' ? 'Reject' : 'Accept' : choice.startsWith('Offer ') ? choice : 'Offer 5' : choice, round }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Lock {publicGoods ? 'contribution' : trust ? isResponder ? 'return' : 'investment' : ultimatum ? isResponder ? 'response' : 'offer' : 'choice'}</button>
             </div>
           )}
         </div>

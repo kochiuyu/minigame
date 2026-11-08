@@ -1,6 +1,46 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, LIVE_GAMES, ULTIMATUM_OFFERS, contributionAmount, finishRound, groupParticipants, offerAmount, pairParticipants, pointsFor, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, LIVE_GAMES, ULTIMATUM_OFFERS, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+
+test('Trust Game invests, triples, returns, and archives reciprocal results', () => {
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' } };
+  const choices = { a: { round: 1, choice: 'Invest 6' }, b: { round: 1, choice: 'Return 8' } };
+  const offers = prepareTrustResponses(assignments, choices, 1);
+  assert.deepEqual(offers.b, { round: 1, choice: 'Invest 6', fromBot: false });
+  assert.equal(investAmount('Invest 6'), 6);
+  assert.equal(returnAmount('Return 8'), 8);
+  assert.deepEqual(pointsFor(19, 'Invest 6', 'Return 8'), [12, 10]);
+  assert.deepEqual(pointsFor(19, 'Return 8', 'Invest 6', 'second'), [10, 12]);
+  const room = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', step: 'respond', gameId: 19 },
+    participants: { a: { alias: 'A' }, b: { alias: 'B' } }, assignments, choices, offers }, true);
+  assert.deepEqual([room.results.a[1].ownPoints, room.results.b[1].ownPoints], [12, 10]);
+  assert.equal(room.config.summaries[1].averageReturn, 8);
+  assert.deepEqual(room.config.summaries[1].outcomes, [{ label: 'Nothing returned', count: 0 }, { label: 'Some returned', count: 1 }, { label: 'All returned', count: 0 }]);
+});
+
+test('Trust Game uses random bots when a partner does not act', () => {
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    c: { round: 1, kind: 'student', opponentUid: 'd', opponentAlias: 'D', role: 'first' },
+    d: { round: 1, kind: 'student', opponentUid: 'c', opponentAlias: 'C', role: 'second' } };
+  const choices = { a: { round: 1, choice: 'Invest 4' }, d: { round: 1, choice: 'Return 0' } };
+  const offers = prepareTrustResponses(assignments, choices, 1);
+  assert.equal(offers.b.fromBot, false);
+  assert.equal(offers.d.fromBot, true);
+  assert.equal(returnAmount(choices.d.choice) <= 3 * investAmount(offers.d.choice), true);
+  const results = resolveResults(assignments, choices, 1, 19, offers);
+  assert.equal(results.a.fallback, true);
+  assert.equal(results.d.fallback, true);
+  assert.equal(results.a.opponentKind, 'bot');
+  assert.equal(results.d.opponentKind, 'bot');
+  assert.equal(results.b, undefined);
+  assert.equal(results.c, undefined);
+  assert.equal(results.a.ownPoints + results.a.opponentPoints, 10 + 2 * 4);
+  const invalid = resolveResults(assignments, { a: choices.a, b: { round: 1, choice: 'Return 30' } }, 1, 19, offers);
+  assert.equal(invalid.a.fallback, true);
+  assert.equal(invalid.b, undefined);
+});
 
 test('ultimatum offers, acceptance and rejection score both roles', () => {
   assert.equal(ULTIMATUM_OFFERS.length, 21);

@@ -18,10 +18,10 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
       <h3 className="text-lg font-bold">Round {summary.round} · {game.title}</h3>
       <p className="text-sm text-slate-300">{summary.gameId === 12
         ? `${summary.submitted} contributed · ${summary.studentGroups || 0} groups · ${summary.botSeats || 0} bot seats${summary.fallbacks ? ` (${summary.fallbacks} filled for missing students)` : ''} · Average contribution ${score(summary.averageContribution)} · Average pool ${score(summary.averagePool)}`
-        : `${summary.submitted} submitted · ${summary.studentPairs} completed student pairs · ${summary.botMatches} bot matches${summary.fallbacks ? ` · ${summary.fallbacks} missing-partner fallbacks` : ''}`} · Average student score {score(summary.averagePoints)}</p>
+        : `${summary.submitted} submitted · ${summary.studentPairs} completed student pairs · ${summary.botMatches} bot matches${summary.fallbacks ? ` · ${summary.fallbacks} missing-partner fallbacks` : ''}${summary.gameId === 19 ? ` · Average return ${score(summary.averageReturn)}` : ''}`} · Average student score {score(summary.averagePoints)}</p>
     </div>
     <div>
-      <h4 className="font-semibold mb-2">{summary.gameId === 12 ? 'Student contributions' : 'Student choices'}</h4>
+      <h4 className="font-semibold mb-2">{summary.gameId === 12 ? 'Student contributions' : summary.gameId === 19 ? 'Student investments' : 'Student choices'}</h4>
       <div className="space-y-2" role="img" aria-label={summary.choiceCounts.map(item => `${item.label}: ${item.count}`).join(', ')}>
         {summary.choiceCounts.map(item => <div key={item.label} className="grid grid-cols-[6rem_1fr_2rem] items-center gap-2 text-sm">
           <span>{item.label}</span>
