@@ -1,13 +1,13 @@
 # Live classroom setup
 
-The site stays on GitHub Pages and uses Firebase Realtime Database on the Spark plan. The instructor selects one of five live games: Prisoner's Dilemma, Stag Hunt, Hawk–Dove, Matching Pennies, or Battle of the Sexes.
+The site stays on GitHub Pages and uses Firebase Realtime Database on the Spark plan. The instructor selects one of six live games: Prisoner's Dilemma, Stag Hunt, Hawk–Dove, Matching Pennies, Battle of the Sexes, or Rock–Paper–Scissors.
 
 ## How the class works
 
 1. Anyone can practice against a random bot without joining a room. Practice is private and is not recorded.
 2. The instructor signs in with the configured Google account, selects a game and a total of 1–20 rounds, and starts a class. Students can type an alias or generate a fun alias with a random emoji icon before joining anonymously. The alias and icon are stored together as one short nickname.
 3. The instructor can change the game while students are waiting in the lobby. Pairing locks the game for that round. Students are shuffled into pairs; an odd or late student gets a random bot.
-4. Matching Pennies gives one student the Matcher role and the other the Mismatcher role. Battle of the Sexes assigns Opera fan and Football fan roles. Students see their role and the payoffs before choosing.
+4. Matching Pennies gives one student the Matcher role and the other the Mismatcher role. Battle of the Sexes assigns Opera fan and Football fan roles. Rock–Paper–Scissors offers three choices; a win earns 2 points and a tie earns 1 point each. Students see their role, when applicable, and the payoffs before choosing.
 5. Students lock one choice. During play, the instructor sees joined aliases and who has submitted, but not the choices. When all joined students have submitted, the dashboard prompts the instructor to end the round. A random bot replaces a missing partner if the instructor ends a round early.
 6. For each non-final round, the instructor can reveal a chart and tables to the class or continue without revealing. Revealed rounds remain available in an "Earlier revealed rounds" section. Skipped round results remain private until the class ends.
 7. At the end of the final round, the site publishes a class report to the instructor and students, even for rounds skipped earlier. It shows an all-round participation chart, aggregate choice charts by game, results tables by game and round, and per-round choice charts and pair outcomes. Each student sees their own all-round analysis, including points by round, choices and average scores within each game, and every personal result. The instructor can expand the same analysis for each student alias. Scores are averaged within each game because payoff scales differ.

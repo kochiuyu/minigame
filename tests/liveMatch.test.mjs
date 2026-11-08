@@ -10,7 +10,7 @@ const cases = [
   [18, [[3, 2], [0, 0], [0, 0], [2, 3]]],
 ];
 
-test('all live games use their published payoff matrices for both roles', () => {
+test('two-choice live games use their published payoff matrices for both roles', () => {
   for (const [gameId, expected] of cases) {
     const [first, second] = LIVE_GAMES.find(game => game.id === gameId).options;
     const moves = [[first, first], [first, second], [second, first], [second, second]];
@@ -20,6 +20,57 @@ test('all live games use their published payoff matrices for both roles', () => 
       assert.deepEqual(reverse, [expected[index][1], expected[index][0]]);
     });
   }
+});
+
+test('Rock–Paper–Scissors scores every move and the bot can choose all three', () => {
+  const moves = ['Rock', 'Paper', 'Scissors'];
+  const expected = [
+    [[1, 1], [0, 2], [2, 0]],
+    [[2, 0], [1, 1], [0, 2]],
+    [[0, 2], [2, 0], [1, 1]],
+  ];
+  assert.deepEqual(LIVE_GAMES.find(game => game.id === 29).options, moves);
+  moves.forEach((own, i) => moves.forEach((other, j) => {
+    assert.deepEqual(pointsFor(29, own, other), expected[i][j]);
+    assert.deepEqual(pointsFor(29, other, own), [...expected[i][j]].reverse());
+  }));
+  const originalRandom = Math.random;
+  try {
+    assert.deepEqual([0, 0.34, 0.67].map(value => {
+      Math.random = () => value;
+      return randomChoice(29);
+    }), moves);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test('Rock–Paper–Scissors round results count each pair outcome once', () => {
+  const pairs = [['a', 'b', 'Rock', 'Rock'], ['c', 'd', 'Rock', 'Scissors'], ['e', 'f', 'Paper', 'Rock'], ['g', 'h', 'Scissors', 'Paper']];
+  const assignments = {};
+  const choices = {};
+  for (const [first, second, firstChoice, secondChoice] of pairs) {
+    assignments[first] = { round: 1, kind: 'student', opponentUid: second, opponentAlias: second, role: 'first' };
+    assignments[second] = { round: 1, kind: 'student', opponentUid: first, opponentAlias: first, role: 'second' };
+    choices[first] = { round: 1, choice: firstChoice };
+    choices[second] = { round: 1, choice: secondChoice };
+  }
+  const results = resolveResults(assignments, choices, 1, 29);
+  const summary = summarizeRound(assignments, choices, results, 1, 29);
+  assert.deepEqual(summary.choiceCounts, [{ label: 'Rock', count: 4 }, { label: 'Paper', count: 2 }, { label: 'Scissors', count: 2 }]);
+  assert.deepEqual(summary.outcomes, [
+    { label: 'Tie', count: 1 },
+    { label: 'Rock beats Scissors', count: 1 },
+    { label: 'Paper beats Rock', count: 1 },
+    { label: 'Scissors beats Paper', count: 1 },
+  ]);
+  assert.equal(summary.studentPairs, 4);
+  assert.equal(summary.averagePoints, 1);
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 29 },
+    participants: Object.fromEntries(Object.keys(assignments).map(uid => [uid, { alias: uid }])), assignments, choices }, false);
+  assert.equal(finished.config.phase, 'finished');
+  assert.equal(finished.config.summaries[1].outcomes.length, 4);
+  assert.equal(finished.results.c[1].ownPoints, 2);
 });
 
 test('random bot chooses only options in the selected game', () => {
