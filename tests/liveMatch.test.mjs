@@ -1,6 +1,47 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+
+test('live Centipede advances each node, waits for the correct player, and scores the exit', () => {
+  const assignments = {
+    a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    c: { round: 1, kind: 'bot', opponentAlias: 'Random bot', role: 'first' },
+  };
+  let room = { config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 20, centipedeNode: 1 }, assignments,
+    participants: { a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' } },
+    centipedeDecisions: { a: { n1: { round: 1, choice: 'Pass' }, n3: { round: 1, choice: 'Take' } },
+      b: { n2: { round: 1, choice: 'Pass' } }, c: { n1: { round: 1, choice: 'Take' } } } };
+  assert.equal(finishRound(room, true), null);
+  room = advanceCentipede(room, () => 'Pass');
+  assert.equal(room.config.centipedeNode, 2);
+  assert.equal(room.centipedePaths.c.exitNode, 1);
+  room = advanceCentipede(room, () => 'Take');
+  assert.equal(room.centipedePaths.a.moves[2], 'Pass');
+  room = advanceCentipede(room, () => 'Pass');
+  assert.equal(room.centipedePaths.a.exitNode, 3);
+  for (let node = 4; node <= 6; node++) room = advanceCentipede(room, () => 'Pass');
+  assert.equal(room.config.centipedeNode, 7);
+  const finished = finishRound(room, true);
+  assert.deepEqual([finished.archive[1].results.a.ownPoints, finished.archive[1].results.b.ownPoints], [4, 2]);
+  assert.equal(finished.archive[1].results.c.ownPoints, 2);
+  assert.equal(finished.config.summaries[1].outcomes[2].count, 1);
+});
+
+test('live Centipede substitutes a bot for a missed student turn', () => {
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' } };
+  let room = { config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 20, centipedeNode: 1 }, assignments,
+    centipedeDecisions: { a: { n1: { round: 1, choice: 'Pass' } } } };
+  room = advanceCentipede(room, () => 'Pass');
+  room = advanceCentipede(room, () => 'Take');
+  assert.equal(room.centipedePaths.a.exitNode, 2);
+  assert.equal(room.centipedePaths.a.fallback, true);
+  for (let node = 3; node <= 6; node++) room = advanceCentipede(room, () => 'Pass');
+  const finished = finishRound(room, true);
+  assert.deepEqual([finished.archive[1].results.a.ownPoints, finished.archive[1].results.b.ownPoints], [1, 4]);
+  assert.equal(finished.archive[1].results.a.opponentKind, 'bot');
+});
 
 test('Centipede plans resolve the first Take, score both roles, and archive the exit', () => {
   const payoffs = [[2, 0], [1, 4], [4, 2], [3, 6], [6, 4], [5, 8], [8, 8]];

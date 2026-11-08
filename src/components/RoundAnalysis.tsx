@@ -20,7 +20,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
       <h3 className="text-lg font-bold">Round {summary.round} · {game.title}</h3>
       <p className="text-sm text-slate-300">{summary.gameId === 12
         ? `${summary.submitted} contributed · ${summary.studentGroups || 0} groups · ${summary.botSeats || 0} bot seats${summary.fallbacks ? ` (${summary.fallbacks} filled for missing students)` : ''} · Average contribution ${score(summary.averageContribution)} · Average pool ${score(summary.averagePool)}`
-        : `${summary.submitted} submitted · ${summary.studentPairs} completed student pairs · ${summary.botMatches} bot matches${summary.fallbacks ? ` · ${summary.fallbacks} missing-partner fallbacks` : ''}${summary.gameId === 19 ? ` · Average return ${score(summary.averageReturn)}` : ''}`} · Average student score {score(summary.averagePoints)}</p>
+        : `${summary.submitted} ${summary.gameId === 20 ? 'played' : 'submitted'} · ${summary.studentPairs} completed student pairs · ${summary.botMatches} bot matches${summary.fallbacks ? ` · ${summary.fallbacks} bot fallbacks` : ''}${summary.gameId === 19 ? ` · Average return ${score(summary.averageReturn)}` : ''}`} · Average student score {score(summary.averagePoints)}</p>
     </div>
     <div>
       <h4 className="font-semibold mb-2">{summary.gameId === 12 ? 'Student contributions' : summary.gameId === 19 ? 'Student investments' : 'Student choices'}</h4>
@@ -53,9 +53,10 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
         </tbody>
       </table> : <p className="text-sm text-slate-300">No personal result is available for this round.</p>}
       {personal?.exitNode && <p className="mt-2 text-sm text-blue-200">{personal.exitNode === 7 ? 'Both players passed all six nodes.' : `The chain ended with Take at Node ${personal.exitNode}.`}</p>}
+      {personal?.centipedeMoves && <p className="mt-2 text-sm text-slate-300">Moves: {Object.entries(personal.centipedeMoves).map(([node, move]) => `Node ${node}: Player ${Number(node) % 2 ? 1 : 2} ${move}`).join(' · ')}. “Pass All” in the table means no Take before this chain ended.</p>}
       {personal?.fallback && <p className="text-sm text-amber-300 mt-2">{personal.group
         ? `${personal.group.missing} group member${personal.group.missing === 1 ? '' : 's'} did not contribute, so random bots filled those seats.`
-        : 'Your partner did not submit, so a random bot took their place.'}</p>}
+        : summary.gameId === 20 ? 'A random bot filled a missed turn.' : 'Your partner did not submit, so a random bot took their place.'}</p>}
     </div>}
     {archive && <div className="border-t border-slate-700 pt-3 overflow-x-auto">
       <table className="w-full text-left text-sm">
