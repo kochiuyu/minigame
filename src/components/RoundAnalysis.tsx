@@ -19,12 +19,14 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
   return <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4 space-y-4">
     <div>
       <h3 className="text-lg font-bold">Round {summary.round} · {game.title}</h3>
-      <p className="text-sm text-slate-300">{summary.gameId === 12
+      <p className="text-sm text-slate-300">{summary.gameId === 11
+        ? `${summary.submitted} guesses · Class average ${score(summary.beauty?.average)} · Target ${score(summary.beauty?.target)} · ${summary.beauty?.winners || 0} closest guess${summary.beauty?.winners === 1 ? '' : 'es'}`
+        : summary.gameId === 12
         ? `${summary.submitted} contributed · ${summary.studentGroups || 0} groups · ${summary.botSeats || 0} bot seats${summary.fallbacks ? ` (${summary.fallbacks} filled for missing students)` : ''} · Average contribution ${score(summary.averageContribution)} · Average pool ${score(summary.averagePool)}`
         : `${summary.submitted} ${summary.gameId === 20 || summary.gameId === 6 ? 'played' : 'submitted'} · ${summary.studentPairs} completed student pairs · ${summary.botMatches} bot matches${summary.fallbacks ? ` · ${summary.fallbacks} bot fallbacks` : ''}${summary.gameId === 19 ? ` · Average return ${score(summary.averageReturn)}` : ''}`} · Average student score {score(summary.averagePoints)}</p>
     </div>
     <div>
-      <h4 className="font-semibold mb-2">{summary.gameId === 12 ? 'Student contributions' : summary.gameId === 19 ? 'Student investments' : 'Student choices'}</h4>
+      <h4 className="font-semibold mb-2">{summary.gameId === 11 ? 'Guess distribution' : summary.gameId === 12 ? 'Student contributions' : summary.gameId === 19 ? 'Student investments' : 'Student choices'}</h4>
       <div className="space-y-2" role="img" aria-label={summary.choiceCounts.map(item => `${item.label}: ${item.count}`).join(', ')}>
         {summary.choiceCounts.map(item => <div key={item.label} className="grid grid-cols-[6rem_1fr_2rem] items-center gap-2 text-sm">
           <span>{item.label}</span>
@@ -35,15 +37,18 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
     </div>
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <caption className="text-left font-semibold mb-2">{summary.gameId === 12 ? 'Group pool totals' : 'Completed student pair outcomes'}</caption>
-        <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-3">{summary.gameId === 12 ? 'Total contribution' : 'Outcome'}</th><th scope="col" className="py-2">{summary.gameId === 12 ? 'Groups' : 'Pairs'}</th></tr></thead>
+        <caption className="text-left font-semibold mb-2">{summary.gameId === 11 ? 'Classwide outcomes' : summary.gameId === 12 ? 'Group pool totals' : 'Completed student pair outcomes'}</caption>
+        <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-3">{summary.gameId === 12 ? 'Total contribution' : 'Outcome'}</th><th scope="col" className="py-2">{summary.gameId === 11 ? 'Students' : summary.gameId === 12 ? 'Groups' : 'Pairs'}</th></tr></thead>
         <tbody>{summary.outcomes.map(item => <tr key={item.label} className="border-b border-slate-800"><th scope="row" className="py-2 pr-3 font-normal">{item.label}</th><td className="py-2">{item.count}</td></tr>)}</tbody>
       </table>
-      <p className="mt-2 text-xs text-slate-400">{summary.gameId === 12 ? 'Each group has four seats; bots fill unoccupied or missing seats.' : summary.gameId === 6 ? 'Outcomes count each of the five turns in completed student pairs; bot matches are separate.' : 'Bot matches are counted separately from student pairs.'}</p>
+      <p className="mt-2 text-xs text-slate-400">{summary.gameId === 11 ? 'Only submitted guesses determine the average and target.' : summary.gameId === 12 ? 'Each group has four seats; bots fill unoccupied or missing seats.' : summary.gameId === 6 ? 'Outcomes count each of the five turns in completed student pairs; bot matches are separate.' : 'Bot matches are counted separately from student pairs.'}</p>
     </div>
     {studentView && <div className="border-t border-slate-700 pt-3">
       <h4 className="font-semibold">Your result</h4>
-      {personal?.group ? <div className="mt-2 space-y-1 text-sm text-slate-300">
+      {personal?.beauty ? <div className="mt-2 space-y-1 text-sm text-slate-300">
+        <p>Your guess: {personal.ownChoice}. Class average: {score(personal.beauty.average)}. Target: {score(personal.beauty.target)}. Your distance: {score(personal.beauty.distance)}.</p>
+        <p>{personal.beauty.winner ? 'Your guess was closest.' : 'Another guess was closer.'} You earned <strong className="text-slate-100">{personal.ownPoints} points</strong>.</p>
+      </div> : personal?.group ? <div className="mt-2 space-y-1 text-sm text-slate-300">
         <p>You {personal.ownChoice.toLowerCase().replace('contribute', 'contributed')} points. The group pool was {personal.group.totalContribution}; your share was {score(personal.group.totalContribution * 0.4)} points.</p>
         <p>You earned <strong className="text-slate-100">{score(personal.ownPoints)} points</strong>. Your group included {personal.group.classmates} other students and {personal.group.bots} random bots.</p>
       </div> : personal ? <table className="mt-2 w-full text-left text-sm">
@@ -65,12 +70,12 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
     {archive && <div className="border-t border-slate-700 pt-3 overflow-x-auto">
       <table className="w-full text-left text-sm">
         <caption className="text-left font-semibold mb-2">Student results</caption>
-        <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-2">Alias</th><th scope="col" className="py-2 pr-2">Choice</th><th scope="col" className="py-2 pr-2">{summary.gameId === 12 ? 'Group pool' : 'Opponent'}</th><th scope="col" className="py-2">Points</th></tr></thead>
+        <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-2">Alias</th><th scope="col" className="py-2 pr-2">Choice</th><th scope="col" className="py-2 pr-2">{summary.gameId === 11 ? 'Distance to target' : summary.gameId === 12 ? 'Group pool' : 'Opponent'}</th><th scope="col" className="py-2">Points</th></tr></thead>
         <tbody>{Array.from(new Set([...Object.keys(archive.aliases || {}), ...Object.keys(archive.results || {})]))
           .map(uid => [uid, archive.aliases?.[uid] || 'Student who left'] as const)
           .sort((a, b) => a[1].localeCompare(b[1])).map(([uid, alias]) => {
           const result = archive.results?.[uid];
-          return <tr key={uid} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{alias}</th><td className="pr-2">{result?.repeatedTurns ? Object.entries(result.repeatedTurns).map(([turn, item]) => `${turn}: ${item.own}`).join(' · ') : result?.ownChoice || 'No choice'}{result?.auction ? ` (value ${result.auction.valuation}; ${result.auction.won ? `won, paid ${result.auction.price}` : 'lost'})` : ''}</td><td className="pr-2">{summary.gameId === 12 ? result?.group?.totalContribution ?? '—' : result?.opponentAlias || '—'}</td><td>{result?.ownPoints ?? '—'}</td></tr>;
+          return <tr key={uid} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{alias}</th><td className="pr-2">{result?.repeatedTurns ? Object.entries(result.repeatedTurns).map(([turn, item]) => `${turn}: ${item.own}`).join(' · ') : result?.ownChoice || 'No choice'}{result?.auction ? ` (value ${result.auction.valuation}; ${result.auction.won ? `won, paid ${result.auction.price}` : 'lost'})` : ''}</td><td className="pr-2">{summary.gameId === 11 ? score(result?.beauty?.distance) : summary.gameId === 12 ? result?.group?.totalContribution ?? '—' : result?.opponentAlias || '—'}</td><td>{result?.ownPoints ?? '—'}</td></tr>;
         })}</tbody>
       </table>
     </div>}
@@ -86,7 +91,7 @@ function PersonAnalysis({ analysis, title }: { analysis: ReturnType<typeof summa
   return <div className="space-y-4">
     <div>
       <h3 className="text-lg font-bold">{title}</h3>
-      <p className="text-sm text-slate-300">{analysis.played} of {analysis.rounds.length} rounds played · {analysis.studentMatches} student matches{analysis.groupRounds ? ` · ${analysis.groupRounds} group rounds` : ''} · {analysis.botMatches} bot matches{analysis.fallbacks ? ` (${analysis.fallbacks} rounds with bot fallbacks)` : ''}</p>
+      <p className="text-sm text-slate-300">{analysis.played} of {analysis.rounds.length} rounds played · {analysis.studentMatches} student matches{analysis.groupRounds ? ` · ${analysis.groupRounds} group or class rounds` : ''} · {analysis.botMatches} bot matches{analysis.fallbacks ? ` (${analysis.fallbacks} rounds with bot fallbacks)` : ''}</p>
       <p className="text-xs text-slate-400 mt-1">Scores are compared within each game because games use different payoff scales.</p>
     </div>
     {analysis.played > 0 && <div>
@@ -126,7 +131,7 @@ function PersonAnalysis({ analysis, title }: { analysis: ReturnType<typeof summa
           <th scope="row" className="py-2 pr-2 font-normal">{item.round}</th>
           <td className="pr-2">{gameFor(item.gameId).title}</td>
           <td className="pr-2">{item.result?.repeatedTurns ? Object.entries(item.result.repeatedTurns).map(([turn, move]) => `${turn}: ${move.own}`).join(' · ') : item.result?.ownChoice || 'No choice'}{item.result?.auction ? ` (value ${item.result.auction.valuation}; ${item.result.auction.won ? `won, paid ${item.result.auction.price}` : 'lost'})` : ''}</td>
-          <td className="pr-2">{item.result?.group ? `Group pool ${item.result.group.totalContribution} (${item.result.group.bots} bots)`
+          <td className="pr-2">{item.result?.beauty ? `Target ${score(item.result.beauty.target)} · Distance ${score(item.result.beauty.distance)}` : item.result?.group ? `Group pool ${item.result.group.totalContribution} (${item.result.group.bots} bots)`
             : item.result ? `${item.result.opponentAlias} (${item.result.opponentChoice})${item.result.exitNode ? ` · ${item.result.exitNode === 7 ? 'Both passed' : `Ended at Node ${item.result.exitNode}`}` : ''}` : '—'}</td>
           <td>{item.result?.ownPoints ?? '—'}</td>
         </tr>)}</tbody>
@@ -173,7 +178,7 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
     </div>
     <div className="rounded-xl border border-blue-700 bg-blue-950/30 p-4 space-y-2">
       <h2 className="text-xl font-bold">{studentView ? 'Class results and your analysis' : 'Class results and analysis'}</h2>
-      <p>{classSummary.rounds} rounds · {classSummary.submitted} submissions · {classSummary.studentPairs} completed student pairs{classSummary.studentGroups ? ` · ${classSummary.studentGroups} groups` : ''} · {classSummary.botMatches} bot matches{classSummary.botSeats ? ` · ${classSummary.botSeats} bot seats` : ''}</p>
+      <p>{classSummary.rounds} rounds · {classSummary.submitted} submissions · {classSummary.studentPairs} completed student pairs{classSummary.studentGroups ? ` · ${classSummary.studentGroups} groups` : ''}{summaries.some(item => item.gameId === 11) ? ` · ${summaries.filter(item => item.gameId === 11).length} classwide rounds` : ''} · {classSummary.botMatches} bot matches{classSummary.botSeats ? ` · ${classSummary.botSeats} bot seats` : ''}</p>
       <p className="text-sm text-slate-300">The full class report is available now that all rounds are over. Scores are averaged within each game because games use different payoff scales.</p>
     </div>
     <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4 space-y-4">
@@ -211,14 +216,14 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
       <table className="w-full text-left text-sm">
         <caption className="text-left font-semibold mb-2">Results by game</caption>
         <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-2">Game</th><th scope="col" className="py-2 pr-2">Rounds</th><th scope="col" className="py-2 pr-2">Choices</th><th scope="col" className="py-2 pr-2">Pairs / groups</th><th scope="col" className="py-2 pr-2">Bots</th><th scope="col" className="py-2">Average score</th></tr></thead>
-        <tbody>{classSummary.byGame.map(item => <tr key={item.gameId} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{gameFor(item.gameId).title}</th><td className="pr-2">{item.rounds}</td><td className="pr-2">{item.choiceCounts.map(choice => `${choice.label} ${choice.count}`).join(' · ')}</td><td className="pr-2">{item.gameId === 12 ? `${item.studentGroups} groups` : `${item.studentPairs} pairs`}</td><td className="pr-2">{item.gameId === 12 ? `${item.botSeats} seats` : `${item.botMatches} matches`}</td><td>{score(item.averagePoints)}</td></tr>)}</tbody>
+        <tbody>{classSummary.byGame.map(item => <tr key={item.gameId} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{gameFor(item.gameId).title}</th><td className="pr-2">{item.rounds}</td><td className="pr-2">{item.choiceCounts.map(choice => `${choice.label} ${choice.count}`).join(' · ')}</td><td className="pr-2">{item.gameId === 11 ? 'Classwide' : item.gameId === 12 ? `${item.studentGroups} groups` : `${item.studentPairs} pairs`}</td><td className="pr-2">{item.gameId === 11 ? '—' : item.gameId === 12 ? `${item.botSeats} seats` : `${item.botMatches} matches`}</td><td>{score(item.averagePoints)}</td></tr>)}</tbody>
       </table>
     </div>
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <caption className="text-left font-semibold mb-2">All rounds at a glance</caption>
         <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-2">Round</th><th scope="col" className="py-2 pr-2">Game</th><th scope="col" className="py-2 pr-2">Choices</th><th scope="col" className="py-2 pr-2">Pairs / groups</th><th scope="col" className="py-2 pr-2">Bots</th><th scope="col" className="py-2">Average score</th></tr></thead>
-        <tbody>{summaries.map(item => <tr key={item.round} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{item.round}</th><td className="pr-2">{gameFor(item.gameId).title}</td><td className="pr-2">{item.choiceCounts.map(choice => `${choice.label} ${choice.count}`).join(' · ')}</td><td className="pr-2">{item.gameId === 12 ? `${item.studentGroups || 0} groups` : `${item.studentPairs} pairs`}</td><td className="pr-2">{item.gameId === 12 ? `${item.botSeats || 0} seats` : `${item.botMatches} matches`}</td><td>{score(item.averagePoints)}</td></tr>)}</tbody>
+        <tbody>{summaries.map(item => <tr key={item.round} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{item.round}</th><td className="pr-2">{gameFor(item.gameId).title}</td><td className="pr-2">{item.choiceCounts.map(choice => `${choice.label} ${choice.count}`).join(' · ')}</td><td className="pr-2">{item.gameId === 11 ? 'Classwide' : item.gameId === 12 ? `${item.studentGroups || 0} groups` : `${item.studentPairs} pairs`}</td><td className="pr-2">{item.gameId === 11 ? '—' : item.gameId === 12 ? `${item.botSeats || 0} seats` : `${item.botMatches} matches`}</td><td>{score(item.averagePoints)}</td></tr>)}</tbody>
       </table>
     </div>
     {studentView && <div className="rounded-xl border border-blue-700 bg-blue-950/20 p-4">

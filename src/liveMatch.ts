@@ -1,5 +1,5 @@
-export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 11 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -14,7 +14,7 @@ export type RoomConfig = {
 export type Participant = { alias: string };
 export type Assignment = {
   round: number;
-  kind: 'student' | 'bot' | 'group';
+  kind: 'student' | 'bot' | 'group' | 'class';
   opponentAlias: string;
   opponentUid?: string;
   role?: Role;
@@ -36,9 +36,10 @@ export type MatchResult = {
   ownPoints: number;
   opponentPoints?: number;
   opponentAlias: string;
-  opponentKind: 'student' | 'bot' | 'group';
+  opponentKind: 'student' | 'bot' | 'group' | 'class';
   fallback: boolean;
   auction?: { valuation: number; winningBid: number; price: number; won: boolean };
+  beauty?: { average: number; target: number; distance: number; winner: boolean };
   exitNode?: number; // Centipede: 1–6 for a Take, 7 when both pass all nodes.
   centipedeMoves?: Record<string, 'Take' | 'Pass'>;
   repeatedTurns?: Record<string, RepeatedTurn>;
@@ -48,7 +49,7 @@ export type RoundSummary = {
   round: number;
   gameId: GameId;
   submitted: number;
-  choiceCounts: Array<{ label: Choice; count: number }>;
+  choiceCounts: Array<{ label: string; count: number }>;
   studentPairs: number;
   studentGroups?: number;
   outcomes: Array<{ label: string; count: number }>;
@@ -58,6 +59,7 @@ export type RoundSummary = {
   averageContribution?: number | null;
   averagePool?: number | null;
   averageReturn?: number | null;
+  beauty?: { average: number; target: number; winningDistance: number; winners: number };
   scoredStudents: number;
   totalPoints: number;
   averagePoints: number | null;
@@ -112,6 +114,21 @@ export function shuffleAliasIcon(alias: string): string {
 export const ULTIMATUM_OFFERS = Array.from({ length: 21 }, (_, index) => `Offer ${index / 2}` as Choice) as [Choice, Choice, ...Choice[]];
 export const AUCTION_BIDS = Array.from({ length: 13 }, (_, index) => `Bid ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const randomAuctionValue = (): number => 1 + randomIndex(10);
+export const randomBeautyGuess = (): number => randomIndex(1001) / 10;
+export const BEAUTY_BANDS = ['0–19.9', '20–39.9', '40–59.9', '60–79.9', '80–100'] as const;
+export function guessAmount(choice: Choice): number | null {
+  if (!/^Guess (?:100(?:\.0)?|(?:[0-9]|[1-9][0-9])(?:\.[0-9])?)$/.test(choice)) return null;
+  return Number(choice.slice(6));
+}
+export function beautyContest(guesses: number[]): { average: number; target: number; distances: number[]; winners: boolean[]; scores: number[] } {
+  if (!guesses.length || guesses.some(value => !Number.isFinite(value) || Math.abs(value * 10 - Math.round(value * 10)) > 1e-9 || value < 0 || value > 100)) throw new Error('Invalid Beauty Contest guesses.');
+  const average = guesses.reduce((sum, value) => sum + value, 0) / guesses.length;
+  const target = average * 2 / 3;
+  const distances = guesses.map(value => Math.abs(value - target));
+  const closest = Math.min(...distances);
+  const winners = distances.map(value => Math.abs(value - closest) < 1e-9);
+  return { average, target, distances, winners, scores: winners.map(winner => winner ? 5 : 1) };
+}
 export function auctionBid(choice: Choice): number | null {
   return /^Bid (?:1[0-2]|[0-9])$/.test(choice) ? Number(choice.slice(4)) : null;
 }
@@ -144,6 +161,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 3, title: 'Highway Gas War', options: ['High Price', 'Low Price'], rules: 'Two stations across a highway secretly post a High ($4) or Low ($3) price. Motorists choose the cheaper station.', payoffs: 'Both High: 2 each · Both Low: 1 each · Low against High: 3 / 0 (Low / High)' },
   { id: 7, title: 'Second-Price Auction', options: AUCTION_BIDS, rules: 'You receive a private value from 1–10 for the artwork. Submit a sealed whole-point bid from 0–12. The highest bid wins but pays the other bid.', payoffs: 'Winner score = own value − other bid. Loser scores 0. If bids tie, the first paired bidder wins.' },
   { id: 8, title: 'First-Price Auction', options: AUCTION_BIDS, rules: 'You receive a private value from 1–10 for the artwork. Submit a sealed whole-point bid from 0–12. The highest bid wins and pays their own bid.', payoffs: 'Winner score = own value − own bid. Loser scores 0. If bids tie, the first paired bidder wins.' },
+  { id: 11, title: 'Beauty Contest (2/3 Average)', options: ['Guess 0', 'Guess 100'], rules: 'Everyone privately guesses a number from 0 to 100, to one decimal place. The target is two thirds of the average submitted guess. Missing students are left out of the average.', payoffs: 'The closest guess wins 5 points; every other submitted guess earns 1 point. Exact ties for closest each win 5 points.' },
   { id: 2, title: 'Sequential Entry', options: ['Launch', 'Wait', 'Enter', 'Stay Out'], rules: 'The First Mover chooses Launch or Wait. The Second Mover sees that decision, then chooses Enter or Stay Out.', payoffs: 'Launch + Stay Out: 4 / 1 · Launch + Enter: 2 / 2 · Wait + Enter: 1 / 4 · Wait + Stay Out: 0 / 0 (First / Second Mover)', roles: ['First Mover', 'Second Mover'] },
   { id: 5, title: 'Entry Deterrence', options: ['Commit', 'Stay Flexible', 'Enter', 'Stay Out'], rules: 'The Incumbent chooses whether to make an irreversible commitment. The Rival sees that choice, then decides whether to enter the market.', payoffs: 'Commit + Stay Out: 4 / 0 · Commit + Enter: −2 / −2 · Stay Flexible + Enter: 2 / 2 · Stay Flexible + Stay Out: 4 / 0 (Incumbent / Rival)', roles: ['Incumbent', 'Rival'] },
   { id: 6, title: "Repeated Prisoner's Dilemma", options: ['Cooperate', 'Defect'], rules: 'Play five turns with the same partner. Each turn, both choose Cooperate or Defect without seeing the other choice. After both decisions, you see what happened before choosing again.', payoffs: 'Each turn: Both Cooperate 2 each · Both Defect 1 each · Defect against Cooperate 3 / 0' },
@@ -231,6 +249,8 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
     case 7:
     case 8:
       throw new Error('Auction scoring requires private valuations.');
+    case 11:
+      throw new Error('Beauty Contest scoring requires all submitted guesses.');
     case 3:
       if (!['High Price', 'Low Price'].includes(own) || !['High Price', 'Low Price'].includes(other)) throw new Error('Invalid Highway Gas War choices.');
       if (own === 'High Price' && other === 'High Price') return [2, 2];
@@ -394,6 +414,11 @@ export function groupParticipants(participants: Record<string, Participant>, rou
   return assignments;
 }
 
+export function classParticipants(participants: Record<string, Participant>, round: number): Record<string, Assignment> {
+  return Object.fromEntries(Object.keys(participants).map(uid => [uid,
+    { round, kind: 'class', opponentAlias: 'Class', role: 'first' } as Assignment]));
+}
+
 export function resolveResults(
   assignments: Record<string, Assignment>,
   choices: Record<string, Submission>,
@@ -402,6 +427,7 @@ export function resolveResults(
   offers: Record<string, VisibleOffer> = {},
 ): Record<string, MatchResult> {
   if (gameId === 12) return resolvePublicGoodsResults(assignments, choices, round);
+  if (gameId === 11) return resolveBeautyResults(assignments, choices, round);
   if (gameId === 7 || gameId === 8) return resolveAuctionResults(assignments, choices, round, gameId);
   if (gameId === 20) return resolveCentipedeResults(assignments, choices, round);
   if (gameId === 2 || gameId === 5) return resolveSequentialResults(assignments, choices, offers, round, gameId);
@@ -429,6 +455,18 @@ export function resolveResults(
     };
   }
   return results;
+}
+
+function resolveBeautyResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, MatchResult> {
+  const valid = Object.entries(choices).filter(([uid, item]) => assignments[uid]?.round === round && assignments[uid]?.kind === 'class'
+    && item.round === round && guessAmount(item.choice) !== null);
+  if (!valid.length) return {};
+  const guesses = valid.map(([, item]) => guessAmount(item.choice)!);
+  const outcome = beautyContest(guesses);
+  return Object.fromEntries(valid.map(([uid, item], index) => [uid, {
+    round, ownChoice: item.choice, ownPoints: outcome.scores[index], opponentAlias: 'Class', opponentKind: 'class', fallback: false,
+    beauty: { average: outcome.average, target: outcome.target, distance: outcome.distances[index], winner: outcome.winners[index] },
+  } as MatchResult]));
 }
 
 function resolveAuctionResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number, gameId: 7 | 8): Record<string, MatchResult> {
@@ -738,6 +776,7 @@ export function summarizeRound(
   gameId: GameId,
 ): RoundSummary {
   if (gameId === 12) return summarizePublicGoodsRound(assignments, choices, results, round);
+  if (gameId === 11) return summarizeBeautyRound(assignments, results, round);
   const game = gameFor(gameId);
   const submitted = Object.entries(choices).filter(([uid, item]) =>
     item.round === round && assignments[uid]?.round === round);
@@ -800,6 +839,19 @@ export function summarizeRound(
   const trustReturns = submitted.flatMap(([, item]) => returnAmount(item.choice) === null ? [] : [returnAmount(item.choice)!]);
   return { round, gameId, submitted: submitted.length, choiceCounts, studentPairs, outcomes, botMatches, fallbacks, scoredStudents, totalPoints, averagePoints,
     ...(gameId === 19 ? { averageReturn: trustReturns.length ? trustReturns.reduce((sum, value) => sum + value, 0) / trustReturns.length : null } : {}) };
+}
+
+function summarizeBeautyRound(assignments: Record<string, Assignment>, results: Record<string, MatchResult>, round: number): RoundSummary {
+  const finished = Object.entries(results).filter(([uid, item]) => item.round === round && assignments[uid]?.kind === 'class' && item.beauty);
+  const guesses = finished.map(([, item]) => guessAmount(item.ownChoice)!);
+  const choiceCounts = BEAUTY_BANDS.map((label, index) => ({ label, count: guesses.filter(value => Math.min(4, Math.floor(value / 20)) === index).length }));
+  const winners = finished.filter(([, item]) => item.beauty!.winner).length;
+  const totalPoints = finished.reduce((sum, [, item]) => sum + item.ownPoints, 0);
+  const beauty = finished.length ? { average: finished[0][1].beauty!.average, target: finished[0][1].beauty!.target,
+    winningDistance: Math.min(...finished.map(([, item]) => item.beauty!.distance)), winners } : undefined;
+  return { round, gameId: 11, submitted: finished.length, choiceCounts, studentPairs: 0, botMatches: 0, fallbacks: 0,
+    outcomes: [{ label: 'Closest guesses (5 points)', count: winners }, { label: 'Other guesses (1 point)', count: finished.length - winners }],
+    scoredStudents: finished.length, totalPoints, averagePoints: finished.length ? totalPoints / finished.length : null, beauty };
 }
 
 function summarizePublicGoodsRound(assignments: Record<string, Assignment>, choices: Record<string, Submission>, results: Record<string, MatchResult>, round: number): RoundSummary {
@@ -889,7 +941,7 @@ export function summarizeClass(summaries: RoundSummary[]) {
       studentGroups: rounds.reduce((total, item) => total + (item.studentGroups || 0), 0),
       botMatches: rounds.reduce((total, item) => total + item.botMatches, 0),
       botSeats: rounds.reduce((total, item) => total + (item.botSeats || 0), 0),
-      choiceCounts: game.options.map(option => ({
+      choiceCounts: (game.id === 11 ? BEAUTY_BANDS : game.options).map(option => ({
         label: option,
         count: rounds.reduce((total, item) => total + (item.choiceCounts.find(choice => choice.label === option)?.count || 0), 0),
       })),
@@ -923,13 +975,15 @@ export function summarizePerson(summaries: RoundSummary[], results: Record<strin
       rounds: gameRounds.length,
       played: gameResults.length,
       averagePoints: gameResults.length ? totalPoints / gameResults.length : null,
-      choices: (game.id === 19 ? ['Invested', 'Returned'] : game.options).map(option => {
+      choices: (game.id === 19 ? ['Invested', 'Returned'] : game.id === 11 ? BEAUTY_BANDS : game.options).map(option => {
         if (game.id === 6) {
           const turns = gameResults.flatMap(item => Object.values(item.repeatedTurns || {})).filter(item => item.own === option);
           return { label: option, count: turns.length,
             averagePoints: turns.length ? turns.reduce((total, item) => total + item.ownPoints, 0) / turns.length : null };
         }
-        const chosen = gameResults.filter(item => game.id === 19
+        const chosen = gameResults.filter(item => game.id === 11
+          ? Math.min(4, Math.floor((guessAmount(item.ownChoice) ?? 0) / 20)) === BEAUTY_BANDS.indexOf(option as typeof BEAUTY_BANDS[number])
+          : game.id === 19
           ? option === 'Invested' ? investAmount(item.ownChoice) !== null : returnAmount(item.ownChoice) !== null
           : item.ownChoice === option);
         return {
@@ -944,7 +998,7 @@ export function summarizePerson(summaries: RoundSummary[], results: Record<strin
     rounds,
     played: played.length,
     studentMatches: played.filter(item => item.result?.opponentKind === 'student').length,
-    groupRounds: played.filter(item => item.result?.opponentKind === 'group').length,
+    groupRounds: played.filter(item => item.result?.opponentKind === 'group' || item.result?.opponentKind === 'class').length,
     botMatches: played.filter(item => item.result?.opponentKind === 'bot').length,
     fallbacks: played.filter(item => item.result?.fallback).length,
     byGame,
