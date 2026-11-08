@@ -1,5 +1,5 @@
-export type GameId = 1 | 12 | 13 | 15 | 17 | 18 | 19 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}`;
+export type GameId = 1 | 4 | 12 | 13 | 15 | 17 | 18 | 19 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -107,6 +107,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   roles?: readonly [string, string];
 }> = [
   { id: 1, title: "Prisoner's Dilemma", options: ['Cooperate', 'Defect'], rules: 'You and the bot each choose Cooperate or Defect without seeing the other choice.', payoffs: 'Both Cooperate: 2 each · Both Defect: 1 each · Defect against Cooperate: 3–0' },
+  { id: 4, title: 'Promotion Timing', options: ['Monday', 'Wednesday', 'Friday'], rules: 'You and your rival secretly choose a day to launch a promotion. A clash on the same day splits attention.', payoffs: 'Same day: 0 each · Different days: 1 each' },
   { id: 12, title: 'Public Goods Game', options: PUBLIC_GOODS_CONTRIBUTIONS, rules: 'Each of four players starts with 10 points and secretly contributes 0–10 to a shared pool. Random bots fill empty seats.', payoffs: 'The pool is multiplied by 1.6 and split equally. Your score = 10 − your contribution + 0.4 × total pool.' },
   { id: 13, title: 'Stag Hunt', options: ['Hunt Stag', 'Hunt Hare'], rules: 'You and the bot each choose a hunt. Stag pays most when you both choose it; Hare is the safer choice.', payoffs: 'Both Stag: 10 each · Both Hare: 4 each · Stag against Hare: 0–4' },
   { id: 15, title: 'Hawk–Dove', options: ['Dove', 'Hawk'], rules: 'You and the bot each choose Dove or Hawk. Hawk gains against Dove, but two Hawks both lose points.', payoffs: 'Both Dove: 3 each · Both Hawk: −10 each · Hawk against Dove: 6–0' },
@@ -178,6 +179,8 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
       const [proposer, responder] = role === 'first' ? ultimatumPoints(own, other) : ultimatumPoints(other, own);
       return role === 'first' ? [proposer, responder] : [responder, proposer];
     }
+    case 4:
+      return own === other ? [0, 0] : [1, 1];
     case 13:
       if (own === 'Hunt Stag' && other === 'Hunt Stag') return [10, 10];
       if (own === 'Hunt Hare' && other === 'Hunt Hare') return [4, 4];
@@ -411,6 +414,7 @@ export function summarizeRound(
     : gameId === 13 ? ['Both hunt stag', 'Both hunt hare', 'Different choices']
     : gameId === 15 ? ['Both dove', 'Both hawk', 'Different choices']
     : gameId === 17 ? ['Matching choices', 'Different choices']
+    : gameId === 4 ? ['Same day clash', 'Different days']
     : gameId === 29 ? ['Tie', 'Rock beats Scissors', 'Paper beats Rock', 'Scissors beats Paper']
     : ['Both opera', 'Both football', 'Different choices'];
   const outcomes = outcomeNames.map(label => ({ label, count: 0 }));
@@ -430,6 +434,7 @@ export function summarizeRound(
     })() : gameId === 30 ? (own.ownChoice === 'Reject' || other.ownChoice === 'Reject' ? 1 : 0)
       : gameId === 29 ? rpsOutcomeIndex(own.ownChoice, other.ownChoice)
       : gameId === 17 ? (own.ownChoice === other.ownChoice ? 0 : 1)
+      : gameId === 4 ? (own.ownChoice === other.ownChoice ? 0 : 1)
       : own.ownChoice === other.ownChoice ? (own.ownChoice === game.options[0] ? 0 : 1) : 2;
     outcomes[index].count++;
   }
