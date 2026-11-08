@@ -56,6 +56,7 @@ export function FirebaseLiveClass() {
   const instructor = Boolean(user?.email === INSTRUCTOR_EMAIL && user.emailVerified);
   const game = gameFor(config?.gameId);
   const practiceGame = gameFor(practiceGameId);
+  const practiceCentipedeScore = practiceCentipede.exitNode ? practiceCentipedePoints(practiceCentipede.exitNode, practiceRole) : null;
 
   useEffect(() => setChoice(game.options[0]), [game.id]);
   useEffect(() => {
@@ -413,7 +414,7 @@ export function FirebaseLiveClass() {
         {practiceGameId === 19 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot invested {investAmount(practiceBotOffer)} points, tripled to {(investAmount(practiceBotOffer) ?? 0) * 3}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(19)); setPracticeChoice('Return 0'); setPracticeResult(null); }} className="ml-2 underline">New investment</button></p>}
         {practiceGameId === 20 ? <div className="space-y-3" role="status">
           {practiceCentipede.exitNode ? <>
-            <p>The chain ended {practiceCentipede.exitNode === 7 ? 'after both players passed all six nodes' : `at Node ${practiceCentipede.exitNode}`}. Your score: {practiceCentipedePoints(practiceCentipede.exitNode, practiceRole)[0]} points; bot score: {practiceCentipedePoints(practiceCentipede.exitNode, practiceRole)[1]} points.</p>
+            <p>The chain ended {practiceCentipede.exitNode === 7 ? 'after both players passed all six nodes' : `at Node ${practiceCentipede.exitNode}`}. Your score: {practiceCentipedeScore?.[0]} {practiceCentipedeScore?.[0] === 1 ? 'point' : 'points'}; bot score: {practiceCentipedeScore?.[1]} {practiceCentipedeScore?.[1] === 1 ? 'point' : 'points'}.</p>
             <button type="button" onClick={() => setPracticeCentipede(advancePracticeCentipede({ node: 1, moves: {} }, practiceRole))} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">New Centipede match</button>
           </> : <>
             <p>Node {practiceCentipede.node}: your turn as Player {practiceRole === 'first' ? 1 : 2}.</p>
