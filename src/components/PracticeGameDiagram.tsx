@@ -1,4 +1,4 @@
-import { auctionBid, auctionPayoff, firstPriceAuctionPayoff, bertrandPrice, blottoAllocation, contributionAmount, cournotQuantity, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, signalingPoints, trawlerAmount } from '../liveMatch';
+import { auctionBid, auctionPayoff, firstPriceAuctionPayoff, bertrandPrice, blottoAllocation, contributionAmount, cournotQuantity, hotellingLocation, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, signalingPoints, trawlerAmount } from '../liveMatch';
 import type { Choice, GameId, PracticeCentipedePath, Role } from '../liveMatch';
 import { CentipedeTree } from './CentipedeTree';
 
@@ -15,6 +15,15 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, centipedePath, valuation }: Props) {
+  if (gameId === 22) {
+    const own = hotellingLocation(result?.ownChoice || choice);
+    const bot = result?.botChoice ? hotellingLocation(result.botChoice) : null;
+    return <div data-game-diagram="hotelling" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
+      <h3 className="font-bold text-slate-100">How the beach is divided</h3>
+      <p>Customers are spread evenly from mile 0 to 100 and visit the closer stand. The midpoint between different stands divides the beach. Matching stands split customers equally.</p>
+      {own !== null && bot !== null && <p>You chose mile {own}; the bot chose mile {bot}. Your market share is {pointsFor(22, `Location ${own}`, `Location ${bot}`)[0].toFixed(1)}%.</p>}
+    </div>;
+  }
   if (gameId === 21) {
     const own = cournotQuantity(result?.ownChoice || choice);
     const bot = result?.botChoice ? cournotQuantity(result.botChoice) : null;
@@ -190,3 +199,4 @@ export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, ce
     </div>
   </div>;
 }
+
