@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, LIVE_GAMES, ULTIMATUM_OFFERS, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, LIVE_GAMES, ULTIMATUM_OFFERS, blottoAllocation, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
 
 test('Trust Game invests, triples, returns, and archives reciprocal results', () => {
   const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
@@ -122,6 +122,39 @@ test('Promotion Timing scores clashes and different days across a live round', (
   assert.deepEqual(finished.config.summaries[1].outcomes, [
     { label: 'Same day clash', count: 1 }, { label: 'Different days', count: 1 },
   ]);
+});
+
+test('Colonel Blotto deployments score, pair, and summarize using Solo Lab rules', () => {
+  assert.deepEqual(LIVE_GAMES.find(game => game.id === 23).options, BLOTTO_DEPLOYMENTS);
+  for (const own of BLOTTO_DEPLOYMENTS) {
+    assert.equal(blottoAllocation(own).reduce((sum, troops) => sum + troops, 0), 100);
+    for (const other of BLOTTO_DEPLOYMENTS) {
+      const [ownScore, otherScore] = pointsFor(23, own, other);
+      assert.equal(ownScore + otherScore, 0);
+      assert.deepEqual(pointsFor(23, other, own), [otherScore, ownScore]);
+    }
+  }
+  assert.equal(blottoAllocation('Deploy 1/1/98'), null);
+  assert.throws(() => pointsFor(23, 'Deploy 1/1/98', BLOTTO_DEPLOYMENTS[0]), /Invalid Colonel Blotto/);
+  const assignments = {
+    a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    c: { round: 1, kind: 'student', opponentUid: 'd', opponentAlias: 'D', role: 'first' },
+    d: { round: 1, kind: 'student', opponentUid: 'c', opponentAlias: 'C', role: 'second' },
+  };
+  const choices = { a: { round: 1, choice: 'Deploy 34/33/33' }, b: { round: 1, choice: 'Deploy 50/50/0' },
+    c: { round: 1, choice: 'Deploy 50/50/0' }, d: { round: 1, choice: 'Deploy 50/0/50' } };
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 23 },
+    participants: { a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' }, d: { alias: 'D' } }, assignments, choices }, true);
+  assert.deepEqual(['a', 'b', 'c', 'd'].map(uid => finished.archive[1].results[uid].ownPoints), [-1, 1, 0, 0]);
+  assert.deepEqual(finished.config.summaries[1].outcomes, [
+    { label: 'One student wins', count: 1 }, { label: 'Tie', count: 1 },
+  ]);
+  assert.equal(finished.config.summaries[1].choiceCounts.find(item => item.label === 'Deploy 50/50/0').count, 2);
+  const botResult = resolveResults({ solo: { round: 1, kind: 'bot', opponentAlias: 'Random bot', role: 'first' } },
+    { solo: { round: 1, choice: BLOTTO_DEPLOYMENTS[0] } }, 1, 23).solo;
+  assert.equal(BLOTTO_DEPLOYMENTS.includes(botResult.opponentChoice), true);
+  assert.equal(botResult.ownPoints, -botResult.opponentPoints);
 });
 
 test('Rock–Paper–Scissors scores every move and the bot can choose all three', () => {
@@ -453,3 +486,4 @@ test('students can generate a short emoji alias and change its icon before joini
   }
   assert.ok(shuffleAliasIcon('A'.repeat(30)).length <= 30);
 });
+

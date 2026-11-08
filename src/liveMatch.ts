@@ -1,5 +1,5 @@
-export type GameId = 1 | 4 | 12 | 13 | 15 | 17 | 18 | 19 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}`;
+export type GameId = 1 | 4 | 12 | 13 | 15 | 17 | 18 | 19 | 23 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -96,6 +96,7 @@ export function shuffleAliasIcon(alias: string): string {
 export const ULTIMATUM_OFFERS = Array.from({ length: 21 }, (_, index) => `Offer ${index / 2}` as Choice) as [Choice, Choice, ...Choice[]];
 export const PUBLIC_GOODS_CONTRIBUTIONS = Array.from({ length: 11 }, (_, index) => `Contribute ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const TRUST_INVESTMENTS = Array.from({ length: 11 }, (_, index) => `Invest ${index}` as Choice) as [Choice, Choice, ...Choice[]];
+export const BLOTTO_DEPLOYMENTS = ['Deploy 34/33/33', 'Deploy 50/50/0', 'Deploy 50/0/50', 'Deploy 0/50/50', 'Deploy 60/0/40', 'Deploy 0/60/40'] as const;
 export const PUBLIC_GOODS_GROUP_SIZE = 4;
 
 export const LIVE_GAMES: ReadonlyArray<{
@@ -114,6 +115,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], rules: 'Both choose Heads or Tails. The Matcher scores when the choices match; the Mismatcher scores when they differ.', payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
   { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], rules: 'Both choose Opera or Football. You score only if your choices match; each role prefers a different match.', payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
   { id: 19, title: 'Trust Game', options: TRUST_INVESTMENTS, rules: 'The Investor starts with 10 points and sends 0–10 to the Trustee. The amount sent triples. The Trustee then chooses how much of the tripled amount to return.', payoffs: 'Investor score = 10 − amount invested + amount returned. Trustee score = 3 × amount invested − amount returned.', roles: ['Investor', 'Trustee'] },
+  { id: 23, title: 'Colonel Blotto', options: BLOTTO_DEPLOYMENTS, rules: 'Choose how to deploy 100 troops across Fronts A, B, and C. Each number in a deployment plan is the troop count for one front. Your opponent chooses secretly.', payoffs: 'More troops wins a front. Win more fronts than your opponent: +1 point; lose more: −1 point; equal front wins: 0 points.' },
   { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], rules: 'You and the bot each choose one move without seeing the other choice. Each move beats one other move.', payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
   { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], rules: 'The Proposer offers part of a 10-point pot. The Responder sees the offer and accepts or rejects it.', payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
 ];
@@ -125,6 +127,14 @@ export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
 export function randomChoice(gameId: GameId = 1): Choice {
   const options = gameId === 30 ? ULTIMATUM_OFFERS : gameFor(gameId).options;
   return options[randomIndex(options.length)];
+}
+
+export function blottoAllocation(choice: Choice): [number, number, number] | null {
+  if (!BLOTTO_DEPLOYMENTS.includes(choice as typeof BLOTTO_DEPLOYMENTS[number])) return null;
+  const match = /^Deploy (\d+)\/(\d+)\/(\d+)$/.exec(choice);
+  if (!match) return null;
+  const allocation = [Number(match[1]), Number(match[2]), Number(match[3])] as [number, number, number];
+  return allocation.reduce((sum, value) => sum + value, 0) === 100 ? allocation : null;
 }
 
 export function investAmount(choice: Choice): number | null {
@@ -181,6 +191,14 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
     }
     case 4:
       return own === other ? [0, 0] : [1, 1];
+    case 23: {
+      const ownAllocation = blottoAllocation(own);
+      const otherAllocation = blottoAllocation(other);
+      if (!ownAllocation || !otherAllocation) throw new Error('Invalid Colonel Blotto deployment.');
+      const wins = ownAllocation.reduce((total, troops, front) => total + Math.sign(troops - otherAllocation[front]), 0);
+      const score = Math.sign(wins);
+      return [score, score === 0 ? 0 : -score];
+    }
     case 13:
       if (own === 'Hunt Stag' && other === 'Hunt Stag') return [10, 10];
       if (own === 'Hunt Hare' && other === 'Hunt Hare') return [4, 4];
@@ -410,6 +428,7 @@ export function summarizeRound(
 
   const outcomeNames = gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
     : gameId === 30 ? ['Accepted', 'Rejected']
+    : gameId === 23 ? ['One student wins', 'Tie']
     : gameId === 1 ? ['Both cooperate', 'Both defect', 'Different choices']
     : gameId === 13 ? ['Both hunt stag', 'Both hunt hare', 'Different choices']
     : gameId === 15 ? ['Both dove', 'Both hawk', 'Different choices']
@@ -432,6 +451,7 @@ export function summarizeRound(
       const returned = returnAmount(trustee.ownChoice) || 0;
       return returned === 0 ? 0 : returned === invested * 3 ? 2 : 1;
     })() : gameId === 30 ? (own.ownChoice === 'Reject' || other.ownChoice === 'Reject' ? 1 : 0)
+      : gameId === 23 ? (own.ownPoints === 0 ? 1 : 0)
       : gameId === 29 ? rpsOutcomeIndex(own.ownChoice, other.ownChoice)
       : gameId === 17 ? (own.ownChoice === other.ownChoice ? 0 : 1)
       : gameId === 4 ? (own.ownChoice === other.ownChoice ? 0 : 1)
@@ -600,3 +620,4 @@ export function summarizePeople(summaries: RoundSummary[], archives: Record<stri
     .map(person => ({ uid: person.uid, alias: person.alias, analysis: summarizePerson(summaries, person.results) }))
     .sort((a, b) => a.alias.localeCompare(b.alias) || a.uid.localeCompare(b.uid));
 }
+
