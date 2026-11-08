@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, LIVE_GAMES, finishRound, pairParticipants, pointsFor, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeClass, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, LIVE_GAMES, finishRound, pairParticipants, pointsFor, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
 
 const cases = [
   [1, [[2, 2], [0, 3], [3, 0], [1, 1]]],
@@ -173,6 +173,42 @@ test('final analysis groups games and weights scores by submitted results', () =
   assert.deepEqual([total.rounds, total.submitted, total.studentPairs, total.botMatches], [3, 5, 2, 1]);
   assert.deepEqual(total.byGame.map(item => [item.gameId, item.averagePoints]), [[1, 7 / 3], [13, 10]]);
   assert.deepEqual(total.byGame[0].choiceCounts, [{ label: 'Cooperate', count: 2 }, { label: 'Defect', count: 1 }]);
+});
+
+test('personal analysis keeps game scores separate and includes missed rounds', () => {
+  const summaries = [
+    { round: 1, gameId: 1 },
+    { round: 2, gameId: 1 },
+    { round: 3, gameId: 15 },
+    { round: 4, gameId: 15 },
+  ];
+  const analysis = summarizePerson(summaries, {
+    1: { round: 1, ownChoice: 'Cooperate', ownPoints: 2, opponentKind: 'student', fallback: false },
+    2: { round: 2, ownChoice: 'Defect', ownPoints: 3, opponentKind: 'bot', fallback: true },
+    3: { round: 3, ownChoice: 'Hawk', ownPoints: -10, opponentKind: 'student', fallback: false },
+  });
+  assert.deepEqual([analysis.played, analysis.studentMatches, analysis.botMatches, analysis.fallbacks], [3, 2, 1, 1]);
+  assert.equal(analysis.rounds[3].result, null);
+  assert.deepEqual(analysis.byGame.map(item => [item.gameId, item.played, item.averagePoints]), [[1, 2, 2.5], [15, 1, -10]]);
+  assert.deepEqual(analysis.byGame[0].choices.map(item => [item.label, item.count, item.averagePoints]), [['Cooperate', 1, 2], ['Defect', 1, 3]]);
+  assert.deepEqual(analysis.byGame[1].choices.map(item => [item.label, item.count, item.averagePoints]), [['Dove', 0, null], ['Hawk', 1, -10]]);
+});
+
+test('instructor analysis joins students across rounds by uid even when aliases change', () => {
+  const summaries = [{ round: 1, gameId: 1 }, { round: 2, gameId: 13 }];
+  const archives = {
+    1: {
+      aliases: { a: 'Fox', b: 'Bee' },
+      results: { a: { round: 1, ownChoice: 'Cooperate', ownPoints: 2, opponentKind: 'student', fallback: false } },
+    },
+    2: {
+      aliases: { a: 'Otter', c: 'Cat' },
+      results: { a: { round: 2, ownChoice: 'Hunt Stag', ownPoints: 10, opponentKind: 'bot', fallback: false } },
+    },
+  };
+  const people = summarizePeople(summaries, archives);
+  assert.deepEqual(people.map(item => [item.alias, item.analysis.played]), [['Bee', 0], ['Cat', 0], ['Otter', 2]]);
+  assert.deepEqual(people.find(item => item.uid === 'a').analysis.rounds.map(item => item.result?.ownPoints), [2, 10]);
 });
 
 test('a round with no choices can be skipped and does not break final release', () => {

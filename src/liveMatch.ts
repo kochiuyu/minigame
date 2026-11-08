@@ -300,3 +300,56 @@ export function summarizeClass(summaries: RoundSummary[]) {
     byGame,
   };
 }
+
+export function summarizePerson(summaries: RoundSummary[], results: Record<string, MatchResult> = {}) {
+  const rounds = summaries.map(summary => ({
+    round: summary.round,
+    gameId: summary.gameId,
+    result: results[summary.round]?.round === summary.round ? results[summary.round] : null,
+  }));
+  const played = rounds.filter(item => item.result !== null);
+  const byGame = LIVE_GAMES.map(game => {
+    const gameRounds = rounds.filter(item => item.gameId === game.id);
+    const gameResults = gameRounds.flatMap(item => item.result ? [item.result] : []);
+    const totalPoints = gameResults.reduce((total, item) => total + item.ownPoints, 0);
+    return {
+      gameId: game.id,
+      rounds: gameRounds.length,
+      played: gameResults.length,
+      averagePoints: gameResults.length ? totalPoints / gameResults.length : null,
+      choices: game.options.map(option => {
+        const chosen = gameResults.filter(item => item.ownChoice === option);
+        return {
+          label: option,
+          count: chosen.length,
+          averagePoints: chosen.length ? chosen.reduce((total, item) => total + item.ownPoints, 0) / chosen.length : null,
+        };
+      }),
+    };
+  }).filter(item => item.rounds > 0);
+  return {
+    rounds,
+    played: played.length,
+    studentMatches: played.filter(item => item.result?.opponentKind === 'student').length,
+    botMatches: played.filter(item => item.result?.opponentKind === 'bot').length,
+    fallbacks: played.filter(item => item.result?.fallback).length,
+    byGame,
+  };
+}
+
+export function summarizePeople(summaries: RoundSummary[], archives: Record<string, RoundArchive>) {
+  const people = new Map<string, { uid: string; alias: string; results: Record<string, MatchResult> }>();
+  for (const summary of summaries) {
+    const saved = archives[summary.round];
+    if (!saved) continue;
+    for (const uid of new Set([...Object.keys(saved.aliases || {}), ...Object.keys(saved.results || {})])) {
+      const person = people.get(uid) || { uid, alias: 'Student who left', results: {} };
+      person.alias = saved.aliases?.[uid] || person.alias;
+      if (saved.results?.[uid]) person.results[summary.round] = saved.results[uid];
+      people.set(uid, person);
+    }
+  }
+  return Array.from(people.values())
+    .map(person => ({ uid: person.uid, alias: person.alias, analysis: summarizePerson(summaries, person.results) }))
+    .sort((a, b) => a.alias.localeCompare(b.alias) || a.uid.localeCompare(b.uid));
+}
