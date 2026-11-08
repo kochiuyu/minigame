@@ -1,4 +1,4 @@
-import { contributionAmount, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount } from '../liveMatch';
+import { blottoAllocation, contributionAmount, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount } from '../liveMatch';
 import type { Choice, GameId, Role } from '../liveMatch';
 
 type PracticeResult = { ownChoice: Choice; botChoice: Choice | null; groupTotal?: number } | null;
@@ -12,6 +12,22 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result }: Props) {
+  if (gameId === 23) {
+    const yourTroops = blottoAllocation(choice) || [34, 33, 33];
+    const botTroops = result?.botChoice ? blottoAllocation(result.botChoice) : null;
+    return <div data-game-diagram="battlefront" className="space-y-2 border-t border-slate-700 pt-3">
+      <h3 className="font-bold text-slate-100">Three-front battle</h3>
+      <p>Deploy 100 troops. The higher number wins each front. Compare front wins to score the round.</p>
+      <div className="overflow-x-auto"><table className="w-full text-center text-sm">
+        <thead><tr className="border-b border-slate-700"><th scope="col" className="p-2 text-left">Front</th><th scope="col" className="p-2">A</th><th scope="col" className="p-2">B</th><th scope="col" className="p-2">C</th></tr></thead>
+        <tbody>
+          <tr className="border-b border-slate-800"><th scope="row" className="p-2 text-left font-normal">Your troops</th>{yourTroops.map((count, index) => <td key={index}>{count}</td>)}</tr>
+          {botTroops && <tr><th scope="row" className="p-2 text-left font-normal">Bot troops</th>{botTroops.map((count, index) => <td key={index}>{count}</td>)}</tr>}
+        </tbody>
+      </table></div>
+      {botTroops && <p>{pointsFor(23, result!.ownChoice, result!.botChoice!)[0] > 0 ? 'You won more fronts.' : pointsFor(23, result!.ownChoice, result!.botChoice!)[0] < 0 ? 'The bot won more fronts.' : 'You won the same number of fronts.'}</p>}
+    </div>;
+  }
   if (gameId === 12) {
     const contribution = contributionAmount(choice) ?? 0;
     return <div data-game-diagram="group" className="space-y-2 border-t border-slate-700 pt-3">
@@ -93,3 +109,4 @@ export function PracticeGameDiagram({ gameId, choice, role, botOffer, result }: 
     </div>
   </div>;
 }
+
