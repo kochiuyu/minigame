@@ -1,7 +1,7 @@
-import { gameFor, offerAmount, pointsFor } from '../liveMatch';
+import { contributionAmount, gameFor, offerAmount, pointsFor, publicGoodsPoints } from '../liveMatch';
 import type { Choice, GameId, Role } from '../liveMatch';
 
-type PracticeResult = { ownChoice: Choice; botChoice: Choice } | null;
+type PracticeResult = { ownChoice: Choice; botChoice: Choice | null; groupTotal?: number } | null;
 
 type Props = {
   gameId: GameId;
@@ -12,6 +12,17 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result }: Props) {
+  if (gameId === 12) {
+    const contribution = contributionAmount(choice) ?? 0;
+    return <div data-game-diagram="group" className="space-y-2 border-t border-slate-700 pt-3">
+      <h3 className="font-bold text-slate-100">How the group scores</h3>
+      <p>Four players each start with 10 points. All contributions go into one pool; every player gets 40% of that pool back.</p>
+      <div className="rounded-lg border border-slate-700 bg-slate-900 p-3 text-center font-semibold">
+        You keep {10 - contribution} + 0.4 × group pool = your score
+      </div>
+      {result?.groupTotal !== undefined && <p>Your practice pool was {result.groupTotal} points, so your score was {publicGoodsPoints(contribution, result.groupTotal)}.</p>}
+    </div>;
+  }
   if (gameId !== 30) {
     const game = gameFor(gameId);
     return <div data-game-diagram="matrix" className="space-y-2 border-t border-slate-700 pt-3">

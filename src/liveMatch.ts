@@ -1,5 +1,5 @@
-export type GameId = 1 | 13 | 15 | 17 | 18 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}`;
+export type GameId = 1 | 12 | 13 | 15 | 17 | 18 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}` | `Contribute ${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -12,22 +12,25 @@ export type RoomConfig = {
 export type Participant = { alias: string };
 export type Assignment = {
   round: number;
-  kind: 'student' | 'bot';
+  kind: 'student' | 'bot' | 'group';
   opponentAlias: string;
   opponentUid?: string;
   role?: Role;
+  groupId?: string;
+  groupSize?: number;
 };
 export type Submission = { round: number; choice: Choice };
 export type VisibleOffer = { round: number; choice: Choice; fromBot: boolean };
 export type MatchResult = {
   round: number;
   ownChoice: Choice;
-  opponentChoice: Choice;
+  opponentChoice?: Choice;
   ownPoints: number;
-  opponentPoints: number;
+  opponentPoints?: number;
   opponentAlias: string;
-  opponentKind: 'student' | 'bot';
+  opponentKind: 'student' | 'bot' | 'group';
   fallback: boolean;
+  group?: { totalContribution: number; classmates: number; bots: number; missing: number };
 };
 export type RoundSummary = {
   round: number;
@@ -35,9 +38,13 @@ export type RoundSummary = {
   submitted: number;
   choiceCounts: Array<{ label: Choice; count: number }>;
   studentPairs: number;
+  studentGroups?: number;
   outcomes: Array<{ label: string; count: number }>;
   botMatches: number;
+  botSeats?: number;
   fallbacks: number;
+  averageContribution?: number | null;
+  averagePool?: number | null;
   scoredStudents: number;
   totalPoints: number;
   averagePoints: number | null;
@@ -86,6 +93,8 @@ export function shuffleAliasIcon(alias: string): string {
 }
 
 export const ULTIMATUM_OFFERS = Array.from({ length: 21 }, (_, index) => `Offer ${index / 2}` as Choice) as [Choice, Choice, ...Choice[]];
+export const PUBLIC_GOODS_CONTRIBUTIONS = Array.from({ length: 11 }, (_, index) => `Contribute ${index}` as Choice) as [Choice, Choice, ...Choice[]];
+export const PUBLIC_GOODS_GROUP_SIZE = 4;
 
 export const LIVE_GAMES: ReadonlyArray<{
   id: GameId;
@@ -96,6 +105,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   roles?: readonly [string, string];
 }> = [
   { id: 1, title: "Prisoner's Dilemma", options: ['Cooperate', 'Defect'], rules: 'You and the bot each choose Cooperate or Defect without seeing the other choice.', payoffs: 'Both Cooperate: 2 each · Both Defect: 1 each · Defect against Cooperate: 3–0' },
+  { id: 12, title: 'Public Goods Game', options: PUBLIC_GOODS_CONTRIBUTIONS, rules: 'Each of four players starts with 10 points and secretly contributes 0–10 to a shared pool. Random bots fill empty seats.', payoffs: 'The pool is multiplied by 1.6 and split equally. Your score = 10 − your contribution + 0.4 × total pool.' },
   { id: 13, title: 'Stag Hunt', options: ['Hunt Stag', 'Hunt Hare'], rules: 'You and the bot each choose a hunt. Stag pays most when you both choose it; Hare is the safer choice.', payoffs: 'Both Stag: 10 each · Both Hare: 4 each · Stag against Hare: 0–4' },
   { id: 15, title: 'Hawk–Dove', options: ['Dove', 'Hawk'], rules: 'You and the bot each choose Dove or Hawk. Hawk gains against Dove, but two Hawks both lose points.', payoffs: 'Both Dove: 3 each · Both Hawk: −10 each · Hawk against Dove: 6–0' },
   { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], rules: 'Both choose Heads or Tails. The Matcher scores when the choices match; the Mismatcher scores when they differ.', payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
@@ -113,6 +123,15 @@ export function randomChoice(gameId: GameId = 1): Choice {
   return options[randomIndex(options.length)];
 }
 
+export function contributionAmount(choice: Choice): number | null {
+  if (!/^Contribute (?:10|[0-9])$/.test(choice)) return null;
+  return Number(choice.slice(11));
+}
+
+export function publicGoodsPoints(contribution: number, totalPool: number): number {
+  return Math.round((10 - contribution + totalPool * 0.4) * 10) / 10;
+}
+
 export function offerAmount(choice: Choice): number | null {
   if (!/^Offer (?:10|[0-9])(?:\.5)?$/.test(choice)) return null;
   const amount = Number(choice.slice(6));
@@ -127,6 +146,8 @@ export function ultimatumPoints(offer: Choice, response: Choice): [number, numbe
 
 export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role = 'first'): [number, number] {
   switch (gameId) {
+    case 12:
+      throw new Error('Public Goods requires a four-player group pool.');
     case 30: {
       const [proposer, responder] = role === 'first' ? ultimatumPoints(own, other) : ultimatumPoints(other, own);
       return role === 'first' ? [proposer, responder] : [responder, proposer];
@@ -180,6 +201,23 @@ export function pairParticipants(participants: Record<string, Participant>, roun
   return assignments;
 }
 
+export function groupParticipants(participants: Record<string, Participant>, round: number): Record<string, Assignment> {
+  const uids = Object.keys(participants);
+  for (let i = uids.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [uids[i], uids[j]] = [uids[j], uids[i]];
+  }
+  const assignments: Record<string, Assignment> = {};
+  for (let i = 0; i < uids.length; i += PUBLIC_GOODS_GROUP_SIZE) {
+    const members = uids.slice(i, i + PUBLIC_GOODS_GROUP_SIZE);
+    for (const uid of members) {
+      assignments[uid] = { round, kind: 'group', groupId: `${round}-group-${i / PUBLIC_GOODS_GROUP_SIZE + 1}`,
+        groupSize: members.length, opponentAlias: 'Public goods group', role: 'first' };
+    }
+  }
+  return assignments;
+}
+
 export function resolveResults(
   assignments: Record<string, Assignment>,
   choices: Record<string, Submission>,
@@ -187,6 +225,7 @@ export function resolveResults(
   gameId: GameId = 1,
   offers: Record<string, VisibleOffer> = {},
 ): Record<string, MatchResult> {
+  if (gameId === 12) return resolvePublicGoodsResults(assignments, choices, round);
   if (gameId === 30) return resolveUltimatumResults(assignments, choices, offers, round);
   const results: Record<string, MatchResult> = {};
   for (const [uid, assignment] of Object.entries(assignments)) {
@@ -208,6 +247,35 @@ export function resolveResults(
       opponentKind: fallback ? 'bot' : assignment.kind,
       fallback,
     };
+  }
+  return results;
+}
+
+function resolvePublicGoodsResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, MatchResult> {
+  const groups = new Map<string, string[]>();
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.kind !== 'group' || assignment.round !== round || !assignment.groupId) continue;
+    groups.set(assignment.groupId, [...(groups.get(assignment.groupId) || []), uid]);
+  }
+  const results: Record<string, MatchResult> = {};
+  for (const members of groups.values()) {
+    const submitted = members.flatMap(uid => {
+      const item = choices[uid];
+      if (!item || item.round !== round) return [];
+      const amount = contributionAmount(item.choice);
+      return amount === null ? [] : [{ uid, amount, choice: item.choice }];
+    });
+    if (!submitted.length) continue;
+    const bots = Math.max(0, PUBLIC_GOODS_GROUP_SIZE - submitted.length);
+    const botContributions = Array.from({ length: bots }, () => randomIndex(11));
+    const totalContribution = submitted.reduce((sum, item) => sum + item.amount, 0)
+      + botContributions.reduce((sum, amount) => sum + amount, 0);
+    const missing = members.length - submitted.length;
+    for (const item of submitted) {
+      results[item.uid] = { round, ownChoice: item.choice, ownPoints: publicGoodsPoints(item.amount, totalContribution),
+        opponentAlias: 'Public goods group', opponentKind: 'group', fallback: missing > 0,
+        group: { totalContribution, classmates: submitted.length - 1, bots, missing } };
+    }
   }
   return results;
 }
@@ -266,7 +334,8 @@ export function summarizeRound(
   results: Record<string, MatchResult>,
   round: number,
   gameId: GameId,
-) {
+): RoundSummary {
+  if (gameId === 12) return summarizePublicGoodsRound(assignments, choices, results, round);
   const game = gameFor(gameId);
   const submitted = Object.entries(choices).filter(([uid, item]) =>
     item.round === round && assignments[uid]?.round === round);
@@ -304,6 +373,34 @@ export function summarizeRound(
   const scoredStudents = finished.length;
   const averagePoints = scoredStudents ? totalPoints / scoredStudents : null;
   return { round, gameId, submitted: submitted.length, choiceCounts, studentPairs, outcomes, botMatches, fallbacks, scoredStudents, totalPoints, averagePoints };
+}
+
+function summarizePublicGoodsRound(assignments: Record<string, Assignment>, choices: Record<string, Submission>, results: Record<string, MatchResult>, round: number): RoundSummary {
+  const submitted = Object.entries(choices).filter(([uid, item]) => item.round === round
+    && assignments[uid]?.kind === 'group' && assignments[uid]?.round === round && contributionAmount(item.choice) !== null);
+  const choiceCounts = PUBLIC_GOODS_CONTRIBUTIONS.map(option => ({ label: option,
+    count: submitted.filter(([, item]) => item.choice === option).length }));
+  const finished = Object.entries(results).filter(([, item]) => item.round === round && item.opponentKind === 'group' && item.group);
+  const groups = new Map<string, MatchResult>();
+  for (const [uid, item] of finished) {
+    const groupId = assignments[uid]?.groupId;
+    if (groupId && !groups.has(groupId)) groups.set(groupId, item);
+  }
+  const outcomes = ['Pool 0–9', 'Pool 10–19', 'Pool 20–29', 'Pool 30–40'].map(label => ({ label, count: 0 }));
+  for (const item of groups.values()) {
+    const index = Math.min(3, Math.floor((item.group?.totalContribution || 0) / 10));
+    outcomes[index].count++;
+  }
+  const studentGroups = groups.size;
+  const botSeats = Array.from(groups.values()).reduce((total, item) => total + (item.group?.bots || 0), 0);
+  const fallbacks = Array.from(groups.values()).reduce((total, item) => total + (item.group?.missing || 0), 0);
+  const totalPoints = finished.reduce((total, [, item]) => total + item.ownPoints, 0);
+  const scoredStudents = finished.length;
+  return { round, gameId: 12, submitted: submitted.length, choiceCounts, studentPairs: 0, studentGroups, outcomes,
+    botMatches: 0, botSeats, fallbacks, scoredStudents, totalPoints,
+    averagePoints: scoredStudents ? totalPoints / scoredStudents : null,
+    averageContribution: submitted.length ? submitted.reduce((sum, [, item]) => sum + (contributionAmount(item.choice) || 0), 0) / submitted.length : null,
+    averagePool: studentGroups ? Array.from(groups.values()).reduce((sum, item) => sum + (item.group?.totalContribution || 0), 0) / studentGroups : null };
 }
 
 export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null {
@@ -353,7 +450,9 @@ export function summarizeClass(summaries: RoundSummary[]) {
       rounds: rounds.length,
       submitted: rounds.reduce((total, item) => total + item.submitted, 0),
       studentPairs: rounds.reduce((total, item) => total + item.studentPairs, 0),
+      studentGroups: rounds.reduce((total, item) => total + (item.studentGroups || 0), 0),
       botMatches: rounds.reduce((total, item) => total + item.botMatches, 0),
+      botSeats: rounds.reduce((total, item) => total + (item.botSeats || 0), 0),
       choiceCounts: game.options.map(option => ({
         label: option,
         count: rounds.reduce((total, item) => total + (item.choiceCounts.find(choice => choice.label === option)?.count || 0), 0),
@@ -365,7 +464,9 @@ export function summarizeClass(summaries: RoundSummary[]) {
     rounds: summaries.length,
     submitted: summaries.reduce((total, item) => total + item.submitted, 0),
     studentPairs: summaries.reduce((total, item) => total + item.studentPairs, 0),
+    studentGroups: summaries.reduce((total, item) => total + (item.studentGroups || 0), 0),
     botMatches: summaries.reduce((total, item) => total + item.botMatches, 0),
+    botSeats: summaries.reduce((total, item) => total + (item.botSeats || 0), 0),
     byGame,
   };
 }
@@ -400,6 +501,7 @@ export function summarizePerson(summaries: RoundSummary[], results: Record<strin
     rounds,
     played: played.length,
     studentMatches: played.filter(item => item.result?.opponentKind === 'student').length,
+    groupRounds: played.filter(item => item.result?.opponentKind === 'group').length,
     botMatches: played.filter(item => item.result?.opponentKind === 'bot').length,
     fallbacks: played.filter(item => item.result?.fallback).length,
     byGame,

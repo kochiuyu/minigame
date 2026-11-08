@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, LIVE_GAMES, ULTIMATUM_OFFERS, finishRound, offerAmount, pairParticipants, pointsFor, prepareUltimatumResponses, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, LIVE_GAMES, ULTIMATUM_OFFERS, contributionAmount, finishRound, groupParticipants, offerAmount, pairParticipants, pointsFor, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
 
 test('ultimatum offers, acceptance and rejection score both roles', () => {
   assert.equal(ULTIMATUM_OFFERS.length, 21);
@@ -112,6 +112,60 @@ test('random bot chooses only options in the selected game', () => {
   for (const game of LIVE_GAMES) {
     for (let i = 0; i < 20; i++) assert.ok(game.options.includes(randomChoice(game.id)));
   }
+});
+
+test('Public Goods uses four-player groups and the Solo Lab scoring rule', () => {
+  const participants = Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`student-${i}`, { alias: `Student ${i}` }]));
+  const assignments = groupParticipants(participants, 2);
+  assert.equal(Object.keys(assignments).length, 9);
+  const sizes = Object.values(assignments).reduce((map, item) => map.set(item.groupId, item.groupSize), new Map());
+  assert.deepEqual([...sizes.values()].sort(), [1, 4, 4]);
+  assert.ok(Object.values(assignments).every(item => item.kind === 'group' && item.round === 2));
+  assert.equal(contributionAmount('Contribute 10'), 10);
+  assert.equal(contributionAmount('Contribute 10.5'), null);
+  assert.equal(publicGoodsPoints(5, 25), 15);
+  assert.throws(() => pointsFor(12, 'Contribute 5', 'Contribute 10'));
+
+  const group = Object.fromEntries(['a', 'b', 'c', 'd'].map(uid => [uid,
+    { round: 1, kind: 'group', groupId: 'one', groupSize: 4, opponentAlias: 'Public goods group', role: 'first' }]));
+  const choices = Object.fromEntries(['a', 'b', 'c', 'd'].map((uid, index) => [uid,
+    { round: 1, choice: `Contribute ${[0, 5, 10, 10][index]}` }]));
+  const results = resolveResults(group, choices, 1, 12);
+  assert.deepEqual(['a', 'b', 'c', 'd'].map(uid => results[uid].ownPoints), [20, 15, 10, 10]);
+  assert.ok(Object.values(results).every(item => item.group.totalContribution === 25 && item.group.bots === 0));
+  const summary = summarizeRound(group, choices, results, 1, 12);
+  assert.deepEqual([summary.studentGroups, summary.botSeats, summary.averageContribution, summary.averagePool], [1, 0, 6.25, 25]);
+  assert.deepEqual(summary.outcomes.map(item => item.count), [0, 0, 1, 0]);
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 12 },
+    participants: Object.fromEntries(Object.keys(group).map(uid => [uid, { alias: uid }])), assignments: group, choices }, true);
+  assert.equal(finished.config.phase, 'finished');
+  assert.equal(finished.results.a[1].group.totalContribution, 25);
+});
+
+test('Public Goods fills partial, late, and missing-player seats with shared bot contributions', () => {
+  const assignments = {
+    a: { round: 1, kind: 'group', groupId: 'one', groupSize: 3 },
+    b: { round: 1, kind: 'group', groupId: 'one', groupSize: 3 },
+    c: { round: 1, kind: 'group', groupId: 'one', groupSize: 3 },
+    late: { round: 1, kind: 'group', groupId: 'late', groupSize: 1 },
+  };
+  const choices = { a: { round: 1, choice: 'Contribute 4' }, b: { round: 1, choice: 'Contribute 6' },
+    late: { round: 1, choice: 'Contribute 10' } };
+  const originalRandom = Math.random;
+  let results;
+  try {
+    Math.random = () => 0;
+    results = resolveResults(assignments, choices, 1, 12);
+  } finally {
+    Math.random = originalRandom;
+  }
+  assert.deepEqual([results.a.ownPoints, results.b.ownPoints, results.late.ownPoints], [10, 8, 4]);
+  assert.equal(results.a.group.totalContribution, results.b.group.totalContribution);
+  assert.deepEqual([results.a.group.bots, results.a.group.missing, results.late.group.bots], [2, 1, 3]);
+  assert.equal(results.a.fallback, true);
+  assert.equal(results.late.fallback, false);
+  const summary = summarizeRound(assignments, choices, results, 1, 12);
+  assert.deepEqual([summary.studentGroups, summary.botSeats, summary.fallbacks], [2, 5, 1]);
 });
 
 test('odd student gets bot; human pair roles and aliases are reciprocal', () => {

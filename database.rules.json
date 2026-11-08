@@ -36,7 +36,7 @@
         "config": {
           ".read": "auth != null",
           "gameId": {
-            ".validate": "newData.val() === 1 || newData.val() === 13 || newData.val() === 15 || newData.val() === 17 || newData.val() === 18 || newData.val() === 29 || newData.val() === 30"
+            ".validate": "newData.val() === 1 || newData.val() === 13 || newData.val() === 15 || newData.val() === 17 || newData.val() === 18 || newData.val() === 29 || newData.val() === 30 || newData.val() === 12"
           }
         },
         "participants": {
@@ -58,12 +58,12 @@
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
             ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('rooms/DOTE-3090-pairs/config/phase').val() === 'playing' && root.child('rooms/DOTE-3090-pairs/participants').child($uid).exists()",
-            ".validate": "newData.hasChildren(['round', 'kind', 'opponentAlias', 'role']) && newData.child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && (newData.child('role').val() === 'first' || newData.child('role').val() === 'second') && (newData.child('kind').val() === 'bot' || (newData.child('kind').val() === 'student' && newData.child('opponentUid').isString())) && (auth.token.email === 'kochiuyu@gmail.com' || (newData.child('kind').val() === 'bot' && newData.child('role').val() === 'first' && newData.child('opponentAlias').val() === 'Random bot' && !newData.child('opponentUid').exists()))",
+            ".validate": "newData.hasChildren(['round', 'kind', 'opponentAlias', 'role']) && newData.child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && newData.child('opponentAlias').isString() && newData.child('opponentAlias').val().length > 0 && newData.child('opponentAlias').val().length <= 30 && ((newData.child('kind').val() === 'group' && root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 12 && newData.child('role').val() === 'first' && newData.hasChildren(['groupId', 'groupSize']) && newData.child('groupId').isString() && newData.child('groupId').val().length > 0 && newData.child('groupSize').isNumber() && newData.child('groupSize').val() >= 1 && newData.child('groupSize').val() <= 4 && !newData.child('opponentUid').exists() && (auth.token.email === 'kochiuyu@gmail.com' || (newData.child('groupId').val() === auth.uid && newData.child('groupSize').val() === 1 && newData.child('opponentAlias').val() === 'Public goods group'))) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() !== 12 && (newData.child('role').val() === 'first' || newData.child('role').val() === 'second') && (newData.child('kind').val() === 'bot' || (newData.child('kind').val() === 'student' && newData.child('opponentUid').isString())) && (auth.token.email === 'kochiuyu@gmail.com' || (newData.child('kind').val() === 'bot' && newData.child('role').val() === 'first' && newData.child('opponentAlias').val() === 'Random bot' && !newData.child('opponentUid').exists()))))",
             "round": {
               ".validate": "newData.val() === root.child('rooms/DOTE-3090-pairs/config/round').val()"
             },
             "kind": {
-              ".validate": "newData.val() === 'student' || newData.val() === 'bot'"
+              ".validate": "newData.val() === 'student' || newData.val() === 'bot' || newData.val() === 'group'"
             },
             "opponentAlias": {
               ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
@@ -76,6 +76,12 @@
             },
             "$other": {
               ".validate": false
+            },
+            "groupId": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128"
+            },
+            "groupSize": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 4"
             }
           }
         },
@@ -89,7 +95,7 @@
               ".validate": "newData.val() === root.child('rooms/DOTE-3090-pairs/config/round').val()"
             },
             "choice": {
-              ".validate": "((root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 1 || !root.child('rooms/DOTE-3090-pairs/config/gameId').exists()) && (newData.val() === 'Cooperate' || newData.val() === 'Defect')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 13 && (newData.val() === 'Hunt Stag' || newData.val() === 'Hunt Hare')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 15 && (newData.val() === 'Dove' || newData.val() === 'Hawk')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 17 && (newData.val() === 'Heads' || newData.val() === 'Tails')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 18 && (newData.val() === 'Opera' || newData.val() === 'Football')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 29 && (newData.val() === 'Rock' || newData.val() === 'Paper' || newData.val() === 'Scissors')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 30 && ((root.child('rooms/DOTE-3090-pairs/assignments').child($uid).child('role').val() === 'first' && (newData.val() === 'Offer 0' || newData.val() === 'Offer 0.5' || newData.val() === 'Offer 1' || newData.val() === 'Offer 1.5' || newData.val() === 'Offer 2' || newData.val() === 'Offer 2.5' || newData.val() === 'Offer 3' || newData.val() === 'Offer 3.5' || newData.val() === 'Offer 4' || newData.val() === 'Offer 4.5' || newData.val() === 'Offer 5' || newData.val() === 'Offer 5.5' || newData.val() === 'Offer 6' || newData.val() === 'Offer 6.5' || newData.val() === 'Offer 7' || newData.val() === 'Offer 7.5' || newData.val() === 'Offer 8' || newData.val() === 'Offer 8.5' || newData.val() === 'Offer 9' || newData.val() === 'Offer 9.5' || newData.val() === 'Offer 10')) || (root.child('rooms/DOTE-3090-pairs/assignments').child($uid).child('role').val() === 'second' && (newData.val() === 'Accept' || newData.val() === 'Reject'))))"
+              ".validate": "((root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 1 || !root.child('rooms/DOTE-3090-pairs/config/gameId').exists()) && (newData.val() === 'Cooperate' || newData.val() === 'Defect')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 13 && (newData.val() === 'Hunt Stag' || newData.val() === 'Hunt Hare')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 15 && (newData.val() === 'Dove' || newData.val() === 'Hawk')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 17 && (newData.val() === 'Heads' || newData.val() === 'Tails')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 18 && (newData.val() === 'Opera' || newData.val() === 'Football')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 29 && (newData.val() === 'Rock' || newData.val() === 'Paper' || newData.val() === 'Scissors')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 30 && ((root.child('rooms/DOTE-3090-pairs/assignments').child($uid).child('role').val() === 'first' && (newData.val() === 'Offer 0' || newData.val() === 'Offer 0.5' || newData.val() === 'Offer 1' || newData.val() === 'Offer 1.5' || newData.val() === 'Offer 2' || newData.val() === 'Offer 2.5' || newData.val() === 'Offer 3' || newData.val() === 'Offer 3.5' || newData.val() === 'Offer 4' || newData.val() === 'Offer 4.5' || newData.val() === 'Offer 5' || newData.val() === 'Offer 5.5' || newData.val() === 'Offer 6' || newData.val() === 'Offer 6.5' || newData.val() === 'Offer 7' || newData.val() === 'Offer 7.5' || newData.val() === 'Offer 8' || newData.val() === 'Offer 8.5' || newData.val() === 'Offer 9' || newData.val() === 'Offer 9.5' || newData.val() === 'Offer 10')) || (root.child('rooms/DOTE-3090-pairs/assignments').child($uid).child('role').val() === 'second' && (newData.val() === 'Accept' || newData.val() === 'Reject')))) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 12 && (newData.val() === 'Contribute 0' || newData.val() === 'Contribute 1' || newData.val() === 'Contribute 2' || newData.val() === 'Contribute 3' || newData.val() === 'Contribute 4' || newData.val() === 'Contribute 5' || newData.val() === 'Contribute 6' || newData.val() === 'Contribute 7' || newData.val() === 'Contribute 8' || newData.val() === 'Contribute 9' || newData.val() === 'Contribute 10'))"
             },
             "$other": {
               ".validate": false
