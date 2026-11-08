@@ -3,6 +3,31 @@ import assert from 'node:assert/strict';
 import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, fisheryPoints, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
 import { buildReportCsv } from '../src/reportExport.ts';
 
+test('Highway Gas War scores, pairs, bot fallback, and class outcomes', () => {
+  assert.deepEqual(pointsFor(3, 'High Price', 'High Price'), [2, 2]);
+  assert.deepEqual(pointsFor(3, 'Low Price', 'Low Price'), [1, 1]);
+  assert.deepEqual(pointsFor(3, 'Low Price', 'High Price'), [3, 0]);
+  assert.deepEqual(pointsFor(3, 'High Price', 'Low Price'), [0, 3]);
+  assert.throws(() => pointsFor(3, 'Defect', 'High Price'));
+  const assignments = {
+    a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    c: { round: 1, kind: 'bot', opponentAlias: 'Random bot', role: 'first' },
+  };
+  const choices = { a: { round: 1, choice: 'Low Price' }, b: { round: 1, choice: 'High Price' }, c: { round: 1, choice: 'High Price' } };
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  try {
+    const results = resolveResults(assignments, choices, 1, 3);
+    assert.deepEqual([results.a.ownPoints, results.b.ownPoints], [3, 0]);
+    assert.equal(results.c.opponentChoice, 'High Price');
+    const summary = summarizeRound(assignments, choices, results, 1, 3);
+    assert.equal(summary.studentPairs, 1);
+    assert.equal(summary.botMatches, 1);
+    assert.equal(summary.outcomes.find(item => item.label === 'One station undercuts').count, 1);
+  } finally { Math.random = originalRandom; }
+});
+
 test('Repeated Prisoner’s Dilemma keeps partners for five turns and reports the sequence', () => {
   assert.deepEqual(pointsFor(6, 'Cooperate', 'Defect'), [0, 3]);
   const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
