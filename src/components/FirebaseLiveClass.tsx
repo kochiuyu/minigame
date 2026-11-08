@@ -450,10 +450,10 @@ export function FirebaseLiveClass() {
         {practiceGameId === 20 ? null : practiceGameId === 6 && practiceRepeatedTurns.length === 5 ? <button onClick={() => { setPracticeRepeatedTurns([]); setPracticeResult(null); }} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">New five-turn match</button>
           : <button onClick={playBot} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">{practiceGameId === 6 ? `Play turn ${practiceRepeatedTurns.length + 1} of 5` : 'Play random bot'}</button>}
         {practiceResult && <p role="status">{practiceGameId === 19
-          ? `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} points.`
+          ? `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
           : practiceGameId === 12
-          ? `You contributed ${contributionAmount(practiceResult.ownChoice) ?? 0}; the three bots contributed ${practiceResult.botContributions?.join(', ')}. The group pool was ${practiceResult.groupTotal}. You earned ${practiceResult.points} points.`
-          : `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} points.`}</p>}
+          ? `You contributed ${contributionAmount(practiceResult.ownChoice) ?? 0}; the three bots contributed ${practiceResult.botContributions?.join(', ')}. The group pool was ${practiceResult.groupTotal}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
+          : `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`}</p>}
       </div>}
 
       {!user && (
