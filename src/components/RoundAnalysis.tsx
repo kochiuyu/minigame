@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { gameFor, summarizeClass, summarizePeople, summarizePerson } from '../liveMatch';
 import type { MatchResult, RoundArchive, RoundSummary } from '../liveMatch';
 import { buildReportCsv } from '../reportExport';
+import { CentipedeTree } from './CentipedeTree';
 
 function score(value: number | null | undefined): string {
   return value == null ? '—' : value.toFixed(1);
@@ -53,7 +54,8 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
         </tbody>
       </table> : <p className="text-sm text-slate-300">No personal result is available for this round.</p>}
       {personal?.exitNode && <p className="mt-2 text-sm text-blue-200">{personal.exitNode === 7 ? 'Both players passed all six nodes.' : `The chain ended with Take at Node ${personal.exitNode}.`}</p>}
-      {personal?.centipedeMoves && <p className="mt-2 text-sm text-slate-300">Moves: {Object.entries(personal.centipedeMoves).map(([node, move]) => `Node ${node}: Player ${Number(node) % 2 ? 1 : 2} ${move}`).join(' · ')}. “Pass All” in the table means no Take before this chain ended.</p>}
+      {personal?.centipedeMoves && <div className="mt-3"><CentipedeTree moves={personal.centipedeMoves} exitNode={personal.exitNode} /></div>}
+      {personal?.centipedeMoves && <p className="mt-2 text-sm text-slate-300">“Pass All” in the table means this player did not Take before the chain ended.</p>}
       {personal?.repeatedTurns && <div className="mt-3 overflow-x-auto"><table className="w-full text-sm text-left"><caption className="text-left font-semibold mb-1">Your five turns</caption><thead><tr><th>Turn</th><th>You</th><th>Opponent</th><th>Points</th></tr></thead><tbody>{Object.entries(personal.repeatedTurns).map(([turn, item]) => <tr key={turn}><td>{turn}</td><td>{item.own}</td><td>{item.other}{item.bot ? ' (bot filled a choice)' : ''}</td><td>{item.ownPoints} / {item.otherPoints}</td></tr>)}</tbody></table></div>}
       {personal?.fallback && <p className="text-sm text-amber-300 mt-2">{personal.group
         ? `${personal.group.missing} group member${personal.group.missing === 1 ? '' : 's'} did not contribute, so random bots filled those seats.`
