@@ -367,7 +367,7 @@ export function FirebaseLiveClass() {
         <p className="text-sm font-bold text-blue-300">Live Class · Room {ROOM}</p>
         <h1 className="text-2xl font-black mt-1">{config?.phase === 'finished' ? 'Class complete' : config ? game.title : 'Live Class Games'}</h1>
         <p className="text-sm text-slate-300 mt-2">Practice against random bots, then join a class round. The instructor randomly pairs students in two-player games or makes groups of four for Public Goods. Bots fill any empty or missing seats.</p>
-        {config && <p className="text-sm text-blue-200 mt-2">{game.payoffs}</p>}
+        {config && !(game.id === 20 && config.phase === 'playing') && <p className="text-sm text-blue-200 mt-2">{game.payoffs}</p>}
       </div>
 
       {!instructor && <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-3">
@@ -390,7 +390,7 @@ export function FirebaseLiveClass() {
           <summary className="cursor-pointer font-semibold text-blue-200">How to play {practiceGame.title}</summary>
           <div className="mt-3 space-y-2 text-slate-300">
             <p>{practiceGame.rules}</p>
-            <p><strong className="text-slate-100">Points:</strong> {practiceGame.payoffs}</p>
+            {practiceGameId !== 20 && <p><strong className="text-slate-100">Points:</strong> {practiceGame.payoffs}</p>}
             <p><strong className="text-slate-100">Random bot:</strong> {practiceGameId === 2 || practiceGameId === 5
               ? `As ${practiceGameId === 5 ? 'Incumbent' : 'First Mover'}, the bot randomly enters or stays out. As ${practiceGameId === 5 ? 'Rival' : 'Second Mover'}, it randomly chooses its first move before you decide.`
               : practiceGameId === 19
@@ -400,7 +400,7 @@ export function FirebaseLiveClass() {
               : practiceGameId === 20
               ? 'The bot chooses Take or Pass at each of its turns, with equal chance. You see each move before your next turn.'
               : 'The bot picks each available choice with equal chance.'}</p>
-            <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} centipedePath={practiceCentipede} />
+            {practiceGameId !== 20 && <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} centipedePath={practiceCentipede} />}
           </div>
         </details>
         {([2, 5, 19, 20, 30] as number[]).includes(practiceGameId) ? <label className="block text-sm font-bold">Practice role
@@ -410,7 +410,7 @@ export function FirebaseLiveClass() {
         </label> : practiceGame.roles && <p className="text-sm text-slate-300">Your role: {practiceGame.roles[0]}</p>}
         {practiceGameId === 30 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot offered you {practiceBotOffer.slice(6)} of 10 points. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(30)); setPracticeResult(null); }} className="ml-2 underline">New offer</button></p>}
         {(practiceGameId === 2 || practiceGameId === 5) && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot chose {practiceBotOffer}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="ml-2 underline">New first move</button></p>}
-        {practiceGameId === 20 && <p className="text-sm text-blue-200">Take ends the chain. Pass gives the next turn to the bot. Completed moves appear in the tree above.</p>}
+        {practiceGameId === 20 && <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} centipedePath={practiceCentipede} />}
         {practiceGameId === 19 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot invested {investAmount(practiceBotOffer)} points, tripled to {(investAmount(practiceBotOffer) ?? 0) * 3}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(19)); setPracticeChoice('Return 0'); setPracticeResult(null); }} className="ml-2 underline">New investment</button></p>}
         {practiceGameId === 20 ? <div className="space-y-3" role="status">
           {practiceCentipede.exitNode ? <>
@@ -607,7 +607,6 @@ export function FirebaseLiveClass() {
             <div className="space-y-3">
               <p className="font-bold">Round {round}: Centipede with {currentAssignment.opponentAlias}</p>
               <p>Your role: {roleLabel}. Players alternate Take or Pass. Taking ends the chain; passing gives the other player the next turn.</p>
-              <p className="text-sm text-slate-300">{game.payoffs}</p>
               <CentipedeTree currentNode={centipedeTurn ? centipedeNode : undefined} moves={myCentipedePath?.round === round ? myCentipedePath.moves : {}} exitNode={myCentipedePath?.round === round ? myCentipedePath.exitNode : undefined} />
               {myCentipedeFinished ? <p role="status">The chain ended at node {myCentipedePath?.exitNode}. Scores will appear when the instructor ends the round.</p>
                 : !centipedeTurn ? <p role="status">All chains have ended. Waiting for the instructor to end the round.</p>
