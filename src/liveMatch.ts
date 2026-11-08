@@ -55,6 +55,37 @@ export type LiveRoom = {
 };
 
 export const BOT_ALIAS = 'Random bot';
+export const ALIAS_ICONS = ['🦊', '🐼', '🐙', '🐢', '🦉', '🐬', '🦋', '🐝', '🦖', '🐧'] as const;
+const ALIAS_ADJECTIVES = ['Bright', 'Brave', 'Clever', 'Cosmic', 'Curious', 'Gentle', 'Jolly', 'Lucky', 'Mighty', 'Playful', 'Sunny', 'Swift'];
+const ALIAS_NOUNS = ['Breeze', 'Comet', 'Echo', 'Nova', 'Orbit', 'Pixel', 'Puzzle', 'Ripple', 'Rocket', 'Spark', 'Star', 'Wave'];
+
+function randomIndex(length: number): number {
+  return Math.floor(Math.random() * length);
+}
+
+export function randomStudentAlias(): string {
+  const icon = ALIAS_ICONS[randomIndex(ALIAS_ICONS.length)];
+  const adjective = ALIAS_ADJECTIVES[randomIndex(ALIAS_ADJECTIVES.length)];
+  const noun = ALIAS_NOUNS[randomIndex(ALIAS_NOUNS.length)];
+  const number = 100 + randomIndex(900);
+  return `${icon} ${adjective} ${noun} ${number}`;
+}
+
+export function shuffleAliasIcon(alias: string): string {
+  if (!alias.trim()) return randomStudentAlias();
+  const current = ALIAS_ICONS.find(icon => alias.startsWith(`${icon} `));
+  const options = ALIAS_ICONS.filter(icon => icon !== current);
+  const icon = options[randomIndex(options.length)];
+  const name = current ? alias.slice(current.length).trim() : alias.trim();
+  const limit = 30 - icon.length - 1;
+  let fitted = '';
+  for (const character of name) {
+    if ((fitted + character).length > limit) break;
+    fitted += character;
+  }
+  return `${icon} ${fitted.trim()}`;
+}
+
 export const LIVE_GAMES: ReadonlyArray<{
   id: GameId;
   title: string;

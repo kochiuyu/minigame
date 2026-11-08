@@ -5,7 +5,7 @@ The site stays on GitHub Pages and uses Firebase Realtime Database on the Spark 
 ## How the class works
 
 1. Anyone can practice against a random bot without joining a room. Practice is private and is not recorded.
-2. The instructor signs in with the configured Google account, selects a game and a total of 1–20 rounds, and starts a class. Students enter an alias and join anonymously.
+2. The instructor signs in with the configured Google account, selects a game and a total of 1–20 rounds, and starts a class. Students can type an alias or generate a fun alias with a random emoji icon before joining anonymously. The alias and icon are stored together as one short nickname.
 3. The instructor can change the game while students are waiting in the lobby. Pairing locks the game for that round. Students are shuffled into pairs; an odd or late student gets a random bot.
 4. Matching Pennies gives one student the Matcher role and the other the Mismatcher role. Battle of the Sexes assigns Opera fan and Football fan roles. Students see their role and the payoffs before choosing.
 5. Students lock one choice. During play, the instructor sees joined aliases and who has submitted, but not the choices. When all joined students have submitted, the dashboard prompts the instructor to end the round. A random bot replaces a missing partner if the instructor ends a round early.
