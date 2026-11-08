@@ -15,6 +15,11 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, centipedePath, valuation }: Props) {
+  if (gameId === 11) return <div data-game-diagram="beauty" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
+    <h3 className="font-bold text-slate-100">How the target is found</h3>
+    <p>Average your guess with three random bot guesses, then multiply by 2/3. The closest guess earns 5 points; exact ties each earn 5. Other guesses earn 1.</p>
+    <p>Example: guesses 10, 20, 30, 40 average to 25, so the target is 16.67. The guess 20 is closest.</p>
+  </div>;
   if (gameId === 7 || gameId === 8) {
     const ownBid = auctionBid(result?.ownChoice || choice) ?? 0;
     const botBid = result?.botChoice ? auctionBid(result.botChoice) : null;
