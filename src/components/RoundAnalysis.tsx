@@ -60,6 +60,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
       </table> : <p className="text-sm text-slate-300">No personal result is available for this round.</p>}
       {personal?.exitNode && <p className="mt-2 text-sm text-blue-200">{personal.exitNode === 7 ? 'Both players passed all six nodes.' : `The chain ended with Take at Node ${personal.exitNode}.`}</p>}
         {personal?.auction && <p className="mt-2 text-sm text-blue-200">Your private value: {personal.auction.valuation}. {personal.auction.won ? `You won and paid ${personal.auction.price}.` : `${personal.opponentAlias} won and paid ${personal.auction.price}.`} Your profit: {personal.ownPoints}.</p>}
+      {personal?.signaling && <p className="mt-2 text-sm text-blue-200">Product quality: {personal.signaling.quality}. Seller {personal.signaling.signal ? 'bought a signal' : 'sent no signal'}; buyer {personal.signaling.trusted ? 'trusted' : 'did not trust'}.</p>}
       {personal?.centipedeMoves && <div className="mt-3"><CentipedeTree moves={personal.centipedeMoves} exitNode={personal.exitNode} /></div>}
       {personal?.centipedeMoves && <p className="mt-2 text-sm text-slate-300">“Pass All” in the table means this player did not Take before the chain ended.</p>}
       {personal?.repeatedTurns && <div className="mt-3 overflow-x-auto"><table className="w-full text-sm text-left"><caption className="text-left font-semibold mb-1">Your five turns</caption><thead><tr><th>Turn</th><th>You</th><th>Opponent</th><th>Points</th></tr></thead><tbody>{Object.entries(personal.repeatedTurns).map(([turn, item]) => <tr key={turn}><td>{turn}</td><td>{item.own}</td><td>{item.other}{item.bot ? ' (bot filled a choice)' : ''}</td><td>{item.ownPoints} / {item.otherPoints}</td></tr>)}</tbody></table></div>}
@@ -242,3 +243,4 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
     </details>)}
   </div>;
 }
+

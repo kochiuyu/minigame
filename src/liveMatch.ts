@@ -1,5 +1,5 @@
-export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Signal' | 'No Signal' | 'Trust' | 'Do Not Trust' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -21,6 +21,7 @@ export type Assignment = {
   groupId?: string;
   groupSize?: number;
   valuation?: number; // Private auction value, drawn independently for each bidder.
+  quality?: 'High' | 'Low'; // Private seller quality in Signaling.
 };
 export type Submission = { round: number; choice: Choice };
 export type VisibleOffer = { round: number; choice: Choice; fromBot: boolean };
@@ -44,6 +45,7 @@ export type MatchResult = {
   centipedeMoves?: Record<string, 'Take' | 'Pass'>;
   repeatedTurns?: Record<string, RepeatedTurn>;
   group?: { totalContribution: number; classmates: number; bots: number; missing: number };
+  signaling?: { quality: 'High' | 'Low'; signal: boolean; trusted: boolean };
 };
 export type RoundSummary = {
   round: number;
@@ -166,6 +168,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 7, title: 'Second-Price Auction', options: AUCTION_BIDS, rules: 'You receive a private value from 1–10 for the artwork. Submit a sealed whole-point bid from 0–12. The highest bid wins but pays the other bid.', payoffs: 'Winner score = own value − other bid. Loser scores 0. If bids tie, the first paired bidder wins.' },
   { id: 8, title: 'First-Price Auction', options: AUCTION_BIDS, rules: 'You receive a private value from 1–10 for the artwork. Submit a sealed whole-point bid from 0–12. The highest bid wins and pays their own bid.', payoffs: 'Winner score = own value − own bid. Loser scores 0. If bids tie, the first paired bidder wins.' },
   { id: 9, title: 'Split the Pie Bargaining', options: PIE_DEMANDS, rules: 'Negotiate with your partner, then each privately lock a whole-point demand from 0 to 10. You are dividing a 10-point pie.', payoffs: 'If demands total at most 10, each gets their demand. If demands exceed 10, the deal fails and each gets the 1-point outside option.' },
+  { id: 10, title: 'Costly Signaling', options: ['Signal', 'No Signal', 'Trust', 'Do Not Trust'], rules: 'The seller privately learns whether the product is High or Low quality, then chooses whether to buy a costly signal. The buyer sees the signal, but not quality, before deciding whether to trust.', payoffs: 'Trusting High quality: seller 4, buyer 3. Trusting Low quality: seller 4, buyer -3. No trust: both 0. A signal costs a High-quality seller 1 point or a Low-quality seller 3 points, even when the buyer does not trust.', roles: ['Seller', 'Buyer'] },
   { id: 11, title: 'Beauty Contest (2/3 Average)', options: ['Guess 0', 'Guess 100'], rules: 'Everyone privately guesses a number from 0 to 100, to one decimal place. The target is two thirds of the average submitted guess. Missing students are left out of the average.', payoffs: 'The closest guess wins 5 points; every other submitted guess earns 1 point. Exact ties for closest each win 5 points.' },
   { id: 2, title: 'Sequential Entry', options: ['Launch', 'Wait', 'Enter', 'Stay Out'], rules: 'The First Mover chooses Launch or Wait. The Second Mover sees that decision, then chooses Enter or Stay Out.', payoffs: 'Launch + Stay Out: 4 / 1 · Launch + Enter: 2 / 2 · Wait + Enter: 1 / 4 · Wait + Stay Out: 0 / 0 (First / Second Mover)', roles: ['First Mover', 'Second Mover'] },
   { id: 5, title: 'Entry Deterrence', options: ['Commit', 'Stay Flexible', 'Enter', 'Stay Out'], rules: 'The Incumbent chooses whether to make an irreversible commitment. The Rival sees that choice, then decides whether to enter the market.', payoffs: 'Commit + Stay Out: 4 / 0 · Commit + Enter: −2 / −2 · Stay Flexible + Enter: 2 / 2 · Stay Flexible + Stay Out: 4 / 0 (Incumbent / Rival)', roles: ['Incumbent', 'Rival'] },
@@ -189,8 +192,14 @@ export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
 }
 
 export function randomChoice(gameId: GameId = 1): Choice {
-  const options = gameId === 30 ? ULTIMATUM_OFFERS : gameId === 2 ? (['Launch', 'Wait'] as const) : gameId === 5 ? (['Commit', 'Stay Flexible'] as const) : gameId === 20 ? CENTIPEDE_FIRST : gameFor(gameId).options;
+  const options = gameId === 30 ? ULTIMATUM_OFFERS : gameId === 2 ? (['Launch', 'Wait'] as const) : gameId === 5 ? (['Commit', 'Stay Flexible'] as const) : gameId === 10 ? (['Signal', 'No Signal'] as const) : gameId === 20 ? CENTIPEDE_FIRST : gameFor(gameId).options;
   return options[randomIndex(options.length)];
+}
+
+export function signalingPoints(quality: 'High' | 'Low', signal: Choice, response: Choice): [number, number] {
+  if (!['Signal', 'No Signal'].includes(signal) || !['Trust', 'Do Not Trust'].includes(response)) throw new Error('Invalid Signaling choices.');
+  const cost = signal === 'Signal' ? quality === 'High' ? 1 : 3 : 0;
+  return response === 'Trust' ? [4 - cost, quality === 'High' ? 3 : -3] : [-cost, 0];
 }
 
 export function blottoAllocation(choice: Choice): [number, number, number] | null {
@@ -254,6 +263,8 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
     case 7:
     case 8:
       throw new Error('Auction scoring requires private valuations.');
+    case 10:
+      throw new Error('Signaling scoring requires private seller quality.');
     case 11:
       throw new Error('Beauty Contest scoring requires all submitted guesses.');
     case 9: {
@@ -399,9 +410,9 @@ export function pairParticipants(participants: Record<string, Participant>, roun
     const first = uids[i];
     const second = uids[i + 1];
     if (!second) {
-      assignments[first] = { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}) };
+      assignments[first] = { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 10 ? { quality: Math.random() < 0.5 ? 'High' : 'Low' as const } : {}) };
     } else {
-      assignments[first] = { round, kind: 'student', opponentUid: second, opponentAlias: participants[second].alias, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}) };
+      assignments[first] = { round, kind: 'student', opponentUid: second, opponentAlias: participants[second].alias, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 10 ? { quality: Math.random() < 0.5 ? 'High' : 'Low' as const } : {}) };
       assignments[second] = { round, kind: 'student', opponentUid: first, opponentAlias: participants[first].alias, role: 'second', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}) };
     }
   }
@@ -441,6 +452,7 @@ export function resolveResults(
   if (gameId === 11) return resolveBeautyResults(assignments, choices, round);
   if (gameId === 7 || gameId === 8) return resolveAuctionResults(assignments, choices, round, gameId);
   if (gameId === 20) return resolveCentipedeResults(assignments, choices, round);
+  if (gameId === 10) return resolveSignalingResults(assignments, choices, offers, round);
   if (gameId === 2 || gameId === 5) return resolveSequentialResults(assignments, choices, offers, round, gameId);
   if (gameId === 19) return resolveTrustResults(assignments, choices, offers, round);
   if (gameId === 30) return resolveUltimatumResults(assignments, choices, offers, round);
@@ -689,6 +701,41 @@ export function prepareEntryResponses(assignments: Record<string, Assignment>, c
   return offers;
 }
 
+export function prepareSignalingResponses(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, VisibleOffer> {
+  const offers: Record<string, VisibleOffer> = {};
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== round || assignment.role !== 'second') continue;
+    const seller = assignment.opponentUid && choices[assignment.opponentUid]?.round === round ? choices[assignment.opponentUid].choice : null;
+    const valid = seller === 'Signal' || seller === 'No Signal';
+    offers[uid] = { round, choice: valid ? seller! : randomChoice(10), fromBot: !valid };
+  }
+  return offers;
+}
+
+function resolveSignalingResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, offers: Record<string, VisibleOffer>, round: number): Record<string, MatchResult> {
+  const results: Record<string, MatchResult> = {};
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== round) continue;
+    const own = choices[uid]?.round === round ? choices[uid].choice : null;
+    const seller = assignment.role === 'first';
+    if (!own || (seller ? own !== 'Signal' && own !== 'No Signal' : own !== 'Trust' && own !== 'Do Not Trust')) continue;
+    const partner = assignment.opponentUid && choices[assignment.opponentUid]?.round === round ? choices[assignment.opponentUid].choice : null;
+    const validPartner = seller ? partner === 'Trust' || partner === 'Do Not Trust' : partner === 'Signal' || partner === 'No Signal';
+    const counterpart: Choice = seller ? validPartner ? partner! : Math.random() < 0.5 ? 'Trust' : 'Do Not Trust'
+      : offers[uid]?.round === round ? offers[uid].choice : randomChoice(10);
+    const fallback = assignment.kind === 'student' && (seller ? !validPartner : offers[uid]?.fromBot !== false);
+    const quality = seller ? assignment.quality || 'High' : assignment.opponentUid && assignments[assignment.opponentUid]?.quality || (Math.random() < 0.5 ? 'High' : 'Low');
+    const signal = seller ? own : counterpart;
+    const response = seller ? counterpart : own;
+    const [sellerPoints, buyerPoints] = signalingPoints(quality, signal, response);
+    results[uid] = { round, ownChoice: own, opponentChoice: counterpart, ownPoints: seller ? sellerPoints : buyerPoints,
+      opponentPoints: seller ? buyerPoints : sellerPoints, opponentAlias: fallback ? BOT_ALIAS : assignment.opponentAlias,
+      opponentKind: fallback ? 'bot' : assignment.kind, fallback,
+      signaling: { quality, signal: signal === 'Signal', trusted: response === 'Trust' } };
+  }
+  return results;
+}
+
 function resolveSequentialResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, offers: Record<string, VisibleOffer>, round: number, gameId: 2 | 5): Record<string, MatchResult> {
   const results: Record<string, MatchResult> = {};
   for (const [uid, assignment] of Object.entries(assignments)) {
@@ -798,6 +845,7 @@ export function summarizeRound(
   }));
 
   const outcomeNames = gameId === 7 || gameId === 8 ? ['Winner gains points', 'Winner breaks even', 'Winner loses points']
+    : gameId === 10 ? ['Signal + Trust', 'Signal + No trust', 'No signal + Trust', 'No signal + No trust']
     : gameId === 9 ? ['Deal reached', 'Deal failed']
     : gameId === 27 ? ['Healthy stock (0–8 boats)', 'Depleted stock (9–12 boats)', 'Overfished (13–20 boats)']
     : gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
@@ -824,6 +872,7 @@ export function summarizeRound(
     studentPairs++;
     const index = gameId === 7 || gameId === 8 ? (() => { const winner = own.auction?.won ? own : other; return winner.ownPoints > 0 ? 0 : winner.ownPoints < 0 ? 2 : 1; })()
       : gameId === 9 ? ((demandAmount(own.ownChoice) || 0) + (demandAmount(other.ownChoice) || 0) <= 10 ? 0 : 1)
+      : gameId === 10 ? (own.signaling?.signal ? own.signaling.trusted ? 0 : 1 : own.signaling?.trusted ? 2 : 3)
       : gameId === 27 ? (() => { const total = (trawlerAmount(own.ownChoice) || 0) + (trawlerAmount(other.ownChoice) || 0); return total > 12 ? 2 : total > 8 ? 1 : 0; })()
       : gameId === 20 ? (own.exitNode || 7) - 1 : gameId === 19 ? (() => {
       const investor = assignment.role === 'first' ? own : other;
@@ -898,7 +947,7 @@ function summarizePublicGoodsRound(assignments: Record<string, Assignment>, choi
 export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null {
   const config = room.config;
   if (!config?.totalRounds || config.phase !== 'playing') return null;
-  if ((config.gameId === 2 || config.gameId === 5 || config.gameId === 30 || config.gameId === 19) && config.step !== 'respond') return null;
+  if ((config.gameId === 2 || config.gameId === 5 || config.gameId === 10 || config.gameId === 30 || config.gameId === 19) && config.step !== 'respond') return null;
   if (config.gameId === 20 && config.centipedeNode && config.centipedeNode !== 7) return null;
   if (config.gameId === 6 && config.repeatedTurn && config.repeatedTurn !== 6) return null;
   const round = config.round;
@@ -1034,3 +1083,4 @@ export function summarizePeople(summaries: RoundSummary[], archives: Record<stri
     .map(person => ({ uid: person.uid, alias: person.alias, analysis: summarizePerson(summaries, person.results) }))
     .sort((a, b) => a.alias.localeCompare(b.alias) || a.uid.localeCompare(b.uid));
 }
+

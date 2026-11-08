@@ -1,6 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+
+test('Costly Signaling stages a hidden quality and scores both roles', () => {
+  assert.ok(LIVE_GAMES.some(game => game.id === 10));
+  assert.deepEqual(signalingPoints('High', 'Signal', 'Trust'), [3, 3]);
+  assert.deepEqual(signalingPoints('Low', 'Signal', 'Trust'), [1, -3]);
+  assert.deepEqual(signalingPoints('Low', 'Signal', 'Do Not Trust'), [-3, 0]);
+  const assignments = {
+    seller: { round: 1, kind: 'student', role: 'first', opponentUid: 'buyer', opponentAlias: 'Buyer', quality: 'Low' },
+    buyer: { round: 1, kind: 'student', role: 'second', opponentUid: 'seller', opponentAlias: 'Seller' },
+  };
+  const choices = { seller: { round: 1, choice: 'Signal' }, buyer: { round: 1, choice: 'Trust' } };
+  const offers = prepareSignalingResponses(assignments, choices, 1);
+  assert.deepEqual(offers.buyer, { round: 1, choice: 'Signal', fromBot: false });
+  assert.equal(JSON.stringify(offers).includes('Low'), false);
+  const results = resolveResults(assignments, choices, 1, 10, offers);
+  assert.equal(results.seller.ownPoints, 1);
+  assert.equal(results.buyer.ownPoints, -3);
+  assert.equal(results.buyer.signaling.quality, 'Low');
+  assert.equal(summarizeRound(assignments, choices, results, 1, 10).outcomes[0].count, 1);
+});
 
 test('split the pie scores deals, failed deals, bot fallbacks, and reports', () => {
   assert.equal(demandAmount('Demand 10'), 10);
@@ -852,3 +872,4 @@ test('students can generate a short emoji alias and change its icon before joini
   }
   assert.ok(shuffleAliasIcon('A'.repeat(30)).length <= 30);
 });
+
