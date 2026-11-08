@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advanceRepeated, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advanceRepeated, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, fisheryPoints, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
 import { buildReportCsv } from '../src/reportExport.ts';
 
 test('Repeated Prisoner’s Dilemma keeps partners for five turns and reports the sequence', () => {
@@ -398,6 +398,24 @@ test('random bot chooses only options in the selected game', () => {
   for (const game of LIVE_GAMES) {
     for (let i = 0; i < 20; i++) assert.ok(game.options.includes(randomChoice(game.id)));
   }
+});
+
+test('Renewable Fishery matches the Solo Lab fleet profit bands and reports stock health', () => {
+  assert.equal(trawlerAmount('Trawlers 10'), 10);
+  assert.equal(trawlerAmount('Trawlers 11'), null);
+  assert.deepEqual(fisheryPoints(4, 4), [8, 8]);
+  assert.deepEqual(fisheryPoints(5, 5), [4.5, 4.5]);
+  assert.deepEqual(fisheryPoints(7, 7), [-3.5, -3.5]);
+  assert.throws(() => pointsFor(27, 'Trawlers 11', 'Trawlers 3'));
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' } };
+  const choices = { a: { round: 1, choice: 'Trawlers 7' }, b: { round: 1, choice: 'Trawlers 7' } };
+  const results = resolveResults(assignments, choices, 1, 27);
+  assert.equal(results.a.ownPoints, -3.5);
+  assert.equal(results.b.opponentKind, 'student');
+  const summary = summarizeRound(assignments, choices, results, 1, 27);
+  assert.equal(summary.studentPairs, 1);
+  assert.equal(summary.outcomes[2].count, 1);
 });
 
 test('Public Goods uses four-player groups and the Solo Lab scoring rule', () => {
