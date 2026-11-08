@@ -511,7 +511,7 @@ export function FirebaseLiveClass() {
           : practiceGameId === 9
           ? `You demanded ${demandAmount(practiceResult.ownChoice)}; the bot demanded ${demandAmount(practiceResult.botChoice || 'Demand 0')}. ${((demandAmount(practiceResult.ownChoice) ?? 0) + (demandAmount(practiceResult.botChoice || 'Demand 0') ?? 0)) <= 10 ? 'Deal reached.' : 'Deal failed; both take the 1-point outside option.'} You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
           : practiceGameId === 14
-          ? `You priced at $${bertrandPrice(practiceResult.ownChoice)}; the bot priced at $${bertrandPrice(practiceResult.botChoice || 'Price 10')}. ${practiceResult.ownChoice === practiceResult.botChoice ? 'You split the market.' : practiceResult.points > 0 ? 'You captured the market.' : 'The bot undercut you.'} Your profit: ${practiceResult.points}.`
+          ? `You priced at $${bertrandPrice(practiceResult.ownChoice)}; the bot priced at $${bertrandPrice(practiceResult.botChoice || 'Price 10')}. ${practiceResult.ownChoice === practiceResult.botChoice ? 'You split the market.' : (bertrandPrice(practiceResult.ownChoice) ?? 10) < (bertrandPrice(practiceResult.botChoice || 'Price 10') ?? 10) ? 'You captured the market.' : 'The bot undercut you.'} Your profit: ${practiceResult.points}.`
           : practiceGameId === 19
           ? `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
           : practiceGameId === 12
