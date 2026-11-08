@@ -1,6 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+
+test('split the pie scores deals, failed deals, bot fallbacks, and reports', () => {
+  assert.equal(demandAmount('Demand 10'), 10);
+  assert.equal(demandAmount('Demand 11'), null);
+  assert.equal(demandAmount('Demand 2.5'), null);
+  assert.deepEqual(pointsFor(9, 'Demand 6', 'Demand 4'), [6, 4]);
+  assert.deepEqual(pointsFor(9, 'Demand 7', 'Demand 4'), [1, 1]);
+  assert.throws(() => pointsFor(9, 'Demand 11', 'Demand 0'));
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' } };
+  const choices = { a: { round: 1, choice: 'Demand 7' }, b: { round: 1, choice: 'Demand 4' } };
+  const results = resolveResults(assignments, choices, 1, 9);
+  assert.deepEqual([results.a.ownPoints, results.b.ownPoints], [1, 1]);
+  const summary = summarizeRound(assignments, choices, results, 1, 9);
+  assert.equal(summary.outcomes.find(item => item.label === 'Deal failed').count, 1);
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 9 }, participants: { a: { alias: 'A' }, b: { alias: 'B' } }, assignments, choices }, true);
+  assert.equal(finished.archive[1].results.a.opponentChoice, 'Demand 4');
+  assert.match(buildReportCsv(() => 'Split the Pie Bargaining', [finished.config.summaries[1]], finished.archive), /"Deal failed","1"/);
+  const oldRandom = Math.random; Math.random = () => 0;
+  try { assert.equal(resolveResults(assignments, { a: choices.a }, 1, 9).a.fallback, true); }
+  finally { Math.random = oldRandom; }
+});
 import { buildReportCsv } from '../src/reportExport.ts';
 
 test('second-price auction uses private values, other bid as price, and reciprocal results', () => {

@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, centipedeTurnResults, classParticipants, contributionAmount, finishRound, gameFor, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomAuctionValue, randomBeautyGuess, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound, trawlerAmount,
+  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, centipedeTurnResults, classParticipants, contributionAmount, demandAmount, finishRound, gameFor, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomAuctionValue, randomBeautyGuess, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound, trawlerAmount,
 } from '../liveMatch';
 import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, PracticeCentipedePath, RepeatedPath, RepeatedTurn, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
@@ -412,7 +412,7 @@ export function FirebaseLiveClass() {
           <div className="mt-3 space-y-2 text-slate-300">
             <p>{practiceGame.rules}</p>
             {practiceGameId !== 20 && <p><strong className="text-slate-100">Points:</strong> {practiceGame.payoffs}</p>}
-            <p><strong className="text-slate-100">Random bot:</strong> {practiceGameId === 11 ? 'Three bots each guess a random number from 0 to 100. Your guess and theirs set the target.' : practiceGameId === 7 || practiceGameId === 8 ? 'The bot bids a random whole amount from 0 to 12. You win a tied bid.' : practiceGameId === 2 || practiceGameId === 5
+            <p><strong className="text-slate-100">Random bot:</strong> {practiceGameId === 11 ? 'Three bots each guess a random number from 0 to 100. Your guess and theirs set the target.' : practiceGameId === 9 ? 'The bot makes a random whole-point demand from 0 to 10.' : practiceGameId === 7 || practiceGameId === 8 ? 'The bot bids a random whole amount from 0 to 12. You win a tied bid.' : practiceGameId === 2 || practiceGameId === 5
               ? `As ${practiceGameId === 5 ? 'Incumbent' : 'First Mover'}, the bot randomly enters or stays out. As ${practiceGameId === 5 ? 'Rival' : 'Second Mover'}, it randomly chooses its first move before you decide.`
               : practiceGameId === 19
               ? 'When you invest, the bot returns a random whole amount from 0 to three times your investment. When you are the Trustee, the bot invests a random whole amount from 0 to 10.'
@@ -448,6 +448,9 @@ export function FirebaseLiveClass() {
           <label htmlFor="practice-guess" className="block font-semibold">Your guess: {guessAmount(practiceChoice) ?? 0}</label>
           <input id="practice-guess" type="range" min="0" max="100" step="0.1" value={guessAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Guess ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
           <input aria-label="Enter a precise practice guess" type="number" min="0" max="100" step="0.1" value={guessAmount(practiceChoice) ?? 0} onChange={event => { const value = Number(event.target.value); if (event.target.value && value >= 0 && value <= 100) { setPracticeChoice(`Guess ${Number(value.toFixed(1))}`); setPracticeResult(null); } }} className="w-32 rounded-lg border border-slate-600 bg-slate-950 p-2 text-white" />
+        </div> : practiceGameId === 9 ? <div className="space-y-2">
+          <label htmlFor="practice-demand" className="block font-semibold">Your demand: {demandAmount(practiceChoice) ?? 0} of 10 points</label>
+          <input id="practice-demand" type="range" min="0" max="10" step="1" value={demandAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Demand ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
         </div> : practiceGameId === 7 || practiceGameId === 8 ? <div className="space-y-2">
           <label htmlFor="practice-bid" className="block font-semibold">Your sealed bid: {auctionBid(practiceChoice) ?? 0}</label>
           <input id="practice-bid" type="range" min="0" max="12" step="1" value={auctionBid(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Bid ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
@@ -480,7 +483,9 @@ export function FirebaseLiveClass() {
           : <button onClick={playBot} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">{practiceGameId === 6 ? `Play turn ${practiceRepeatedTurns.length + 1} of 5` : 'Play random bot'}</button>}
         {practiceResult && (practiceGameId === 7 || practiceGameId === 8) && <p role="status">You bid {auctionBid(practiceResult.ownChoice)}; the bot bid {auctionBid(practiceResult.botChoice || 'Bid 0')}. {((practiceGameId === 8 ? firstPriceAuctionPayoff : auctionPayoff)(auctionBid(practiceResult.ownChoice) ?? 0, auctionBid(practiceResult.botChoice || 'Bid 0') ?? 0, practiceValuation, true)).won ? `You won and paid ${practiceGameId === 8 ? auctionBid(practiceResult.ownChoice) : auctionBid(practiceResult.botChoice || 'Bid 0')}.` : 'The bot won.'} Your score: {practiceResult.points} {practiceResult.points === 1 ? 'point' : 'points'}.</p>}
         {practiceResult?.beauty && <p role="status">You guessed {guessAmount(practiceResult.ownChoice)}; bots guessed {practiceResult.beauty.botGuesses.join(', ')}. Class average {practiceResult.beauty.average.toFixed(2)}; target {practiceResult.beauty.target.toFixed(2)}. You were {practiceResult.beauty.winner ? 'closest' : 'not closest'} and earned {practiceResult.points} {practiceResult.points === 1 ? 'point' : 'points'}.</p>}
-        {practiceResult && practiceGameId !== 7 && practiceGameId !== 8 && practiceGameId !== 11 && <p role="status">{practiceGameId === 19
+        {practiceResult && practiceGameId !== 7 && practiceGameId !== 8 && practiceGameId !== 11 && <p role="status">{practiceGameId === 9
+          ? `You demanded ${demandAmount(practiceResult.ownChoice)}; the bot demanded ${demandAmount(practiceResult.botChoice || 'Demand 0')}. ${((demandAmount(practiceResult.ownChoice) ?? 0) + (demandAmount(practiceResult.botChoice || 'Demand 0') ?? 0)) <= 10 ? 'Deal reached.' : 'Deal failed; both take the 1-point outside option.'} You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
+          : practiceGameId === 19
           ? `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
           : practiceGameId === 12
           ? `You contributed ${contributionAmount(practiceResult.ownChoice) ?? 0}; the three bots contributed ${practiceResult.botContributions?.join(', ')}. The group pool was ${practiceResult.groupTotal}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
@@ -680,6 +685,10 @@ export function FirebaseLiveClass() {
                 <label htmlFor="live-guess" className="block font-semibold">Your private guess: {guessAmount(choice) ?? 0}</label>
                 <input id="live-guess" type="range" min="0" max="100" step="0.1" value={guessAmount(choice) ?? 0} onChange={event => setChoice(`Guess ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
                 <input aria-label="Enter a precise class guess" type="number" min="0" max="100" step="0.1" value={guessAmount(choice) ?? 0} onChange={event => { const value = Number(event.target.value); if (event.target.value && value >= 0 && value <= 100) setChoice(`Guess ${Number(value.toFixed(1))}`); }} className="w-32 rounded-lg border border-slate-600 bg-slate-950 p-2 text-white" />
+              </div> : game.id === 9 ? <div className="space-y-2">
+                <label htmlFor="live-demand" className="block font-semibold">Your demand: {demandAmount(choice) ?? 0} of 10 points</label>
+                <input id="live-demand" type="range" min="0" max="10" step="1" value={demandAmount(choice) ?? 0} onChange={event => setChoice(`Demand ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
+                <p className="text-sm text-slate-300">Negotiate for up to 60 seconds, then lock your demand. Both demands stay hidden until the instructor reveals the result.</p>
               </div> : game.id === 7 || game.id === 8 ? <div className="space-y-2">
                 <label htmlFor="live-bid" className="block font-semibold">Your sealed bid: {auctionBid(choice) ?? 0}</label>
                 <input id="live-bid" type="range" min="0" max="12" step="1" value={auctionBid(choice) ?? 0} onChange={event => setChoice(`Bid ${Number(event.target.value)}`)} className="w-full accent-blue-500" />

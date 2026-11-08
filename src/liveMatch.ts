@@ -1,5 +1,5 @@
-export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 11 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -113,6 +113,10 @@ export function shuffleAliasIcon(alias: string): string {
 
 export const ULTIMATUM_OFFERS = Array.from({ length: 21 }, (_, index) => `Offer ${index / 2}` as Choice) as [Choice, Choice, ...Choice[]];
 export const AUCTION_BIDS = Array.from({ length: 13 }, (_, index) => `Bid ${index}` as Choice) as [Choice, Choice, ...Choice[]];
+export const PIE_DEMANDS = Array.from({ length: 11 }, (_, index) => `Demand ${index}` as Choice) as [Choice, Choice, ...Choice[]];
+export function demandAmount(choice: Choice): number | null {
+  return /^Demand (?:10|[0-9])$/.test(choice) ? Number(choice.slice(7)) : null;
+}
 export const randomAuctionValue = (): number => 1 + randomIndex(10);
 export const randomBeautyGuess = (): number => randomIndex(1001) / 10;
 export const BEAUTY_BANDS = ['0–19.9', '20–39.9', '40–59.9', '60–79.9', '80–100'] as const;
@@ -161,6 +165,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 3, title: 'Highway Gas War', options: ['High Price', 'Low Price'], rules: 'Two stations across a highway secretly post a High ($4) or Low ($3) price. Motorists choose the cheaper station.', payoffs: 'Both High: 2 each · Both Low: 1 each · Low against High: 3 / 0 (Low / High)' },
   { id: 7, title: 'Second-Price Auction', options: AUCTION_BIDS, rules: 'You receive a private value from 1–10 for the artwork. Submit a sealed whole-point bid from 0–12. The highest bid wins but pays the other bid.', payoffs: 'Winner score = own value − other bid. Loser scores 0. If bids tie, the first paired bidder wins.' },
   { id: 8, title: 'First-Price Auction', options: AUCTION_BIDS, rules: 'You receive a private value from 1–10 for the artwork. Submit a sealed whole-point bid from 0–12. The highest bid wins and pays their own bid.', payoffs: 'Winner score = own value − own bid. Loser scores 0. If bids tie, the first paired bidder wins.' },
+  { id: 9, title: 'Split the Pie Bargaining', options: PIE_DEMANDS, rules: 'Negotiate with your partner, then each privately lock a whole-point demand from 0 to 10. You are dividing a 10-point pie.', payoffs: 'If demands total at most 10, each gets their demand. If demands exceed 10, the deal fails and each gets the 1-point outside option.' },
   { id: 11, title: 'Beauty Contest (2/3 Average)', options: ['Guess 0', 'Guess 100'], rules: 'Everyone privately guesses a number from 0 to 100, to one decimal place. The target is two thirds of the average submitted guess. Missing students are left out of the average.', payoffs: 'The closest guess wins 5 points; every other submitted guess earns 1 point. Exact ties for closest each win 5 points.' },
   { id: 2, title: 'Sequential Entry', options: ['Launch', 'Wait', 'Enter', 'Stay Out'], rules: 'The First Mover chooses Launch or Wait. The Second Mover sees that decision, then chooses Enter or Stay Out.', payoffs: 'Launch + Stay Out: 4 / 1 · Launch + Enter: 2 / 2 · Wait + Enter: 1 / 4 · Wait + Stay Out: 0 / 0 (First / Second Mover)', roles: ['First Mover', 'Second Mover'] },
   { id: 5, title: 'Entry Deterrence', options: ['Commit', 'Stay Flexible', 'Enter', 'Stay Out'], rules: 'The Incumbent chooses whether to make an irreversible commitment. The Rival sees that choice, then decides whether to enter the market.', payoffs: 'Commit + Stay Out: 4 / 0 · Commit + Enter: −2 / −2 · Stay Flexible + Enter: 2 / 2 · Stay Flexible + Stay Out: 4 / 0 (Incumbent / Rival)', roles: ['Incumbent', 'Rival'] },
@@ -251,6 +256,12 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
       throw new Error('Auction scoring requires private valuations.');
     case 11:
       throw new Error('Beauty Contest scoring requires all submitted guesses.');
+    case 9: {
+      const ownDemand = demandAmount(own);
+      const otherDemand = demandAmount(other);
+      if (ownDemand === null || otherDemand === null) throw new Error('Invalid pie demand.');
+      return ownDemand + otherDemand <= 10 ? [ownDemand, otherDemand] : [1, 1];
+    }
     case 3:
       if (!['High Price', 'Low Price'].includes(own) || !['High Price', 'Low Price'].includes(other)) throw new Error('Invalid Highway Gas War choices.');
       if (own === 'High Price' && other === 'High Price') return [2, 2];
@@ -787,6 +798,7 @@ export function summarizeRound(
   }));
 
   const outcomeNames = gameId === 7 || gameId === 8 ? ['Winner gains points', 'Winner breaks even', 'Winner loses points']
+    : gameId === 9 ? ['Deal reached', 'Deal failed']
     : gameId === 27 ? ['Healthy stock (0–8 boats)', 'Depleted stock (9–12 boats)', 'Overfished (13–20 boats)']
     : gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
     : gameId === 20 ? ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Both pass all nodes']
@@ -811,6 +823,7 @@ export function summarizeRound(
     if (own?.round !== round || other?.round !== round || own.opponentKind !== 'student' || other.opponentKind !== 'student') continue;
     studentPairs++;
     const index = gameId === 7 || gameId === 8 ? (() => { const winner = own.auction?.won ? own : other; return winner.ownPoints > 0 ? 0 : winner.ownPoints < 0 ? 2 : 1; })()
+      : gameId === 9 ? ((demandAmount(own.ownChoice) || 0) + (demandAmount(other.ownChoice) || 0) <= 10 ? 0 : 1)
       : gameId === 27 ? (() => { const total = (trawlerAmount(own.ownChoice) || 0) + (trawlerAmount(other.ownChoice) || 0); return total > 12 ? 2 : total > 8 ? 1 : 0; })()
       : gameId === 20 ? (own.exitNode || 7) - 1 : gameId === 19 ? (() => {
       const investor = assignment.role === 'first' ? own : other;
