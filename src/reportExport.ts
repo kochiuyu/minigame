@@ -7,6 +7,7 @@ const HEADER = [
   'Opponent choice', 'Points', 'Opponent points', 'Match type', 'Bot fallback',
   'Submitted', 'Student pairs', 'Student groups', 'Bot matches', 'Bot seats', 'Average score',
   'Private value', 'Won auction', 'Winning bid', 'Price paid',
+  'Class average', 'Beauty target', 'Distance to target', 'Closest guess',
 ];
 
 function csvCell(value: ReportRow[number]): string {
@@ -25,6 +26,8 @@ function resultRow(round: number, game: string, alias: string, result?: MatchRes
     '', '', '', '', '', '',
     result?.auction?.valuation, result?.auction ? (result.auction.won ? 'Yes' : 'No') : '',
     result?.auction?.winningBid, result?.auction?.won ? result.auction.price : '',
+    result?.beauty?.average, result?.beauty?.target, result?.beauty?.distance,
+    result?.beauty ? (result.beauty.winner ? 'Yes' : 'No') : '',
   ];
 }
 
@@ -43,7 +46,8 @@ export function buildReportCsv(gameTitle: (id: GameId) => string, summaries: Rou
     const game = gameTitle(summary.gameId);
     rows.push(['Round summary', summary.round, game, '', '', '', '', '', '', '', '', '',
       summary.submitted, summary.studentPairs, summary.studentGroups, summary.botMatches,
-      summary.botSeats, summary.averagePoints]);
+      summary.botSeats, summary.averagePoints, '', '', '', '',
+      summary.beauty?.average, summary.beauty?.target, summary.beauty?.winningDistance, summary.beauty?.winners]);
     for (const item of summary.choiceCounts) rows.push(['Choice count', summary.round, game, '', item.label, item.count]);
     for (const item of summary.outcomes) rows.push(['Outcome count', summary.round, game, '', item.label, item.count]);
     if (archives) {
@@ -61,4 +65,3 @@ export function buildReportCsv(gameTitle: (id: GameId) => string, summaries: Rou
   }
   return '\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
-

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, fisheryPoints, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
 import { buildReportCsv } from '../src/reportExport.ts';
 
 test('second-price auction uses private values, other bid as price, and reciprocal results', () => {
@@ -71,6 +71,34 @@ test('first-price auction charges the winner their own bid across pair, tie, bot
     assert.equal(fallback.a.fallback, true);
     assert.equal(fallback.a.auction.price, 2);
   } finally { Math.random = oldRandom; }
+});
+
+test('Beauty Contest uses all submitted guesses, exact ties, classwide charts, and report export', () => {
+  assert.equal(guessAmount('Guess 33.3'), 33.3);
+  assert.equal(guessAmount('Guess 100.1'), null);
+  assert.equal(guessAmount('Guess 1.23'), null);
+  assert.throws(() => beautyContest([]));
+  const participants = { a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' }, d: { alias: 'D' } };
+  const assignments = classParticipants(participants, 1);
+  assert.deepEqual(Object.values(assignments).map(item => item.kind), ['class', 'class', 'class', 'class']);
+  const choices = { a: { round: 1, choice: 'Guess 0' }, b: { round: 1, choice: 'Guess 30' }, c: { round: 1, choice: 'Guess 60' } };
+  const results = resolveResults(assignments, choices, 1, 11);
+  assert.deepEqual([results.a.ownPoints, results.b.ownPoints, results.c.ownPoints], [1, 5, 1]);
+  assert.equal(results.d, undefined);
+  assert.equal(results.b.beauty.average, 30);
+  assert.equal(results.b.beauty.target, 20);
+  const summary = summarizeRound(assignments, choices, results, 1, 11);
+  assert.deepEqual(summary.choiceCounts.map(item => item.count), [1, 1, 0, 1, 0]);
+  assert.deepEqual(summary.outcomes.map(item => item.count), [1, 2]);
+  assert.equal(summary.studentPairs, 0);
+  const tied = resolveResults(assignments, { a: { round: 1, choice: 'Guess 20' }, b: { round: 1, choice: 'Guess 20' }, c: { round: 1, choice: 'Guess 100' } }, 1, 11);
+  assert.deepEqual([tied.a.ownPoints, tied.b.ownPoints, tied.c.ownPoints], [5, 5, 1]);
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 11 }, participants, assignments, choices }, true);
+  assert.equal(finished.archive[1].results.b.beauty.target, 20);
+  assert.equal(summarizeClass([finished.config.summaries[1]]).byGame.find(item => item.gameId === 11).choiceCounts[1].count, 1);
+  const csv = buildReportCsv(() => 'Beauty Contest', [finished.config.summaries[1]], finished.archive);
+  assert.match(csv, /"Class average","Beauty target","Distance to target","Closest guess"/);
+  assert.match(csv, /"Student result","1","Beauty Contest","B".*"30","20","10","Yes"/);
 });
 
 test('Highway Gas War scores, pairs, bot fallback, and class outcomes', () => {
