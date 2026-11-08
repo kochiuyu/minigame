@@ -251,7 +251,16 @@ export function FirebaseLiveClass() {
         }} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
           {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
-        <p className="text-sm text-slate-300">{practiceGame.payoffs}</p>
+        <details className="rounded-lg border border-slate-700 bg-slate-950/60 p-3 text-sm">
+          <summary className="cursor-pointer font-semibold text-blue-200">How to play {practiceGame.title}</summary>
+          <div className="mt-3 space-y-2 text-slate-300">
+            <p>{practiceGame.rules}</p>
+            <p><strong className="text-slate-100">Points:</strong> {practiceGame.payoffs}</p>
+            <p><strong className="text-slate-100">Random bot:</strong> {practiceGameId === 30
+              ? 'As Proposer, the bot accepts or rejects with equal chance. As Responder, it offers a random amount from 0 to 10 in half-point steps.'
+              : 'The bot picks each available choice with equal chance.'}</p>
+          </div>
+        </details>
         {practiceGameId === 30 ? <label className="block text-sm font-bold">Practice role
           <select value={practiceRole} onChange={event => { const role = event.target.value as 'first' | 'second'; setPracticeRole(role); setPracticeChoice(role === 'first' ? 'Offer 5' : 'Accept'); setPracticeBotOffer(randomChoice(30)); setPracticeResult(null); }} className="mt-2 w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
             <option value="first">Proposer</option><option value="second">Responder</option>
@@ -429,3 +438,4 @@ export function FirebaseLiveClass() {
     </section>
   );
 }
+
