@@ -1,5 +1,5 @@
-export type GameId = 1 | 2 | 4 | 5 | 6 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -125,6 +125,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   roles?: readonly [string, string];
 }> = [
   { id: 1, title: "Prisoner's Dilemma", options: ['Cooperate', 'Defect'], rules: 'You and the bot each choose Cooperate or Defect without seeing the other choice.', payoffs: 'Both Cooperate: 2 each · Both Defect: 1 each · Defect against Cooperate: 3–0' },
+  { id: 3, title: 'Highway Gas War', options: ['High Price', 'Low Price'], rules: 'Two stations across a highway secretly post a High ($4) or Low ($3) price. Motorists choose the cheaper station.', payoffs: 'Both High: 2 each · Both Low: 1 each · Low against High: 3 / 0 (Low / High)' },
   { id: 2, title: 'Sequential Entry', options: ['Launch', 'Wait', 'Enter', 'Stay Out'], rules: 'The First Mover chooses Launch or Wait. The Second Mover sees that decision, then chooses Enter or Stay Out.', payoffs: 'Launch + Stay Out: 4 / 1 · Launch + Enter: 2 / 2 · Wait + Enter: 1 / 4 · Wait + Stay Out: 0 / 0 (First / Second Mover)', roles: ['First Mover', 'Second Mover'] },
   { id: 5, title: 'Entry Deterrence', options: ['Commit', 'Stay Flexible', 'Enter', 'Stay Out'], rules: 'The Incumbent chooses whether to make an irreversible commitment. The Rival sees that choice, then decides whether to enter the market.', payoffs: 'Commit + Stay Out: 4 / 0 · Commit + Enter: −2 / −2 · Stay Flexible + Enter: 2 / 2 · Stay Flexible + Stay Out: 4 / 0 (Incumbent / Rival)', roles: ['Incumbent', 'Rival'] },
   { id: 6, title: "Repeated Prisoner's Dilemma", options: ['Cooperate', 'Defect'], rules: 'Play five turns with the same partner. Each turn, both choose Cooperate or Defect without seeing the other choice. After both decisions, you see what happened before choosing again.', payoffs: 'Each turn: Both Cooperate 2 each · Both Defect 1 each · Defect against Cooperate 3 / 0' },
@@ -209,6 +210,11 @@ export function ultimatumPoints(offer: Choice, response: Choice): [number, numbe
 
 export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role = 'first'): [number, number] {
   switch (gameId) {
+    case 3:
+      if (!['High Price', 'Low Price'].includes(own) || !['High Price', 'Low Price'].includes(other)) throw new Error('Invalid Highway Gas War choices.');
+      if (own === 'High Price' && other === 'High Price') return [2, 2];
+      if (own === 'Low Price' && other === 'Low Price') return [1, 1];
+      return own === 'Low Price' ? [3, 0] : [0, 3];
     case 20: {
       const first = role === 'first' ? own : other;
       const second = role === 'first' ? other : own;
@@ -703,6 +709,7 @@ export function summarizeRound(
     : gameId === 30 ? ['Accepted', 'Rejected']
     : gameId === 23 ? ['One student wins', 'Tie']
     : gameId === 1 ? ['Both cooperate', 'Both defect', 'Different choices']
+    : gameId === 3 ? ['Both high price', 'Both low price', 'One station undercuts']
     : gameId === 13 ? ['Both hunt stag', 'Both hunt hare', 'Different choices']
     : gameId === 15 ? ['Both dove', 'Both hawk', 'Different choices']
     : gameId === 17 ? ['Matching choices', 'Different choices']
