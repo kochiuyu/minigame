@@ -1,4 +1,4 @@
-export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 29 | 30;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30;
 export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Signal' | 'No Signal' | 'Trust' | 'Do Not Trust' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Claim ${number}` | `Price ${number}` | `Quantity ${number}` | `Location ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
@@ -47,6 +47,7 @@ export type MatchResult = {
   repeatedTurns?: Record<string, RepeatedTurn>;
   group?: { totalContribution: number; classmates: number; bots: number; missing: number };
   signaling?: { quality: 'High' | 'Low'; signal: boolean; trusted: boolean };
+  lemons?: { quality: 'High' | 'Low'; offer: number; accepted: boolean };
 };
 export type RoundSummary = {
   round: number;
@@ -156,6 +157,19 @@ export const HOTELLING_LOCATIONS = Array.from({ length: 101 }, (_, index) => `Lo
 export const COMMON_VALUE_BIDS = Array.from({ length: 81 }, (_, index) => `Bid ${index + 10}` as Choice) as [Choice, Choice, ...Choice[]];
 export const DOLLAR_AUCTION_BIDS = Array.from({ length: 25 }, (_, index) => `Bid ${((index + 1) / 10).toFixed(1)}` as Choice) as [Choice, Choice, ...Choice[]];
 export const TRAVELER_CLAIMS = Array.from({ length: 99 }, (_, index) => `Claim ${index + 2}` as Choice) as [Choice, Choice, ...Choice[]];
+export const LEMONS_OFFERS = Array.from({ length: 33 }, (_, index) => `Offer ${1000 + index * 250}` as Choice) as [Choice, Choice, ...Choice[]];
+export const randomLemonsQuality = (): 'High' | 'Low' => Math.random() < 0.5 ? 'High' : 'Low';
+export function lemonsOffer(choice: Choice): number | null {
+  const match = /^Offer (\d{4})$/.exec(choice);
+  const amount = match ? Number(match[1]) : 0;
+  return amount >= 1000 && amount <= 9000 && amount % 250 === 0 ? amount : null;
+}
+export function lemonsPayoff(offer: number, quality: 'High' | 'Low', accepted: boolean): [number, number] {
+  if (!Number.isInteger(offer) || offer < 1000 || offer > 9000 || offer % 250 !== 0) throw new Error('Invalid Lemons offer.');
+  const sellerValue = quality === 'High' ? 7000 : 3000;
+  const buyerValue = quality === 'High' ? 9000 : 5000;
+  return accepted ? [buyerValue - offer, offer - sellerValue] : [0, 0];
+}
 export function travelerClaim(choice: Choice): number | null {
   return /^Claim (?:100|[2-9]|[1-9][0-9])$/.test(choice) ? Number(choice.slice(6)) : null;
 }
@@ -253,6 +267,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], rules: 'The Proposer offers part of a 10-point pot. The Responder sees the offer and accepts or rejects it.', payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
   { id: 25, title: 'Escalating Dollar Auction', options: DOLLAR_AUCTION_BIDS, rules: 'Secretly bid $0.10 to $2.50 in ten-cent steps for a $1 bill. Both bidders pay their bids. The first paired bidder wins a tie.', payoffs: 'Winner earns $1 minus their bid. Loser loses their bid, even if the winning bid exceeds $1.' },
   { id: 26, title: "Traveler's Dilemma", options: TRAVELER_CLAIMS, rules: 'Two travelers secretly claim $2 to $100 for identical lost luggage. The airline bases both payments on the lower claim.', payoffs: 'Equal claims: each receives that amount. Different claims: lower claimant receives the lower claim plus $2; higher claimant receives the lower claim minus $2.' },
+  { id: 28, title: 'Lemons Market', options: [...LEMONS_OFFERS, 'Accept', 'Reject'], rules: 'The buyer offers $1,000–$9,000 in $250 steps. The seller privately knows whether the car is High or Low quality, sees the offer, then accepts or rejects.', payoffs: 'High-quality car: seller values it at $7,000, buyer at $9,000. Low-quality car: seller values it at $3,000, buyer at $5,000. If accepted, buyer profit = buyer value minus offer; seller profit = offer minus seller value. If rejected, both earn $0.', roles: ['Buyer', 'Seller'] },
 ];
 
 export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
@@ -260,7 +275,7 @@ export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
 }
 
 export function randomChoice(gameId: GameId = 1): Choice {
-  const options = (gameId === 16 || gameId === 30) ? ULTIMATUM_OFFERS : gameId === 2 ? (['Launch', 'Wait'] as const) : gameId === 5 ? (['Commit', 'Stay Flexible'] as const) : gameId === 10 ? (['Signal', 'No Signal'] as const) : gameId === 20 ? CENTIPEDE_FIRST : gameFor(gameId).options;
+  const options = gameId === 28 ? LEMONS_OFFERS : (gameId === 16 || gameId === 30) ? ULTIMATUM_OFFERS : gameId === 2 ? (['Launch', 'Wait'] as const) : gameId === 5 ? (['Commit', 'Stay Flexible'] as const) : gameId === 10 ? (['Signal', 'No Signal'] as const) : gameId === 20 ? CENTIPEDE_FIRST : gameFor(gameId).options;
   return options[randomIndex(options.length)];
 }
 
@@ -336,6 +351,8 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
       throw new Error('Signaling scoring requires private seller quality.');
     case 11:
       throw new Error('Beauty Contest scoring requires all submitted guesses.');
+    case 28:
+      throw new Error('Lemons Market scoring requires private car quality and a seller response.');
     case 9: {
       const ownDemand = demandAmount(own);
       const otherDemand = demandAmount(other);
@@ -510,10 +527,10 @@ export function pairParticipants(participants: Record<string, Participant>, roun
     const first = uids[i];
     const second = uids[i + 1];
     if (!second) {
-      assignments[first] = { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...(gameId === 10 ? { quality: Math.random() < 0.5 ? 'High' : 'Low' as const } : {}) };
+      assignments[first] = { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...([10, 28].includes(gameId) ? { quality: randomLemonsQuality() } : {}) };
     } else {
-      assignments[first] = { round, kind: 'student', opponentUid: second, opponentAlias: participants[second].alias, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...(gameId === 10 ? { quality: Math.random() < 0.5 ? 'High' : 'Low' as const } : {}) };
-      assignments[second] = { round, kind: 'student', opponentUid: first, opponentAlias: participants[first].alias, role: 'second', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}) };
+      assignments[first] = { round, kind: 'student', opponentUid: second, opponentAlias: participants[second].alias, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...(gameId === 10 ? { quality: randomLemonsQuality() } : {}) };
+      assignments[second] = { round, kind: 'student', opponentUid: first, opponentAlias: participants[first].alias, role: 'second', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...(gameId === 28 ? { quality: randomLemonsQuality() } : {}) };
     }
   }
   return assignments;
@@ -554,6 +571,7 @@ export function resolveResults(
   if (gameId === 24) return resolveCommonValueResults(assignments, choices, round);
   if (gameId === 20) return resolveCentipedeResults(assignments, choices, round);
   if (gameId === 10) return resolveSignalingResults(assignments, choices, offers, round);
+  if (gameId === 28) return resolveLemonsResults(assignments, choices, offers, round);
   if (gameId === 2 || gameId === 5) return resolveSequentialResults(assignments, choices, offers, round, gameId);
   if (gameId === 19) return resolveTrustResults(assignments, choices, offers, round);
   if ((gameId === 16 || gameId === 30)) return resolveUltimatumResults(assignments, choices, offers, round);
@@ -835,6 +853,42 @@ export function prepareSignalingResponses(assignments: Record<string, Assignment
   return offers;
 }
 
+export function prepareLemonsResponses(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, VisibleOffer> {
+  const offers: Record<string, VisibleOffer> = {};
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== round || assignment.role !== 'second') continue;
+    const buyer = assignment.opponentUid && choices[assignment.opponentUid]?.round === round ? choices[assignment.opponentUid].choice : null;
+    const valid = buyer && lemonsOffer(buyer) !== null;
+    offers[uid] = { round, choice: valid ? buyer : randomChoice(28), fromBot: !valid };
+  }
+  return offers;
+}
+
+function resolveLemonsResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, offers: Record<string, VisibleOffer>, round: number): Record<string, MatchResult> {
+  const results: Record<string, MatchResult> = {};
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== round) continue;
+    const own = choices[uid]?.round === round ? choices[uid].choice : null;
+    const buyer = assignment.role !== 'second';
+    if (!own || (buyer ? lemonsOffer(own) === null : own !== 'Accept' && own !== 'Reject')) continue;
+    const partner = assignment.opponentUid && choices[assignment.opponentUid]?.round === round ? choices[assignment.opponentUid].choice : null;
+    const quality = buyer ? assignment.opponentUid && assignments[assignment.opponentUid]?.quality || assignment.quality || randomLemonsQuality()
+      : assignment.quality || randomLemonsQuality();
+    const offerChoice = buyer ? own : offers[uid]?.round === round ? offers[uid].choice : partner && lemonsOffer(partner) !== null ? partner : randomChoice(28);
+    const amount = lemonsOffer(offerChoice);
+    if (amount === null) continue;
+    const validPartner = buyer ? partner === 'Accept' || partner === 'Reject' : partner && lemonsOffer(partner) !== null;
+    const response = buyer ? validPartner ? partner! : amount >= (quality === 'High' ? 7000 : 3000) ? 'Accept' : 'Reject' : own;
+    const fallback = assignment.kind === 'bot' || (assignment.kind === 'student' && (buyer ? !validPartner : offers[uid]?.fromBot !== false));
+    const [buyerPoints, sellerPoints] = lemonsPayoff(amount, quality, response === 'Accept');
+    results[uid] = { round, ownChoice: own, opponentChoice: buyer ? response : offerChoice,
+      ownPoints: buyer ? buyerPoints : sellerPoints, opponentPoints: buyer ? sellerPoints : buyerPoints,
+      opponentAlias: fallback ? BOT_ALIAS : assignment.opponentAlias, opponentKind: fallback ? 'bot' : assignment.kind, fallback,
+      lemons: { quality, offer: amount, accepted: response === 'Accept' } };
+  }
+  return results;
+}
+
 function resolveSignalingResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, offers: Record<string, VisibleOffer>, round: number): Record<string, MatchResult> {
   const results: Record<string, MatchResult> = {};
   for (const [uid, assignment] of Object.entries(assignments)) {
@@ -962,10 +1016,13 @@ export function summarizeRound(
   const submitted = Object.entries(choices).filter(([uid, item]) =>
     item.round === round && assignments[uid]?.round === round);
   const finished = Object.entries(results).filter(([, item]) => item.round === round);
-  const choiceCounts = (gameId === 26 ? ['2-19', '20-39', '40-59', '60-79', '80-100']
+  const choiceCounts = (gameId === 28 ? ['1000-2999', '3000-4999', '5000-6999', '7000-9000', 'Accept', 'Reject']
+    : gameId === 26 ? ['2-19', '20-39', '40-59', '60-79', '80-100']
     : gameId === 24 ? Array.from({ length: 9 }, (_, index) => `${10 + index * 10}–${Math.min(90, 19 + index * 10)}`) : game.options).map(option => ({
     label: option,
-    count: submitted.filter(([, item]) => gameId === 26
+    count: submitted.filter(([, item]) => gameId === 28 && option.includes('-')
+      ? (() => { const offer = lemonsOffer(item.choice); const [low, high] = option.split('-').map(Number); return offer !== null && offer >= low && offer <= high; })()
+      : gameId === 26
       ? (() => { const claim = travelerClaim(item.choice); const [low, high] = option.split('-').map(Number); return claim !== null && claim >= low && claim <= high; })()
       : gameId === 24
       ? (() => { const bid = commonValueBid(item.choice); const [low, high] = option.split('–').map(Number); return bid !== null && bid >= low && bid <= high; })()
@@ -980,6 +1037,7 @@ export function summarizeRound(
     : gameId === 22 ? ['Same location: split beach', 'Different locations: divided beach']
     : gameId === 25 ? ['Winner gains', 'Winner breaks even', 'Winner overbids $1']
     : gameId === 26 ? ['Equal claims', 'Different claims']
+    : gameId === 28 ? ['High quality sold', 'Low quality sold', 'No sale']
     : gameId === 27 ? ['Healthy stock (0–8 boats)', 'Depleted stock (9–12 boats)', 'Overfished (13–20 boats)']
     : gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
     : gameId === 20 ? ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Both pass all nodes']
@@ -1011,6 +1069,7 @@ export function summarizeRound(
       : gameId === 10 ? (own.signaling?.signal ? own.signaling.trusted ? 0 : 1 : own.signaling?.trusted ? 2 : 3)
       : gameId === 25 ? (() => { const ownBid = dollarAuctionBid(own.ownChoice)!; const otherBid = dollarAuctionBid(other.ownChoice)!; const winner = ownBid > otherBid || (ownBid === otherBid && assignment.role === 'first') ? own : other; return winner.ownPoints > 0 ? 0 : winner.ownPoints < 0 ? 2 : 1; })()
       : gameId === 26 ? (own.ownChoice === other.ownChoice ? 0 : 1)
+      : gameId === 28 ? (!own.lemons?.accepted ? 2 : own.lemons.quality === 'High' ? 0 : 1)
       : gameId === 27 ? (() => { const total = (trawlerAmount(own.ownChoice) || 0) + (trawlerAmount(other.ownChoice) || 0); return total > 12 ? 2 : total > 8 ? 1 : 0; })()
       : gameId === 20 ? (own.exitNode || 7) - 1 : gameId === 19 ? (() => {
       const investor = assignment.role === 'first' ? own : other;
@@ -1085,7 +1144,7 @@ function summarizePublicGoodsRound(assignments: Record<string, Assignment>, choi
 export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null {
   const config = room.config;
   if (!config?.totalRounds || config.phase !== 'playing') return null;
-  if ((config.gameId === 2 || config.gameId === 5 || config.gameId === 10 || (config.gameId === 16 || config.gameId === 30) || config.gameId === 19) && config.step !== 'respond') return null;
+  if ((config.gameId === 2 || config.gameId === 5 || config.gameId === 10 || config.gameId === 28 || (config.gameId === 16 || config.gameId === 30) || config.gameId === 19) && config.step !== 'respond') return null;
   if (config.gameId === 20 && config.centipedeNode && config.centipedeNode !== 7) return null;
   if (config.gameId === 6 && config.repeatedTurn && config.repeatedTurn !== 6) return null;
   const round = config.round;
