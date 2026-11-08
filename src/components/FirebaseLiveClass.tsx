@@ -4,9 +4,9 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, pairParticipants, pointsFor, randomChoice, resolveResults,
+  BOT_ALIAS, LIVE_GAMES, gameFor, pairParticipants, pointsFor, randomChoice, resolveResults,
 } from '../liveMatch';
-import type { Assignment, Choice, MatchResult, Participant, RoomConfig, Submission } from '../liveMatch';
+import type { Assignment, Choice, GameId, MatchResult, Participant, RoomConfig, Submission } from '../liveMatch';
 
 const ROOM = 'DOTE-3090';
 const ROOT = `rooms/${ROOM}-pairs`;
@@ -36,12 +36,24 @@ export function FirebaseLiveClass() {
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
   const [result, setResult] = useState<MatchResult | null>(null);
   const [results, setResults] = useState<Record<string, MatchResult>>({});
+  const [selectedGameId, setSelectedGameId] = useState<GameId>(1);
+  const [practiceGameId, setPracticeGameId] = useState<GameId>(1);
   const [choice, setChoice] = useState<Choice>('Cooperate');
   const [practiceChoice, setPracticeChoice] = useState<Choice>('Cooperate');
   const [practiceResult, setPracticeResult] = useState<{ ownChoice: Choice; botChoice: Choice; points: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const instructor = Boolean(user?.email === INSTRUCTOR_EMAIL && user.emailVerified);
+  const game = gameFor(config?.gameId);
+  const practiceGame = gameFor(practiceGameId);
+
+  useEffect(() => setChoice(game.options[0]), [game.id]);
+  useEffect(() => {
+    if (!config?.gameId) return;
+    setPracticeGameId(config.gameId);
+    setPracticeChoice(gameFor(config.gameId).options[0]);
+    setPracticeResult(null);
+  }, [config?.gameId]);
 
   useEffect(() => onAuthStateChanged(auth, next => {
     if (!next) leavingRef.current = false;
@@ -91,7 +103,7 @@ export function FirebaseLiveClass() {
 
   useEffect(() => {
     if (!user?.isAnonymous || config?.phase !== 'playing' || !participant || assignment !== null) return;
-    const botAssignment: Assignment = { round: config.round, kind: 'bot', opponentAlias: BOT_ALIAS };
+    const botAssignment: Assignment = { round: config.round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' };
     set(ref(db, `${ROOT}/assignments/${user.uid}`), botAssignment).catch(() => {
       // A human assignment may have reached the server before this listener updated.
     });
@@ -136,15 +148,15 @@ export function FirebaseLiveClass() {
         return {
           ...room,
           config: { ...room.config, phase: 'revealed' },
-          results: resolveResults(room.assignments || {}, room.choices || {}, room.config.round),
+          results: resolveResults(room.assignments || {}, room.choices || {}, room.config.round, room.config.gameId || 1),
         };
       }, { applyLocally: false });
     });
   }
 
   function playBot() {
-    const botChoice = randomChoice();
-    const [points] = pointsFor(practiceChoice, botChoice);
+    const botChoice = randomChoice(practiceGameId);
+    const [points] = pointsFor(practiceGameId, practiceChoice, botChoice);
     setPracticeResult({ ownChoice: practiceChoice, botChoice, points });
   }
 
@@ -155,25 +167,35 @@ export function FirebaseLiveClass() {
   const currentSubmissions = Object.values(submissions).filter(item => item.round === round);
   const roundAssignments = Object.values(assignments).filter(item => item.round === round);
   const roundResults = Object.values(results).filter(item => item.round === round);
-  const counts = {
-    cooperate: currentSubmissions.filter(item => item.choice === 'Cooperate').length,
-    defect: currentSubmissions.filter(item => item.choice === 'Defect').length,
-  };
+  const choiceCounts = game.options.map(option => `${option}: ${currentSubmissions.filter(item => item.choice === option).length}`).join(' · ');
+  const roleLabel = currentAssignment && game.roles ? game.roles[currentAssignment.role === 'second' ? 1 : 0] : null;
 
   return (
     <section className="max-w-3xl mx-auto mt-6 space-y-5 text-slate-100">
       <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5 sm:p-7">
         <p className="text-sm font-bold text-blue-300">Live Class · Room {ROOM}</p>
-        <h1 className="text-2xl font-black mt-1">Prisoner's Dilemma</h1>
+        <h1 className="text-2xl font-black mt-1">{config ? game.title : 'Live Class Games'}</h1>
         <p className="text-sm text-slate-300 mt-2">Practice against a random bot, then join a class round. The instructor randomly pairs students; an odd or late student gets a bot. If a partner does not choose, a bot takes their place when results are revealed.</p>
+        {config && <p className="text-sm text-blue-200 mt-2">{game.payoffs}</p>}
       </div>
 
       <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-3">
         <h2 className="text-lg font-bold">Bot practice</h2>
         <p className="text-sm text-slate-300">Private practice. It does not count toward the class round.</p>
+        <label htmlFor="practice-game" className="block text-sm font-bold">Practice game</label>
+        <select id="practice-game" value={practiceGameId} onChange={event => {
+          const id = Number(event.target.value) as GameId;
+          setPracticeGameId(id);
+          setPracticeChoice(gameFor(id).options[0]);
+          setPracticeResult(null);
+        }} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
+          {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
+        </select>
+        <p className="text-sm text-slate-300">{practiceGame.payoffs}</p>
+        {practiceGame.roles && <p className="text-sm text-slate-300">Your role: {practiceGame.roles[0]}</p>}
         <fieldset className="flex gap-5">
           <legend className="sr-only">Practice choice</legend>
-          {(['Cooperate', 'Defect'] as Choice[]).map(option => (
+          {practiceGame.options.map(option => (
             <label key={option} className="flex gap-2 items-center">
               <input type="radio" name="practice-choice" checked={practiceChoice === option} onChange={() => setPracticeChoice(option)} />{option}
             </label>
@@ -212,20 +234,30 @@ export function FirebaseLiveClass() {
           {instructor ? (
             <>
               <p className="font-semibold">{config ? `Round ${round} · ${config.phase === 'lobby' ? 'Waiting for students' : config.phase === 'playing' ? 'Collecting choices' : 'Results revealed'}` : 'No active class'}</p>
-              {!config && <button disabled={busy} onClick={() => run(() => set(ref(db, ROOT), { config: { round: 1, phase: 'lobby' } }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start class</button>}
+              {!config && <>
+                <label htmlFor="new-class-game" className="block text-sm font-bold">Class game</label>
+                <select id="new-class-game" value={selectedGameId} onChange={event => setSelectedGameId(Number(event.target.value) as GameId)} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
+                  {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
+                </select>
+                <button disabled={busy} onClick={() => run(() => set(ref(db, ROOT), { config: { round: 1, phase: 'lobby', gameId: selectedGameId } }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start class</button>
+              </>}
               {config?.phase === 'lobby' && <>
+                <label htmlFor="class-game" className="block text-sm font-bold">Class game</label>
+                <select id="class-game" value={game.id} onChange={event => run(() => update(ref(db, `${ROOT}/config`), { gameId: Number(event.target.value) as GameId }))} disabled={busy} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
+                  {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
+                </select>
                 <p>{Object.keys(participants).length} students joined</p>
                 <p className="text-sm text-slate-300">Pairing is random each round. An odd student gets a bot; students who join later get a bot too.</p>
                 <button disabled={busy || Object.keys(participants).length === 0} onClick={startPairing} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Pair students and start round</button>
               </>}
               {config?.phase === 'playing' && <>
                 <p>{roundAssignments.filter(item => item.kind === 'student').length / 2} student pairs · {roundAssignments.filter(item => item.kind === 'bot').length} bot matches</p>
-                <p>{currentSubmissions.length} choices received · Cooperate: {counts.cooperate} · Defect: {counts.defect}</p>
+                <p>{currentSubmissions.length} choices received · {choiceCounts}</p>
                 <button disabled={busy} onClick={reveal} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Reveal match results</button>
               </>}
               {config?.phase === 'revealed' && <>
                 <p>{roundResults.length} results · {roundResults.filter(item => item.fallback).length} missing-partner bot fallbacks</p>
-                <p>Cooperate: {counts.cooperate} · Defect: {counts.defect}</p>
+                <p>{choiceCounts}</p>
                 <button disabled={busy} onClick={() => run(() => update(ref(db, ROOT), { assignments: null, choices: null, results: null, 'config/round': round + 1, 'config/phase': 'lobby' }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start next round</button>
               </>}
               {config && <button disabled={busy} onClick={() => run(() => remove(ref(db, ROOT)))} className="block text-sm text-red-300 underline disabled:opacity-50">End class and clear room</button>}
@@ -235,7 +267,7 @@ export function FirebaseLiveClass() {
           ) : !participant ? (
             <p>{alias.trim() ? 'Joining classroom…' : 'Your alias is missing. Leave and rejoin with an alias.'}</p>
           ) : config.phase === 'lobby' ? (
-            <p>Waiting for the instructor to pair students. You can practice with the bot above.</p>
+            <p>Waiting for the instructor to pair students in {game.title}. You can practice with the bot above.</p>
           ) : config.phase === 'revealed' ? (
             currentResult ? <div className="space-y-2" role="status">
               <p className="font-bold">Round {round} result</p>
@@ -246,16 +278,18 @@ export function FirebaseLiveClass() {
           ) : !currentAssignment ? (
             <div className="space-y-2">
               <p>Finding your match. If you joined after pairing, a bot will take the other seat.</p>
-              <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/assignments/${user.uid}`), { round, kind: 'bot', opponentAlias: BOT_ALIAS }))} className="text-sm underline">Try bot fallback</button>
+              <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/assignments/${user.uid}`), { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' }))} className="text-sm underline">Try bot fallback</button>
             </div>
           ) : currentSubmission ? (
             <p>Your {currentSubmission.choice} choice is locked for round {round} against {currentAssignment.opponentAlias}. Waiting for the instructor to reveal results.</p>
           ) : (
             <div className="space-y-3">
               <p className="font-bold">Round {round}: you play {currentAssignment.opponentAlias}</p>
+              {roleLabel && <p className="text-sm text-blue-200">Your role: {roleLabel}</p>}
+              <p className="text-sm text-slate-300">{game.payoffs}</p>
               <fieldset className="flex gap-5">
                 <legend className="sr-only">Your class choice</legend>
-                {(['Cooperate', 'Defect'] as Choice[]).map(option => <label key={option} className="flex gap-2 items-center"><input type="radio" name="live-choice" checked={choice === option} onChange={() => setChoice(option)} />{option}</label>)}
+                {game.options.map(option => <label key={option} className="flex gap-2 items-center"><input type="radio" name="live-choice" checked={choice === option} onChange={() => setChoice(option)} />{option}</label>)}
               </fieldset>
               <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/choices/${user.uid}`), { choice, round }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Lock choice</button>
             </div>
