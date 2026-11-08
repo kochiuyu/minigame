@@ -49,7 +49,7 @@ export function FirebaseLiveClass() {
 
   useEffect(() => setChoice(game.options[0]), [game.id]);
   useEffect(() => {
-    if (game.id === 2 && assignment?.role) setChoice(assignment.role === 'second' ? 'Enter' : 'Launch');
+    if ((game.id === 2 || game.id === 5) && assignment?.role) setChoice(assignment.role === 'second' ? 'Enter' : game.id === 2 ? 'Launch' : 'Commit');
     if (game.id === 30 && assignment?.role) setChoice(assignment.role === 'second' ? 'Accept' : 'Offer 5');
     if (game.id === 19 && assignment?.role) setChoice(assignment.role === 'second' ? 'Return 0' : 'Invest 5');
   }, [game.id, assignment?.role]);
@@ -118,7 +118,7 @@ export function FirebaseLiveClass() {
   }, [user, config, participant, alias]);
 
   useEffect(() => {
-    if (!user?.isAnonymous || config?.phase !== 'playing' || !participant || assignment !== null || ([2, 19, 30].includes(config.gameId) && config.step === 'respond')) return;
+    if (!user?.isAnonymous || config?.phase !== 'playing' || !participant || assignment !== null || ([2, 5, 19, 30].includes(config.gameId) && config.step === 'respond')) return;
     const fallback: Assignment = config.gameId === 12
       ? { round: config.round, kind: 'group', groupId: user.uid, groupSize: 1, opponentAlias: 'Public goods group', role: 'first' }
       : { round: config.round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' };
@@ -155,7 +155,7 @@ export function FirebaseLiveClass() {
       offers: null,
       ...(!config.totalRounds ? { results: null } : {}),
       'config/phase': 'playing',
-      'config/step': [2, 19, 30].includes(config.gameId) ? 'offer' : null,
+      'config/step': [2, 5, 19, 30].includes(config.gameId) ? 'offer' : null,
     }));
   }
 
@@ -163,9 +163,9 @@ export function FirebaseLiveClass() {
     await run(async () => {
       await runTransaction(ref(db, ROOT), current => {
         const room = current as LiveRoom | null;
-        if (!room?.config || room.config.phase !== 'playing' || ![2, 19, 30].includes(room.config.gameId) || room.config.step !== 'offer') return;
-        return { ...room, offers: room.config.gameId === 2
-          ? prepareEntryResponses(room.assignments || {}, room.choices || {}, room.config.round)
+        if (!room?.config || room.config.phase !== 'playing' || ![2, 5, 19, 30].includes(room.config.gameId) || room.config.step !== 'offer') return;
+        return { ...room, offers: room.config.gameId === 2 || room.config.gameId === 5
+          ? prepareEntryResponses(room.assignments || {}, room.choices || {}, room.config.round, room.config.gameId)
           : room.config.gameId === 19
           ? prepareTrustResponses(room.assignments || {}, room.choices || {}, room.config.round)
           : prepareUltimatumResponses(room.assignments || {}, room.choices || {}, room.config.round),
@@ -211,9 +211,9 @@ export function FirebaseLiveClass() {
   }
 
   function playBot() {
-    if (practiceGameId === 2) {
+    if (practiceGameId === 2 || practiceGameId === 5) {
       const botChoice = practiceRole === 'first' ? Math.random() < 0.5 ? 'Enter' : 'Stay Out' : practiceBotOffer;
-      const [points] = pointsFor(2, practiceChoice, botChoice, practiceRole);
+      const [points] = pointsFor(practiceGameId, practiceChoice, botChoice, practiceRole);
       setPracticeResult({ ownChoice: practiceChoice, botChoice, points });
       return;
     }
@@ -266,7 +266,8 @@ export function FirebaseLiveClass() {
   const groupSizes = new Map(roundAssignments.filter(item => item.kind === 'group' && item.groupId).map(item => [item.groupId, item.groupSize || 1]));
   const plannedBotSeats = Array.from(groupSizes.values()).reduce((sum, size) => sum + PUBLIC_GOODS_GROUP_SIZE - size, 0);
   const ultimatum = game.id === 30;
-  const entry = game.id === 2;
+  const entry = game.id === 2 || game.id === 5;
+  const deterrence = game.id === 5;
   const trust = game.id === 19;
   const staged = entry || ultimatum || trust;
   const isResponder = currentAssignment?.role === 'second';
@@ -303,7 +304,7 @@ export function FirebaseLiveClass() {
           setPracticeGameId(id);
           setPracticeChoice(gameFor(id).options[0]);
           setPracticeRole('first');
-          setPracticeBotOffer(randomChoice(id === 2 ? 2 : id === 19 ? 19 : 30));
+          setPracticeBotOffer(randomChoice(id === 2 || id === 5 ? id : id === 19 ? 19 : 30));
           setPracticeResult(null);
         }} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
           {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
@@ -313,8 +314,8 @@ export function FirebaseLiveClass() {
           <div className="mt-3 space-y-2 text-slate-300">
             <p>{practiceGame.rules}</p>
             <p><strong className="text-slate-100">Points:</strong> {practiceGame.payoffs}</p>
-            <p><strong className="text-slate-100">Random bot:</strong> {practiceGameId === 2
-              ? 'As First Mover, the bot randomly enters or stays out. As Second Mover, it randomly launches or waits before you decide.'
+            <p><strong className="text-slate-100">Random bot:</strong> {practiceGameId === 2 || practiceGameId === 5
+              ? `As ${practiceGameId === 5 ? 'Incumbent' : 'First Mover'}, the bot randomly enters or stays out. As ${practiceGameId === 5 ? 'Rival' : 'Second Mover'}, it randomly chooses its first move before you decide.`
               : practiceGameId === 19
               ? 'When you invest, the bot returns a random whole amount from 0 to three times your investment. When you are the Trustee, the bot invests a random whole amount from 0 to 10.'
               : practiceGameId === 30
@@ -323,13 +324,13 @@ export function FirebaseLiveClass() {
             <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} />
           </div>
         </details>
-        {([2, 19, 30] as number[]).includes(practiceGameId) ? <label className="block text-sm font-bold">Practice role
-          <select value={practiceRole} onChange={event => { const role = event.target.value as 'first' | 'second'; setPracticeRole(role); setPracticeChoice(practiceGameId === 2 ? role === 'first' ? 'Launch' : 'Enter' : practiceGameId === 19 ? role === 'first' ? 'Invest 5' : 'Return 0' : role === 'first' ? 'Offer 5' : 'Accept'); setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="mt-2 w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
-            <option value="first">{practiceGameId === 2 ? 'First Mover' : practiceGameId === 19 ? 'Investor' : 'Proposer'}</option><option value="second">{practiceGameId === 2 ? 'Second Mover' : practiceGameId === 19 ? 'Trustee' : 'Responder'}</option>
+        {([2, 5, 19, 30] as number[]).includes(practiceGameId) ? <label className="block text-sm font-bold">Practice role
+          <select value={practiceRole} onChange={event => { const role = event.target.value as 'first' | 'second'; setPracticeRole(role); setPracticeChoice(practiceGameId === 2 ? role === 'first' ? 'Launch' : 'Enter' : practiceGameId === 5 ? role === 'first' ? 'Commit' : 'Enter' : practiceGameId === 19 ? role === 'first' ? 'Invest 5' : 'Return 0' : role === 'first' ? 'Offer 5' : 'Accept'); setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="mt-2 w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
+            <option value="first">{practiceGameId === 2 ? 'First Mover' : practiceGameId === 5 ? 'Incumbent' : practiceGameId === 19 ? 'Investor' : 'Proposer'}</option><option value="second">{practiceGameId === 2 ? 'Second Mover' : practiceGameId === 5 ? 'Rival' : practiceGameId === 19 ? 'Trustee' : 'Responder'}</option>
           </select>
         </label> : practiceGame.roles && <p className="text-sm text-slate-300">Your role: {practiceGame.roles[0]}</p>}
         {practiceGameId === 30 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot offered you {practiceBotOffer.slice(6)} of 10 points. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(30)); setPracticeResult(null); }} className="ml-2 underline">New offer</button></p>}
-        {practiceGameId === 2 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot chose {practiceBotOffer}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(2)); setPracticeResult(null); }} className="ml-2 underline">New first move</button></p>}
+        {(practiceGameId === 2 || practiceGameId === 5) && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot chose {practiceBotOffer}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="ml-2 underline">New first move</button></p>}
         {practiceGameId === 19 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot invested {investAmount(practiceBotOffer)} points, tripled to {(investAmount(practiceBotOffer) ?? 0) * 3}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(19)); setPracticeChoice('Return 0'); setPracticeResult(null); }} className="ml-2 underline">New investment</button></p>}
         {practiceGameId === 12 ? <div className="space-y-2">
           <label htmlFor="practice-contribution" className="block font-semibold">Contribute {contributionAmount(practiceChoice) ?? 0} of 10 points</label>
@@ -344,7 +345,7 @@ export function FirebaseLiveClass() {
           <p className="text-sm text-slate-300">If accepted, you keep {10 - (offerAmount(practiceChoice) ?? 0)} points.</p>
         </div> : <fieldset className="flex flex-wrap gap-5">
           <legend className="sr-only">Practice choice</legend>
-          {(practiceGameId === 2 ? practiceRole === 'first' ? ['Launch', 'Wait'] as const : ['Enter', 'Stay Out'] as const : practiceGameId === 30 ? ['Accept', 'Reject'] as const : practiceGame.options).map(option => (
+          {(practiceGameId === 2 || practiceGameId === 5 ? practiceRole === 'first' ? practiceGameId === 2 ? ['Launch', 'Wait'] as const : ['Commit', 'Stay Flexible'] as const : ['Enter', 'Stay Out'] as const : practiceGameId === 30 ? ['Accept', 'Reject'] as const : practiceGame.options).map(option => (
             <label key={option} className="flex gap-2 items-center">
               <input type="radio" name="practice-choice" checked={practiceChoice === option} onChange={() => setPracticeChoice(option)} />{option}
             </label>
@@ -480,7 +481,7 @@ export function FirebaseLiveClass() {
             </div> : <p>{currentSubmission ? 'Calculating your result…' : 'No choice submitted this round.'}</p>
           ) : !currentAssignment ? (
             <div className="space-y-2">
-              <p>{staged && config.step === 'respond' ? entry ? 'First movers have already chosen. You can join the next round.' : trust ? 'Investments are already with trustees. You can join the next round.' : 'Offers are already with responders. You can join the next round.'
+              <p>{staged && config.step === 'respond' ? entry ? `${deterrence ? 'Incumbents' : 'First movers'} have already chosen. You can join the next round.` : trust ? 'Investments are already with trustees. You can join the next round.' : 'Offers are already with responders. You can join the next round.'
                 : publicGoods ? 'Finding your group. If you joined late, three random bots will fill the other seats.'
                   : 'Finding your match. If you joined after pairing, a bot will take the other seat.'}</p>
               {!(staged && config.step === 'respond') && <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/assignments/${user.uid}`),
@@ -488,7 +489,7 @@ export function FirebaseLiveClass() {
                   : { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' }))} className="text-sm underline">Try bot fallback</button>}
             </div>
           ) : staged && !isMyStep ? (
-            <p>{currentSubmission ? `Your ${currentSubmission.choice} is locked. Waiting for the second step to finish.` : isResponder ? entry ? 'Waiting for the First Mover to choose Launch or Wait.' : trust ? 'Waiting for the investor to choose an amount.' : 'Waiting for the proposer to make an offer.' : 'Your turn has passed. Waiting for the other student.'}</p>
+            <p>{currentSubmission ? `Your ${currentSubmission.choice} is locked. Waiting for the second step to finish.` : isResponder ? entry ? deterrence ? 'Waiting for the Incumbent to choose Commit or Stay Flexible.' : 'Waiting for the First Mover to choose Launch or Wait.' : trust ? 'Waiting for the investor to choose an amount.' : 'Waiting for the proposer to make an offer.' : 'Your turn has passed. Waiting for the other student.'}</p>
           ) : staged && isResponder && (!visibleOffer || visibleOffer.round !== round) ? (
             <p>Loading {entry ? 'the first move' : trust ? 'your investment' : 'your offer'}…</p>
           ) : currentSubmission ? (
@@ -515,9 +516,9 @@ export function FirebaseLiveClass() {
                 <p className="text-sm text-slate-300">If accepted, you keep {10 - (offerAmount(choice) ?? 5)} points.</p>
               </div> : <fieldset className="flex flex-wrap gap-5">
                 <legend className="sr-only">Your class choice</legend>
-                {(entry ? isResponder ? ['Enter', 'Stay Out'] as const : ['Launch', 'Wait'] as const : ultimatum ? ['Accept', 'Reject'] as const : game.options).map(option => <label key={option} className="flex gap-2 items-center"><input type="radio" name="live-choice" checked={choice === option} onChange={() => setChoice(option)} />{option}</label>)}
+                {(entry ? isResponder ? ['Enter', 'Stay Out'] as const : deterrence ? ['Commit', 'Stay Flexible'] as const : ['Launch', 'Wait'] as const : ultimatum ? ['Accept', 'Reject'] as const : game.options).map(option => <label key={option} className="flex gap-2 items-center"><input type="radio" name="live-choice" checked={choice === option} onChange={() => setChoice(option)} />{option}</label>)}
               </fieldset>}
-              <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/choices/${user.uid}`), { choice: entry ? isResponder ? choice === 'Stay Out' ? 'Stay Out' : 'Enter' : choice === 'Wait' ? 'Wait' : 'Launch' : trust ? isResponder ? choice.startsWith('Return ') ? choice : 'Return 0' : choice.startsWith('Invest ') ? choice : 'Invest 5' : ultimatum ? isResponder ? choice === 'Reject' ? 'Reject' : 'Accept' : choice.startsWith('Offer ') ? choice : 'Offer 5' : choice, round }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Lock {publicGoods ? 'contribution' : entry ? 'decision' : trust ? isResponder ? 'return' : 'investment' : ultimatum ? isResponder ? 'response' : 'offer' : 'choice'}</button>
+              <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/choices/${user.uid}`), { choice: entry ? isResponder ? choice === 'Stay Out' ? 'Stay Out' : 'Enter' : deterrence ? choice === 'Stay Flexible' ? 'Stay Flexible' : 'Commit' : choice === 'Wait' ? 'Wait' : 'Launch' : trust ? isResponder ? choice.startsWith('Return ') ? choice : 'Return 0' : choice.startsWith('Invest ') ? choice : 'Invest 5' : ultimatum ? isResponder ? choice === 'Reject' ? 'Reject' : 'Accept' : choice.startsWith('Offer ') ? choice : 'Offer 5' : choice, round }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Lock {publicGoods ? 'contribution' : entry ? 'decision' : trust ? isResponder ? 'return' : 'investment' : ultimatum ? isResponder ? 'response' : 'offer' : 'choice'}</button>
             </div>
           )}
         </div>
