@@ -1,6 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+
+test('Bertrand Duopoly scores lower price, ties, bot fallbacks, and class outcomes', () => {
+  assert.equal(LIVE_GAMES.find(game => game.id === 14)?.options.length, 41);
+  assert.equal(bertrandPrice('Price 10'), 10);
+  assert.equal(bertrandPrice('Price 50'), 50);
+  assert.equal(bertrandPrice('Price 51'), null);
+  assert.deepEqual(bertrandPoints(20, 21), [800, 0]);
+  assert.deepEqual(bertrandPoints(21, 20), [0, 800]);
+  assert.deepEqual(bertrandPoints(20, 20), [400, 400]);
+  assert.deepEqual(bertrandPoints(10, 10), [0, 0]);
+  assert.throws(() => pointsFor(14, 'Price 51', 'Price 20'));
+  const assignments = {
+    a: { round: 1, kind: 'student', role: 'first', opponentUid: 'b', opponentAlias: 'B' },
+    b: { round: 1, kind: 'student', role: 'second', opponentUid: 'a', opponentAlias: 'A' },
+  };
+  const choices = { a: { round: 1, choice: 'Price 20' }, b: { round: 1, choice: 'Price 21' } };
+  const results = resolveResults(assignments, choices, 1, 14);
+  assert.equal(results.a.ownPoints, 800);
+  assert.equal(results.b.ownPoints, 0);
+  const summary = summarizeRound(assignments, choices, results, 1, 14);
+  assert.equal(summary.studentPairs, 1);
+  assert.equal(summary.outcomes.find(item => item.label === 'Different prices: one firm wins')?.count, 1);
+  assert.equal(randomChoice(14).startsWith('Price '), true);
+});
 
 test('Costly Signaling stages a hidden quality and scores both roles', () => {
   assert.ok(LIVE_GAMES.some(game => game.id === 10));

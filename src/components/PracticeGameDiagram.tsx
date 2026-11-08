@@ -1,4 +1,4 @@
-import { auctionBid, auctionPayoff, firstPriceAuctionPayoff, blottoAllocation, contributionAmount, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, signalingPoints, trawlerAmount } from '../liveMatch';
+import { auctionBid, auctionPayoff, firstPriceAuctionPayoff, bertrandPrice, blottoAllocation, contributionAmount, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, signalingPoints, trawlerAmount } from '../liveMatch';
 import type { Choice, GameId, PracticeCentipedePath, Role } from '../liveMatch';
 import { CentipedeTree } from './CentipedeTree';
 
@@ -15,6 +15,15 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, centipedePath, valuation }: Props) {
+  if (gameId === 14) {
+    const own = bertrandPrice(result?.ownChoice || choice);
+    const bot = result?.botChoice ? bertrandPrice(result.botChoice) : null;
+    return <div data-game-diagram="bertrand" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
+      <h3 className="font-bold text-slate-100">How the price war scores</h3>
+      <p>The lower price wins all sales. At the same price, each firm receives half the market. Demand is 100 minus price; marginal cost is $10 per unit.</p>
+      {own !== null && bot !== null && <p>Your price ${own}; bot price ${bot}. Your profit: {pointsFor(14, `Price ${own}`, `Price ${bot}`)[0]}.</p>}
+    </div>;
+  }
   if (gameId === 11) return <div data-game-diagram="beauty" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
     <h3 className="font-bold text-slate-100">How the target is found</h3>
     <p>Average your guess with three random bot guesses, then multiply by 2/3. The closest guess earns 5 points; exact ties each earn 5. Other guesses earn 1.</p>
