@@ -92,15 +92,16 @@ export const LIVE_GAMES: ReadonlyArray<{
   title: string;
   options: readonly [Choice, Choice, ...Choice[]];
   payoffs: string;
+  rules: string;
   roles?: readonly [string, string];
 }> = [
-  { id: 1, title: "Prisoner's Dilemma", options: ['Cooperate', 'Defect'], payoffs: 'Both Cooperate: 2 each · Both Defect: 1 each · Defect against Cooperate: 3–0' },
-  { id: 13, title: 'Stag Hunt', options: ['Hunt Stag', 'Hunt Hare'], payoffs: 'Both Stag: 10 each · Both Hare: 4 each · Stag against Hare: 0–4' },
-  { id: 15, title: 'Hawk–Dove', options: ['Dove', 'Hawk'], payoffs: 'Both Dove: 3 each · Both Hawk: −10 each · Hawk against Dove: 6–0' },
-  { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
-  { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
-  { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
-  { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
+  { id: 1, title: "Prisoner's Dilemma", options: ['Cooperate', 'Defect'], rules: 'You and the bot each choose Cooperate or Defect without seeing the other choice.', payoffs: 'Both Cooperate: 2 each · Both Defect: 1 each · Defect against Cooperate: 3–0' },
+  { id: 13, title: 'Stag Hunt', options: ['Hunt Stag', 'Hunt Hare'], rules: 'You and the bot each choose a hunt. Stag pays most when you both choose it; Hare is the safer choice.', payoffs: 'Both Stag: 10 each · Both Hare: 4 each · Stag against Hare: 0–4' },
+  { id: 15, title: 'Hawk–Dove', options: ['Dove', 'Hawk'], rules: 'You and the bot each choose Dove or Hawk. Hawk gains against Dove, but two Hawks both lose points.', payoffs: 'Both Dove: 3 each · Both Hawk: −10 each · Hawk against Dove: 6–0' },
+  { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], rules: 'Both choose Heads or Tails. The Matcher scores when the choices match; the Mismatcher scores when they differ.', payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
+  { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], rules: 'Both choose Opera or Football. You score only if your choices match; each role prefers a different match.', payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
+  { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], rules: 'You and the bot each choose one move without seeing the other choice. Each move beats one other move.', payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
+  { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], rules: 'The Proposer offers part of a 10-point pot. The Responder sees the offer and accepts or rejects it.', payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
 ];
 
 export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
