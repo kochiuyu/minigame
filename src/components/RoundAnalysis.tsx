@@ -93,7 +93,7 @@ function PersonAnalysis({ analysis, title }: { analysis: ReturnType<typeof summa
     </div>}
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <caption className="text-left font-semibold mb-2">Your choices and scores by game</caption>
+        <caption className="text-left font-semibold mb-2">Choices and scores by game</caption>
         <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-3">Game</th><th scope="col" className="py-2 pr-3">Played</th><th scope="col" className="py-2 pr-3">Choices (average points)</th><th scope="col" className="py-2">Average points</th></tr></thead>
         <tbody>{analysis.byGame.map(item => <tr key={item.gameId} className="border-b border-slate-800">
           <th scope="row" className="py-2 pr-3 font-normal">{gameFor(item.gameId).title}</th>
@@ -105,7 +105,7 @@ function PersonAnalysis({ analysis, title }: { analysis: ReturnType<typeof summa
     </div>
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <caption className="text-left font-semibold mb-2">Your results in every round</caption>
+        <caption className="text-left font-semibold mb-2">Results in every round</caption>
         <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-2">Round</th><th scope="col" className="py-2 pr-2">Game</th><th scope="col" className="py-2 pr-2">Choice</th><th scope="col" className="py-2 pr-2">Opponent</th><th scope="col" className="py-2">Points</th></tr></thead>
         <tbody>{analysis.rounds.map(item => <tr key={item.round} className="border-b border-slate-800">
           <th scope="row" className="py-2 pr-2 font-normal">{item.round}</th>
