@@ -185,6 +185,9 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
       <p>{classSummary.rounds} rounds · {classSummary.submitted} submissions · {classSummary.studentPairs} completed student pairs{classSummary.studentGroups ? ` · ${classSummary.studentGroups} groups` : ''}{summaries.some(item => item.gameId === 11) ? ` · ${summaries.filter(item => item.gameId === 11).length} classwide rounds` : ''} · {classSummary.botMatches} bot matches{classSummary.botSeats ? ` · ${classSummary.botSeats} bot seats` : ''}</p>
       <p className="text-sm text-slate-300">The full class report is available now that all rounds are over. Scores are averaged within each game because games use different payoff scales.</p>
     </div>
+    {studentView && <div className="rounded-xl border border-blue-700 bg-blue-950/20 p-4">
+      <PersonAnalysis analysis={summarizePerson(summaries, personalResults)} title="Your analysis across all rounds" />
+    </div>}
     <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4 space-y-4">
       <div>
         <h3 className="font-semibold mb-2">All-round participation</h3>
@@ -230,9 +233,6 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
         <tbody>{summaries.map(item => <tr key={item.round} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{item.round}</th><td className="pr-2">{gameFor(item.gameId).title}</td><td className="pr-2">{item.choiceCounts.map(choice => `${choice.label} ${choice.count}`).join(' · ')}</td><td className="pr-2">{item.gameId === 11 ? 'Classwide' : item.gameId === 12 ? `${item.studentGroups || 0} groups` : `${item.studentPairs} pairs`}</td><td className="pr-2">{item.gameId === 11 ? '—' : item.gameId === 12 ? `${item.botSeats || 0} seats` : `${item.botMatches} matches`}</td><td>{score(item.averagePoints)}</td></tr>)}</tbody>
       </table>
     </div>
-    {studentView && <div className="rounded-xl border border-blue-700 bg-blue-950/20 p-4">
-      <PersonAnalysis analysis={summarizePerson(summaries, personalResults)} title="Your analysis across all rounds" />
-    </div>}
     {archives && <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4 space-y-3">
       <h3 className="text-lg font-bold">Individual student analysis</h3>
       {people.length === 0 ? <p className="text-sm text-slate-300">No student records are available.</p> : people.map(person => <details key={person.uid} className="rounded-lg border border-slate-700 bg-slate-900">
