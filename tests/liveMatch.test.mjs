@@ -1,6 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, cournotPoints, cournotQuantity, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+
+test('Cournot quantities score paired and random bot rounds and export market data', () => {
+  assert.equal(LIVE_GAMES.find(game => game.id === 21)?.options.length, 36);
+  assert.equal(cournotQuantity('Quantity 10'), 10);
+  assert.equal(cournotQuantity('Quantity 45'), 45);
+  assert.equal(cournotQuantity('Quantity 46'), null);
+  assert.deepEqual(cournotPoints(30, 30), [900, 900]);
+  assert.deepEqual(cournotPoints(45, 45), [0, 0]);
+  assert.deepEqual(cournotPoints(10, 45), [350, 1575]);
+  assert.throws(() => pointsFor(21, 'Quantity 46', 'Quantity 30'));
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' }, b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' } };
+  const choices = { a: { round: 1, choice: 'Quantity 30' }, b: { round: 1, choice: 'Quantity 30' } };
+  const results = resolveResults(assignments, choices, 1, 21);
+  assert.equal(results.a.ownPoints, 900);
+  assert.equal(results.b.ownPoints, 900);
+  assert.equal(summarizeRound(assignments, choices, results, 1, 21).outcomes[1].count, 1);
+  const csv = buildReportCsv(() => 'Cournot Duopoly', [summarizeRound(assignments, choices, results, 1, 21)], { 1: { aliases: { a: 'A', b: 'B' }, results } });
+  assert.match(csv, /"Market price","Combined output"/);
+  assert.match(csv, /"Student result","1","Cournot Duopoly","A".*"40","60"/);
+  assert.equal(randomChoice(21).startsWith('Quantity '), true);
+});
 
 test('Bertrand Duopoly scores lower price, ties, bot fallbacks, and class outcomes', () => {
   assert.equal(LIVE_GAMES.find(game => game.id === 14)?.options.length, 41);

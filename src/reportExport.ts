@@ -9,6 +9,7 @@ const HEADER = [
   'Private value', 'Won auction', 'Winning bid', 'Price paid',
   'Class average', 'Beauty target', 'Distance to target', 'Closest guess',
   'Product quality', 'Seller signaled', 'Buyer trusted',
+  'Market price', 'Combined output',
 ];
 
 function csvCell(value: ReportRow[number]): string {
@@ -31,6 +32,10 @@ function resultRow(round: number, game: string, alias: string, result?: MatchRes
     result?.beauty ? (result.beauty.winner ? 'Yes' : 'No') : '',
     result?.signaling?.quality, result?.signaling ? (result.signaling.signal ? 'Yes' : 'No') : '',
     result?.signaling ? (result.signaling.trusted ? 'Yes' : 'No') : '',
+    result?.ownChoice.startsWith('Quantity ') && result.opponentChoice?.startsWith('Quantity ')
+      ? Math.max(0, 100 - Number(result.ownChoice.slice(9)) - Number(result.opponentChoice.slice(9))) : '',
+    result?.ownChoice.startsWith('Quantity ') && result.opponentChoice?.startsWith('Quantity ')
+      ? Number(result.ownChoice.slice(9)) + Number(result.opponentChoice.slice(9)) : '',
   ];
 }
 
@@ -68,4 +73,3 @@ export function buildReportCsv(gameTitle: (id: GameId) => string, summaries: Rou
   }
   return '\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
-

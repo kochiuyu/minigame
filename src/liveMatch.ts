@@ -1,5 +1,5 @@
-export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Signal' | 'No Signal' | 'Trust' | 'Do Not Trust' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Price ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 23 | 27 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Signal' | 'No Signal' | 'Trust' | 'Do Not Trust' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Price ${number}` | `Quantity ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -150,6 +150,15 @@ export function firstPriceAuctionPayoff(ownBid: number, otherBid: number, valuat
 export const PUBLIC_GOODS_CONTRIBUTIONS = Array.from({ length: 11 }, (_, index) => `Contribute ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const FISHERY_TRAWLERS = Array.from({ length: 11 }, (_, index) => `Trawlers ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const BERTRAND_PRICES = Array.from({ length: 41 }, (_, index) => `Price ${index + 10}` as Choice) as [Choice, Choice, ...Choice[]];
+export const COURNOT_QUANTITIES = Array.from({ length: 36 }, (_, index) => `Quantity ${index + 10}` as Choice) as [Choice, Choice, ...Choice[]];
+export function cournotQuantity(choice: Choice): number | null {
+  return /^Quantity (?:[1-3][0-9]|4[0-5])$/.test(choice) ? Number(choice.slice(9)) : null;
+}
+export function cournotPoints(ownQuantity: number, otherQuantity: number): [number, number] {
+  if (![ownQuantity, otherQuantity].every(value => Number.isInteger(value) && value >= 10 && value <= 45)) throw new Error('Invalid Cournot quantity.');
+  const margin = Math.max(0, 100 - ownQuantity - otherQuantity) - 10;
+  return [ownQuantity * margin, otherQuantity * margin];
+}
 export function bertrandPrice(choice: Choice): number | null {
   return /^Price (?:[1-4][0-9]|50)$/.test(choice) ? Number(choice.slice(6)) : null;
 }
@@ -193,6 +202,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], rules: 'Both choose Opera or Football. You score only if your choices match; each role prefers a different match.', payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
   { id: 19, title: 'Trust Game', options: TRUST_INVESTMENTS, rules: 'The Investor starts with 10 points and sends 0–10 to the Trustee. The amount sent triples. The Trustee then chooses how much of the tripled amount to return.', payoffs: 'Investor score = 10 − amount invested + amount returned. Trustee score = 3 × amount invested − amount returned.', roles: ['Investor', 'Trustee'] },
   { id: 20, title: 'Centipede Game', options: ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Pass All'], rules: 'Player 1 moves at nodes 1, 3, and 5; Player 2 moves at nodes 2, 4, and 6. At each turn, Take ends the game and Pass gives the next turn to the other player. If both pass all six nodes, both earn 8.', payoffs: 'Take at node 1: 2 / 0 · 2: 1 / 4 · 3: 4 / 2 · 4: 3 / 6 · 5: 6 / 4 · 6: 5 / 8 · Both Pass All: 8 / 8 (Player 1 / Player 2)', roles: ['Player 1', 'Player 2'] },
+  { id: 21, title: 'Cournot Duopoly', options: COURNOT_QUANTITIES, rules: 'You and a rival firm privately choose whole-unit production quantities from 10 to 45. Market price depends on combined output.', payoffs: 'Market price = max(0, 100 − combined output). Each firm earns quantity × (market price − 10) points.' },
   { id: 23, title: 'Colonel Blotto', options: BLOTTO_DEPLOYMENTS, rules: 'Choose how to deploy 100 troops across Fronts A, B, and C. Each number in a deployment plan is the troop count for one front. Your opponent chooses secretly.', payoffs: 'More troops wins a front. Win more fronts than your opponent: +1 point; lose more: −1 point; equal front wins: 0 points.' },
   { id: 27, title: 'Renewable Fishery', options: FISHERY_TRAWLERS, rules: 'You and one partner secretly deploy 0–10 trawlers each. More boats can earn more, but heavy combined effort depletes the shared fishery. Each class round is an independent catch.', payoffs: 'Total boats 0–8: 2 points profit per boat · 9–12: 0.9 per boat · 13–20: −0.5 per boat. Both fleets face the same stock condition.' },
   { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], rules: 'You and the bot each choose one move without seeing the other choice. Each move beats one other move.', payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
@@ -320,6 +330,12 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
       const otherPrice = bertrandPrice(other);
       if (ownPrice === null || otherPrice === null) throw new Error('Invalid Bertrand choices.');
       return bertrandPoints(ownPrice, otherPrice);
+    }
+    case 21: {
+      const ownQuantity = cournotQuantity(own);
+      const otherQuantity = cournotQuantity(other);
+      if (ownQuantity === null || otherQuantity === null) throw new Error('Invalid Cournot choices.');
+      return cournotPoints(ownQuantity, otherQuantity);
     }
     case 27: {
       const ownBoats = trawlerAmount(own);
@@ -867,6 +883,7 @@ export function summarizeRound(
     : gameId === 10 ? ['Signal + Trust', 'Signal + No trust', 'No signal + Trust', 'No signal + No trust']
     : gameId === 9 ? ['Deal reached', 'Deal failed']
     : gameId === 14 ? ['Same price: split market', 'Different prices: one firm wins']
+    : gameId === 21 ? ['Combined output below 60', 'Combined output 60', 'Combined output above 60']
     : gameId === 27 ? ['Healthy stock (0–8 boats)', 'Depleted stock (9–12 boats)', 'Overfished (13–20 boats)']
     : gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
     : gameId === 20 ? ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Both pass all nodes']
@@ -893,6 +910,7 @@ export function summarizeRound(
     const index = gameId === 7 || gameId === 8 ? (() => { const winner = own.auction?.won ? own : other; return winner.ownPoints > 0 ? 0 : winner.ownPoints < 0 ? 2 : 1; })()
       : gameId === 9 ? ((demandAmount(own.ownChoice) || 0) + (demandAmount(other.ownChoice) || 0) <= 10 ? 0 : 1)
       : gameId === 14 ? (own.ownChoice === other.ownChoice ? 0 : 1)
+      : gameId === 21 ? (() => { const total = (cournotQuantity(own.ownChoice) || 0) + (cournotQuantity(other.ownChoice) || 0); return total < 60 ? 0 : total === 60 ? 1 : 2; })()
       : gameId === 10 ? (own.signaling?.signal ? own.signaling.trusted ? 0 : 1 : own.signaling?.trusted ? 2 : 3)
       : gameId === 27 ? (() => { const total = (trawlerAmount(own.ownChoice) || 0) + (trawlerAmount(other.ownChoice) || 0); return total > 12 ? 2 : total > 8 ? 1 : 0; })()
       : gameId === 20 ? (own.exitNode || 7) - 1 : gameId === 19 ? (() => {
