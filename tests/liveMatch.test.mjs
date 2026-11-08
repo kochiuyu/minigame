@@ -1,6 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, cournotPoints, cournotQuantity, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, commonValueBid, commonValueOutcome, contributionAmount, cournotPoints, cournotQuantity, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+
+test('common-value auction shares one true value and handles ties and losses', () => {
+  assert.equal(commonValueBid('Bid 10'), 10);
+  assert.equal(commonValueBid('Bid 90'), 90);
+  assert.equal(commonValueBid('Bid 9'), null);
+  assert.deepEqual(commonValueOutcome(60, 50, 40, 60, true), { value: 50, won: true, ownPoints: -10, otherPoints: 0 });
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first', valuation: 40 },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second', valuation: 60 } };
+  const choices = { a: { round: 1, choice: 'Bid 45' }, b: { round: 1, choice: 'Bid 45' } };
+  const results = resolveResults(assignments, choices, 1, 24);
+  assert.equal(results.a.ownPoints, 5);
+  assert.equal(results.b.ownPoints, 0);
+  assert.equal(results.a.commonValue.trueValue, results.b.commonValue.trueValue);
+  assert.equal(summarizeRound(assignments, choices, results, 1, 24).outcomes[0].count, 1);
+});
 
 test('Hotelling locations score pairs, bot fallbacks, outcomes, and CSV shares', () => {
   assert.equal(LIVE_GAMES.find(game => game.id === 22)?.options.length, 101);

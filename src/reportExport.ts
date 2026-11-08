@@ -10,6 +10,7 @@ const HEADER = [
   'Class average', 'Beauty target', 'Distance to target', 'Closest guess',
   'Product quality', 'Seller signaled', 'Buyer trusted',
   'Market price', 'Combined output', 'Own beach location', 'Rival beach location', 'Beach market share',
+  'Private survey signal', 'Rival survey signal', 'Common true value', 'Won common-value auction',
 ];
 
 function csvCell(value: ReportRow[number]): string {
@@ -39,6 +40,8 @@ function resultRow(round: number, game: string, alias: string, result?: MatchRes
     result?.ownChoice.startsWith('Location ') ? Number(result.ownChoice.slice(9)) : '',
     result?.opponentChoice?.startsWith('Location ') ? Number(result.opponentChoice.slice(9)) : '',
     result?.ownChoice.startsWith('Location ') ? result.ownPoints : '',
+    result?.commonValue?.signal, result?.commonValue?.otherSignal, result?.commonValue?.trueValue,
+    result?.commonValue ? (result.commonValue.won ? 'Yes' : 'No') : '',
   ];
 }
 
