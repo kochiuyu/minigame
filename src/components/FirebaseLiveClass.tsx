@@ -222,7 +222,7 @@ export function FirebaseLiveClass() {
         </select>
         <p className="text-sm text-slate-300">{practiceGame.payoffs}</p>
         {practiceGame.roles && <p className="text-sm text-slate-300">Your role: {practiceGame.roles[0]}</p>}
-        <fieldset className="flex gap-5">
+        <fieldset className="flex flex-wrap gap-5">
           <legend className="sr-only">Practice choice</legend>
           {practiceGame.options.map(option => (
             <label key={option} className="flex gap-2 items-center">
@@ -358,7 +358,7 @@ export function FirebaseLiveClass() {
               <p className="font-bold">Round {round}{config.totalRounds ? ` of ${config.totalRounds}` : ''}: you play {currentAssignment.opponentAlias}</p>
               {roleLabel && <p className="text-sm text-blue-200">Your role: {roleLabel}</p>}
               <p className="text-sm text-slate-300">{game.payoffs}</p>
-              <fieldset className="flex gap-5">
+              <fieldset className="flex flex-wrap gap-5">
                 <legend className="sr-only">Your class choice</legend>
                 {game.options.map(option => <label key={option} className="flex gap-2 items-center"><input type="radio" name="live-choice" checked={choice === option} onChange={() => setChoice(option)} />{option}</label>)}
               </fieldset>

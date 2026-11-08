@@ -1,5 +1,5 @@
-export type GameId = 1 | 13 | 15 | 17 | 18;
-export type Choice = 'Cooperate' | 'Defect' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football';
+export type GameId = 1 | 13 | 15 | 17 | 18 | 29;
+export type Choice = 'Cooperate' | 'Defect' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors';
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -89,7 +89,7 @@ export function shuffleAliasIcon(alias: string): string {
 export const LIVE_GAMES: ReadonlyArray<{
   id: GameId;
   title: string;
-  options: readonly [Choice, Choice];
+  options: readonly [Choice, Choice, ...Choice[]];
   payoffs: string;
   roles?: readonly [string, string];
 }> = [
@@ -98,6 +98,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 15, title: 'Hawk–Dove', options: ['Dove', 'Hawk'], payoffs: 'Both Dove: 3 each · Both Hawk: −10 each · Hawk against Dove: 6–0' },
   { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
   { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
+  { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
 ];
 
 export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
@@ -106,7 +107,7 @@ export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
 
 export function randomChoice(gameId: GameId = 1): Choice {
   const options = gameFor(gameId).options;
-  return options[Math.random() < 0.5 ? 0 : 1];
+  return options[randomIndex(options.length)];
 }
 
 export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role = 'first'): [number, number] {
@@ -128,6 +129,11 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
       if (own !== other) return [0, 0];
       if (own === 'Opera') return role === 'first' ? [3, 2] : [2, 3];
       return role === 'first' ? [2, 3] : [3, 2];
+    case 29:
+      if (own === other) return [1, 1];
+      return (own === 'Rock' && other === 'Scissors')
+        || (own === 'Paper' && other === 'Rock')
+        || (own === 'Scissors' && other === 'Paper') ? [2, 0] : [0, 2];
     case 1:
       if (own === 'Cooperate' && other === 'Cooperate') return [2, 2];
       if (own === 'Defect' && other === 'Defect') return [1, 1];
@@ -197,6 +203,14 @@ export function submissionProgress(
   return { joined, submitted, allSubmitted: joined > 0 && submitted === joined };
 }
 
+function rpsOutcomeIndex(first: Choice, second: Choice): number {
+  if (first === second) return 0;
+  const choices = [first, second];
+  if (choices.includes('Rock') && choices.includes('Scissors')) return 1;
+  if (choices.includes('Paper') && choices.includes('Rock')) return 2;
+  return 3;
+}
+
 export function summarizeRound(
   assignments: Record<string, Assignment>,
   choices: Record<string, Submission>,
@@ -217,6 +231,7 @@ export function summarizeRound(
     : gameId === 13 ? ['Both hunt stag', 'Both hunt hare', 'Different choices']
     : gameId === 15 ? ['Both dove', 'Both hawk', 'Different choices']
     : gameId === 17 ? ['Matching choices', 'Different choices']
+    : gameId === 29 ? ['Tie', 'Rock beats Scissors', 'Paper beats Rock', 'Scissors beats Paper']
     : ['Both opera', 'Both football', 'Different choices'];
   const outcomes = outcomeNames.map(label => ({ label, count: 0 }));
   let studentPairs = 0;
@@ -226,7 +241,8 @@ export function summarizeRound(
     const other = results[assignment.opponentUid];
     if (own?.round !== round || other?.round !== round || own.opponentKind !== 'student' || other.opponentKind !== 'student') continue;
     studentPairs++;
-    const index = gameId === 17 ? (own.ownChoice === other.ownChoice ? 0 : 1)
+    const index = gameId === 29 ? rpsOutcomeIndex(own.ownChoice, other.ownChoice)
+      : gameId === 17 ? (own.ownChoice === other.ownChoice ? 0 : 1)
       : own.ownChoice === other.ownChoice ? (own.ownChoice === game.options[0] ? 0 : 1) : 2;
     outcomes[index].count++;
   }

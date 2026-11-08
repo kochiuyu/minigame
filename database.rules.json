@@ -36,7 +36,7 @@
         "config": {
           ".read": "auth != null",
           "gameId": {
-            ".validate": "newData.val() === 1 || newData.val() === 13 || newData.val() === 15 || newData.val() === 17 || newData.val() === 18"
+            ".validate": "newData.val() === 1 || newData.val() === 13 || newData.val() === 15 || newData.val() === 17 || newData.val() === 18 || newData.val() === 29"
           }
         },
         "participants": {
@@ -89,7 +89,7 @@
               ".validate": "newData.val() === root.child('rooms/DOTE-3090-pairs/config/round').val()"
             },
             "choice": {
-              ".validate": "((root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 1 || !root.child('rooms/DOTE-3090-pairs/config/gameId').exists()) && (newData.val() === 'Cooperate' || newData.val() === 'Defect')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 13 && (newData.val() === 'Hunt Stag' || newData.val() === 'Hunt Hare')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 15 && (newData.val() === 'Dove' || newData.val() === 'Hawk')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 17 && (newData.val() === 'Heads' || newData.val() === 'Tails')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 18 && (newData.val() === 'Opera' || newData.val() === 'Football'))"
+              ".validate": "((root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 1 || !root.child('rooms/DOTE-3090-pairs/config/gameId').exists()) && (newData.val() === 'Cooperate' || newData.val() === 'Defect')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 13 && (newData.val() === 'Hunt Stag' || newData.val() === 'Hunt Hare')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 15 && (newData.val() === 'Dove' || newData.val() === 'Hawk')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 17 && (newData.val() === 'Heads' || newData.val() === 'Tails')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 18 && (newData.val() === 'Opera' || newData.val() === 'Football')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 29 && (newData.val() === 'Rock' || newData.val() === 'Paper' || newData.val() === 'Scissors'))"
             },
             "$other": {
               ".validate": false
@@ -106,4 +106,3 @@
     }
   }
 }
-
