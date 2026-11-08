@@ -1,4 +1,4 @@
-export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
 export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Signal' | 'No Signal' | 'Trust' | 'Do Not Trust' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Price ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
@@ -188,6 +188,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 13, title: 'Stag Hunt', options: ['Hunt Stag', 'Hunt Hare'], rules: 'You and the bot each choose a hunt. Stag pays most when you both choose it; Hare is the safer choice.', payoffs: 'Both Stag: 10 each · Both Hare: 4 each · Stag against Hare: 0–4' },
   { id: 14, title: 'Bertrand Duopoly Price War', options: BERTRAND_PRICES, rules: 'You and a rival firm secretly choose whole-dollar prices from $10 to $50. Marginal cost is $10 and market demand is 100 minus the lowest price.', payoffs: 'The lower price sells to the whole market: profit = (price − 10) × (100 − price). Equal prices split that profit equally; the higher price earns 0.' },
   { id: 15, title: 'Hawk–Dove', options: ['Dove', 'Hawk'], rules: 'You and the bot each choose Dove or Hawk. Hawk gains against Dove, but two Hawks both lose points.', payoffs: 'Both Dove: 3 each · Both Hawk: −10 each · Hawk against Dove: 6–0' },
+  { id: 16, title: 'Ultimatum Bargaining', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], rules: 'The Proposer offers part of a $10 pot. The Responder sees the offer and accepts or rejects it.', payoffs: 'Proposer offers $0–$10 in half-dollar steps. If accepted, the Proposer keeps $10 minus the offer and the Responder receives the offer. If rejected, both receive $0.', roles: ['Proposer', 'Responder'] },
   { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], rules: 'Both choose Heads or Tails. The Matcher scores when the choices match; the Mismatcher scores when they differ.', payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
   { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], rules: 'Both choose Opera or Football. You score only if your choices match; each role prefers a different match.', payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
   { id: 19, title: 'Trust Game', options: TRUST_INVESTMENTS, rules: 'The Investor starts with 10 points and sends 0–10 to the Trustee. The amount sent triples. The Trustee then chooses how much of the tripled amount to return.', payoffs: 'Investor score = 10 − amount invested + amount returned. Trustee score = 3 × amount invested − amount returned.', roles: ['Investor', 'Trustee'] },
@@ -203,7 +204,7 @@ export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
 }
 
 export function randomChoice(gameId: GameId = 1): Choice {
-  const options = gameId === 30 ? ULTIMATUM_OFFERS : gameId === 2 ? (['Launch', 'Wait'] as const) : gameId === 5 ? (['Commit', 'Stay Flexible'] as const) : gameId === 10 ? (['Signal', 'No Signal'] as const) : gameId === 20 ? CENTIPEDE_FIRST : gameFor(gameId).options;
+  const options = (gameId === 16 || gameId === 30) ? ULTIMATUM_OFFERS : gameId === 2 ? (['Launch', 'Wait'] as const) : gameId === 5 ? (['Commit', 'Stay Flexible'] as const) : gameId === 10 ? (['Signal', 'No Signal'] as const) : gameId === 20 ? CENTIPEDE_FIRST : gameFor(gameId).options;
   return options[randomIndex(options.length)];
 }
 
@@ -333,6 +334,7 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
       const [investor, trustee] = trustPoints(investment, returned);
       return role === 'first' ? [investor, trustee] : [trustee, investor];
     }
+    case 16:
     case 30: {
       const [proposer, responder] = role === 'first' ? ultimatumPoints(own, other) : ultimatumPoints(other, own);
       return role === 'first' ? [proposer, responder] : [responder, proposer];
@@ -472,7 +474,7 @@ export function resolveResults(
   if (gameId === 10) return resolveSignalingResults(assignments, choices, offers, round);
   if (gameId === 2 || gameId === 5) return resolveSequentialResults(assignments, choices, offers, round, gameId);
   if (gameId === 19) return resolveTrustResults(assignments, choices, offers, round);
-  if (gameId === 30) return resolveUltimatumResults(assignments, choices, offers, round);
+  if ((gameId === 16 || gameId === 30)) return resolveUltimatumResults(assignments, choices, offers, round);
   const results: Record<string, MatchResult> = {};
   for (const [uid, assignment] of Object.entries(assignments)) {
     const ownChoice = choices[uid]?.round === round ? choices[uid].choice : null;
@@ -870,7 +872,7 @@ export function summarizeRound(
     : gameId === 20 ? ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Both pass all nodes']
     : gameId === 2 ? ['Launch + Enter', 'Launch + Stay Out', 'Wait + Enter', 'Wait + Stay Out']
     : gameId === 5 ? ['Commit + Enter', 'Commit + Stay Out', 'Stay Flexible + Enter', 'Stay Flexible + Stay Out']
-    : gameId === 30 ? ['Accepted', 'Rejected']
+    : (gameId === 16 || gameId === 30) ? ['Accepted', 'Rejected']
     : gameId === 23 ? ['One student wins', 'Tie']
     : gameId === 1 ? ['Both cooperate', 'Both defect', 'Different choices']
     : gameId === 3 ? ['Both high price', 'Both low price', 'One station undercuts']
@@ -903,7 +905,7 @@ export function summarizeRound(
       const first = assignment.role === 'first' ? own.ownChoice : other.ownChoice;
       const second = assignment.role === 'second' ? own.ownChoice : other.ownChoice;
       return (gameId === 2 ? first === 'Launch' : first === 'Commit') ? second === 'Enter' ? 0 : 1 : second === 'Enter' ? 2 : 3;
-    })() : gameId === 30 ? (own.ownChoice === 'Reject' || other.ownChoice === 'Reject' ? 1 : 0)
+    })() : (gameId === 16 || gameId === 30) ? (own.ownChoice === 'Reject' || other.ownChoice === 'Reject' ? 1 : 0)
       : gameId === 23 ? (own.ownPoints === 0 ? 1 : 0)
       : gameId === 29 ? rpsOutcomeIndex(own.ownChoice, other.ownChoice)
       : gameId === 17 ? (own.ownChoice === other.ownChoice ? 0 : 1)
@@ -966,7 +968,7 @@ function summarizePublicGoodsRound(assignments: Record<string, Assignment>, choi
 export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null {
   const config = room.config;
   if (!config?.totalRounds || config.phase !== 'playing') return null;
-  if ((config.gameId === 2 || config.gameId === 5 || config.gameId === 10 || config.gameId === 30 || config.gameId === 19) && config.step !== 'respond') return null;
+  if ((config.gameId === 2 || config.gameId === 5 || config.gameId === 10 || (config.gameId === 16 || config.gameId === 30) || config.gameId === 19) && config.step !== 'respond') return null;
   if (config.gameId === 20 && config.centipedeNode && config.centipedeNode !== 7) return null;
   if (config.gameId === 6 && config.repeatedTurn && config.repeatedTurn !== 6) return null;
   const round = config.round;
@@ -1102,4 +1104,3 @@ export function summarizePeople(summaries: RoundSummary[], archives: Record<stri
     .map(person => ({ uid: person.uid, alias: person.alias, analysis: summarizePerson(summaries, person.results) }))
     .sort((a, b) => a.alias.localeCompare(b.alias) || a.uid.localeCompare(b.uid));
 }
-
