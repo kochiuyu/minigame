@@ -24,6 +24,14 @@ function resultRow(round: number, game: string, alias: string, result?: MatchRes
   ];
 }
 
+function turnRows(round: number, game: string, alias: string, result?: MatchResult): ReportRow[] {
+  return Object.entries(result?.repeatedTurns || {}).map(([turn, item]) => [
+    'Match turn', round, game, alias, item.own, Number(turn), result?.opponentAlias,
+    item.other, item.ownPoints, item.otherPoints, item.bot ? 'Bot filled a choice' : result?.opponentKind,
+    item.bot ? 'Yes' : 'No',
+  ]);
+}
+
 export function buildReportCsv(gameTitle: (id: GameId) => string, summaries: RoundSummary[], archives?: Record<string, RoundArchive>,
   personalResults?: Record<string, MatchResult>, alias = 'You'): string {
   const rows: ReportRow[] = [HEADER];
@@ -37,10 +45,16 @@ export function buildReportCsv(gameTitle: (id: GameId) => string, summaries: Rou
     if (archives) {
       const archive = archives[summary.round];
       const uids = new Set([...Object.keys(archive?.aliases || {}), ...Object.keys(archive?.results || {})]);
-      for (const uid of uids) rows.push(resultRow(summary.round, game, archive?.aliases?.[uid] || 'Student who left', archive?.results?.[uid]));
+      for (const uid of uids) {
+        const name = archive?.aliases?.[uid] || 'Student who left';
+        const result = archive?.results?.[uid];
+        rows.push(resultRow(summary.round, game, name, result), ...turnRows(summary.round, game, name, result));
+      }
     } else if (personalResults) {
-      rows.push(resultRow(summary.round, game, alias, personalResults[summary.round]));
+      const result = personalResults[summary.round];
+      rows.push(resultRow(summary.round, game, alias, result), ...turnRows(summary.round, game, alias, result));
     }
   }
   return '\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
+

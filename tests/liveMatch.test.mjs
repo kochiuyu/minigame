@@ -1,6 +1,50 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advanceRepeated, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+import { buildReportCsv } from '../src/reportExport.ts';
+
+test('Repeated Prisoner’s Dilemma keeps partners for five turns and reports the sequence', () => {
+  assert.deepEqual(pointsFor(6, 'Cooperate', 'Defect'), [0, 3]);
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' } };
+  const first = ['Cooperate', 'Defect', 'Cooperate', 'Defect', 'Cooperate'];
+  const second = ['Cooperate', 'Cooperate', 'Defect', 'Defect', 'Cooperate'];
+  const repeatedDecisions = { a: {}, b: {} };
+  for (let i = 0; i < 5; i++) {
+    repeatedDecisions.a[`t${i + 1}`] = { round: 1, choice: first[i] };
+    repeatedDecisions.b[`t${i + 1}`] = { round: 1, choice: second[i] };
+  }
+  let room = { config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 6, repeatedTurn: 1 }, assignments,
+    participants: { a: { alias: 'A' }, b: { alias: 'B' } }, repeatedDecisions };
+  assert.equal(finishRound(room, true), null);
+  for (let i = 0; i < 5; i++) room = advanceRepeated(room, () => 'Defect');
+  assert.equal(room.config.repeatedTurn, 6);
+  assert.deepEqual(Object.values(room.repeatedPaths.a.turns).map(item => item.own), first);
+  assert.deepEqual(Object.values(room.repeatedPaths.b.turns).map(item => item.own), second);
+  const result = repeatedTurnResults(room);
+  assert.deepEqual([result.a.ownPoints, result.b.ownPoints], [8, 8]);
+  const finished = finishRound(room, true);
+  assert.equal(finished.config.summaries[1].studentPairs, 1);
+  assert.equal(finished.config.summaries[1].choiceCounts[0].count, 6);
+  assert.equal(finished.config.summaries[1].outcomes.reduce((sum, item) => sum + item.count, 0), 5);
+  assert.equal(finished.archive[1].results.a.repeatedTurns[5].other, 'Cooperate');
+  const csv = buildReportCsv(id => id === 6 ? "Repeated Prisoner's Dilemma" : 'Other', [finished.config.summaries[1]], finished.archive);
+  assert.equal(csv.split('"Match turn"').length - 1, 10);
+});
+
+test('Repeated Prisoner’s Dilemma fills a missing turn with a bot', () => {
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' } };
+  let room = { config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 6, repeatedTurn: 1 }, assignments,
+    repeatedDecisions: { a: { t1: { round: 1, choice: 'Cooperate' } } } };
+  room = advanceRepeated(room, () => 'Defect');
+  assert.deepEqual([room.repeatedPaths.a.turns[1].ownPoints, room.repeatedPaths.b.turns[1].ownPoints], [0, 3]);
+  for (let i = 1; i < 5; i++) room = advanceRepeated(room, () => 'Defect');
+  const finished = finishRound(room, true);
+  assert.equal(finished.archive[1].results.a.fallback, true);
+  assert.equal(finished.config.summaries[1].botMatches, 2);
+  assert.equal(finished.config.summaries[1].choiceCounts.find(item => item.label === 'Cooperate').count, 1);
+});
 
 test('live Centipede advances each node, waits for the correct player, and scores the exit', () => {
   const assignments = {

@@ -36,7 +36,7 @@
         "config": {
           ".read": "auth != null",
           "gameId": {
-            ".validate": "newData.val() === 2 || newData.val() === 5 || newData.val() === 20 || newData.val() === 1 || newData.val() === 4 || newData.val() === 13 || newData.val() === 15 || newData.val() === 17 || newData.val() === 18 || newData.val() === 29 || newData.val() === 30 || newData.val() === 19 || newData.val() === 12 || newData.val() === 23"
+            ".validate": "newData.val() === 6 || newData.val() === 2 || newData.val() === 5 || newData.val() === 20 || newData.val() === 1 || newData.val() === 4 || newData.val() === 13 || newData.val() === 15 || newData.val() === 17 || newData.val() === 18 || newData.val() === 29 || newData.val() === 30 || newData.val() === 19 || newData.val() === 12 || newData.val() === 23"
           }
         },
         "participants": {
@@ -57,7 +57,7 @@
           ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
-            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('rooms/DOTE-3090-pairs/config/phase').val() === 'playing' && root.child('rooms/DOTE-3090-pairs/participants').child($uid).exists()",
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('rooms/DOTE-3090-pairs/config/phase').val() === 'playing' && root.child('rooms/DOTE-3090-pairs/participants').child($uid).exists() && (root.child('rooms/DOTE-3090-pairs/config/gameId').val() !== 6 || root.child('rooms/DOTE-3090-pairs/config/repeatedTurn').val() === 1)",
             ".validate": "newData.hasChildren(['round', 'kind', 'opponentAlias', 'role']) && newData.child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && newData.child('opponentAlias').isString() && newData.child('opponentAlias').val().length > 0 && newData.child('opponentAlias').val().length <= 30 && ((newData.child('kind').val() === 'group' && root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 12 && newData.child('role').val() === 'first' && newData.hasChildren(['groupId', 'groupSize']) && newData.child('groupId').isString() && newData.child('groupId').val().length > 0 && newData.child('groupSize').isNumber() && newData.child('groupSize').val() >= 1 && newData.child('groupSize').val() <= 4 && !newData.child('opponentUid').exists() && (auth.token.email === 'kochiuyu@gmail.com' || (newData.child('groupId').val() === auth.uid && newData.child('groupSize').val() === 1 && newData.child('opponentAlias').val() === 'Public goods group'))) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() !== 12 && (newData.child('role').val() === 'first' || newData.child('role').val() === 'second') && (newData.child('kind').val() === 'bot' || (newData.child('kind').val() === 'student' && newData.child('opponentUid').isString())) && (auth.token.email === 'kochiuyu@gmail.com' || (newData.child('kind').val() === 'bot' && newData.child('role').val() === 'first' && newData.child('opponentAlias').val() === 'Random bot' && !newData.child('opponentUid').exists()))))",
             "round": {
               ".validate": "newData.val() === root.child('rooms/DOTE-3090-pairs/config/round').val()"
@@ -132,6 +132,31 @@
               },
               "choice": {
                 ".validate": "newData.val() === 'Take' || newData.val() === 'Pass'"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "repeatedPaths": {
+          ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid"
+          }
+        },
+        "repeatedDecisions": {
+          ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            "$turn": {
+              ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('rooms/DOTE-3090-pairs/config/phase').val() === 'playing' && root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 6 && root.child('rooms/DOTE-3090-pairs/assignments').child($uid).child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && (($turn === 't1' && root.child('rooms/DOTE-3090-pairs/config/repeatedTurn').val() === 1) || ($turn === 't2' && root.child('rooms/DOTE-3090-pairs/config/repeatedTurn').val() === 2) || ($turn === 't3' && root.child('rooms/DOTE-3090-pairs/config/repeatedTurn').val() === 3) || ($turn === 't4' && root.child('rooms/DOTE-3090-pairs/config/repeatedTurn').val() === 4) || ($turn === 't5' && root.child('rooms/DOTE-3090-pairs/config/repeatedTurn').val() === 5))",
+              ".validate": "newData.hasChildren(['round', 'choice']) && newData.child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && (newData.child('choice').val() === 'Cooperate' || newData.child('choice').val() === 'Defect')",
+              "round": {
+                ".validate": "newData.val() === root.child('rooms/DOTE-3090-pairs/config/round').val()"
+              },
+              "choice": {
+                ".validate": "newData.val() === 'Cooperate' || newData.val() === 'Defect'"
               },
               "$other": {
                 ".validate": false

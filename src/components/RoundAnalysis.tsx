@@ -20,7 +20,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
       <h3 className="text-lg font-bold">Round {summary.round} · {game.title}</h3>
       <p className="text-sm text-slate-300">{summary.gameId === 12
         ? `${summary.submitted} contributed · ${summary.studentGroups || 0} groups · ${summary.botSeats || 0} bot seats${summary.fallbacks ? ` (${summary.fallbacks} filled for missing students)` : ''} · Average contribution ${score(summary.averageContribution)} · Average pool ${score(summary.averagePool)}`
-        : `${summary.submitted} ${summary.gameId === 20 ? 'played' : 'submitted'} · ${summary.studentPairs} completed student pairs · ${summary.botMatches} bot matches${summary.fallbacks ? ` · ${summary.fallbacks} bot fallbacks` : ''}${summary.gameId === 19 ? ` · Average return ${score(summary.averageReturn)}` : ''}`} · Average student score {score(summary.averagePoints)}</p>
+        : `${summary.submitted} ${summary.gameId === 20 || summary.gameId === 6 ? 'played' : 'submitted'} · ${summary.studentPairs} completed student pairs · ${summary.botMatches} bot matches${summary.fallbacks ? ` · ${summary.fallbacks} bot fallbacks` : ''}${summary.gameId === 19 ? ` · Average return ${score(summary.averageReturn)}` : ''}`} · Average student score {score(summary.averagePoints)}</p>
     </div>
     <div>
       <h4 className="font-semibold mb-2">{summary.gameId === 12 ? 'Student contributions' : summary.gameId === 19 ? 'Student investments' : 'Student choices'}</h4>
@@ -38,7 +38,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
         <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-3">{summary.gameId === 12 ? 'Total contribution' : 'Outcome'}</th><th scope="col" className="py-2">{summary.gameId === 12 ? 'Groups' : 'Pairs'}</th></tr></thead>
         <tbody>{summary.outcomes.map(item => <tr key={item.label} className="border-b border-slate-800"><th scope="row" className="py-2 pr-3 font-normal">{item.label}</th><td className="py-2">{item.count}</td></tr>)}</tbody>
       </table>
-      <p className="mt-2 text-xs text-slate-400">{summary.gameId === 12 ? 'Each group has four seats; bots fill unoccupied or missing seats.' : 'Bot matches are counted separately from student pairs.'}</p>
+      <p className="mt-2 text-xs text-slate-400">{summary.gameId === 12 ? 'Each group has four seats; bots fill unoccupied or missing seats.' : summary.gameId === 6 ? 'Outcomes count each of the five turns in completed student pairs; bot matches are separate.' : 'Bot matches are counted separately from student pairs.'}</p>
     </div>
     {studentView && <div className="border-t border-slate-700 pt-3">
       <h4 className="font-semibold">Your result</h4>
@@ -48,15 +48,16 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
       </div> : personal ? <table className="mt-2 w-full text-left text-sm">
         <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2">Player</th><th scope="col" className="py-2">Choice</th><th scope="col" className="py-2">Points</th></tr></thead>
         <tbody>
-          <tr className="border-b border-slate-800"><th scope="row" className="py-2 font-normal">You</th><td>{personal.ownChoice}</td><td>{personal.ownPoints}</td></tr>
-          <tr><th scope="row" className="py-2 font-normal">{personal.opponentAlias}</th><td>{personal.opponentChoice}</td><td>{personal.opponentPoints}</td></tr>
+          <tr className="border-b border-slate-800"><th scope="row" className="py-2 font-normal">You</th><td>{personal.repeatedTurns ? 'Five turns' : personal.ownChoice}</td><td>{personal.ownPoints}</td></tr>
+          <tr><th scope="row" className="py-2 font-normal">{personal.opponentAlias}</th><td>{personal.repeatedTurns ? 'Five turns' : personal.opponentChoice}</td><td>{personal.opponentPoints}</td></tr>
         </tbody>
       </table> : <p className="text-sm text-slate-300">No personal result is available for this round.</p>}
       {personal?.exitNode && <p className="mt-2 text-sm text-blue-200">{personal.exitNode === 7 ? 'Both players passed all six nodes.' : `The chain ended with Take at Node ${personal.exitNode}.`}</p>}
       {personal?.centipedeMoves && <p className="mt-2 text-sm text-slate-300">Moves: {Object.entries(personal.centipedeMoves).map(([node, move]) => `Node ${node}: Player ${Number(node) % 2 ? 1 : 2} ${move}`).join(' · ')}. “Pass All” in the table means no Take before this chain ended.</p>}
+      {personal?.repeatedTurns && <div className="mt-3 overflow-x-auto"><table className="w-full text-sm text-left"><caption className="text-left font-semibold mb-1">Your five turns</caption><thead><tr><th>Turn</th><th>You</th><th>Opponent</th><th>Points</th></tr></thead><tbody>{Object.entries(personal.repeatedTurns).map(([turn, item]) => <tr key={turn}><td>{turn}</td><td>{item.own}</td><td>{item.other}{item.bot ? ' (bot filled a choice)' : ''}</td><td>{item.ownPoints} / {item.otherPoints}</td></tr>)}</tbody></table></div>}
       {personal?.fallback && <p className="text-sm text-amber-300 mt-2">{personal.group
         ? `${personal.group.missing} group member${personal.group.missing === 1 ? '' : 's'} did not contribute, so random bots filled those seats.`
-        : summary.gameId === 20 ? 'A random bot filled a missed turn.' : 'Your partner did not submit, so a random bot took their place.'}</p>}
+        : summary.gameId === 20 || summary.gameId === 6 ? 'A random bot filled a missed turn.' : 'Your partner did not submit, so a random bot took their place.'}</p>}
     </div>}
     {archive && <div className="border-t border-slate-700 pt-3 overflow-x-auto">
       <table className="w-full text-left text-sm">
@@ -66,7 +67,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
           .map(uid => [uid, archive.aliases?.[uid] || 'Student who left'] as const)
           .sort((a, b) => a[1].localeCompare(b[1])).map(([uid, alias]) => {
           const result = archive.results?.[uid];
-          return <tr key={uid} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{alias}</th><td className="pr-2">{result?.ownChoice || 'No choice'}</td><td className="pr-2">{summary.gameId === 12 ? result?.group?.totalContribution ?? '—' : result?.opponentAlias || '—'}</td><td>{result?.ownPoints ?? '—'}</td></tr>;
+          return <tr key={uid} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{alias}</th><td className="pr-2">{result?.repeatedTurns ? Object.entries(result.repeatedTurns).map(([turn, item]) => `${turn}: ${item.own}`).join(' · ') : result?.ownChoice || 'No choice'}</td><td className="pr-2">{summary.gameId === 12 ? result?.group?.totalContribution ?? '—' : result?.opponentAlias || '—'}</td><td>{result?.ownPoints ?? '—'}</td></tr>;
         })}</tbody>
       </table>
     </div>}
@@ -121,7 +122,7 @@ function PersonAnalysis({ analysis, title }: { analysis: ReturnType<typeof summa
         <tbody>{analysis.rounds.map(item => <tr key={item.round} className="border-b border-slate-800">
           <th scope="row" className="py-2 pr-2 font-normal">{item.round}</th>
           <td className="pr-2">{gameFor(item.gameId).title}</td>
-          <td className="pr-2">{item.result?.ownChoice || 'No choice'}</td>
+          <td className="pr-2">{item.result?.repeatedTurns ? Object.entries(item.result.repeatedTurns).map(([turn, move]) => `${turn}: ${move.own}`).join(' · ') : item.result?.ownChoice || 'No choice'}</td>
           <td className="pr-2">{item.result?.group ? `Group pool ${item.result.group.totalContribution} (${item.result.group.bots} bots)`
             : item.result ? `${item.result.opponentAlias} (${item.result.opponentChoice})${item.result.exitNode ? ` · ${item.result.exitNode === 7 ? 'Both passed' : `Ended at Node ${item.result.exitNode}`}` : ''}` : '—'}</td>
           <td>{item.result?.ownPoints ?? '—'}</td>

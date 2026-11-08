@@ -4,9 +4,9 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, centipedeTurnResults, contributionAmount, finishRound, gameFor, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomReturn, returnAmount, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound,
+  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advanceRepeated, centipedeTurnResults, contributionAmount, finishRound, gameFor, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound,
 } from '../liveMatch';
-import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
+import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, RepeatedPath, RepeatedTurn, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
 import { FinalAnalysis, RoundAnalysis } from './RoundAnalysis';
 
@@ -36,6 +36,9 @@ export function FirebaseLiveClass() {
   const [centipedePaths, setCentipedePaths] = useState<Record<string, CentipedePath>>({});
   const [myCentipedeDecisions, setMyCentipedeDecisions] = useState<Record<string, CentipedeDecision>>({});
   const [myCentipedePath, setMyCentipedePath] = useState<CentipedePath | null>(null);
+  const [repeatedDecisions, setRepeatedDecisions] = useState<Record<string, Record<string, Submission>>>({});
+  const [myRepeatedDecisions, setMyRepeatedDecisions] = useState<Record<string, Submission>>({});
+  const [myRepeatedPath, setMyRepeatedPath] = useState<RepeatedPath | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<GameId>(1);
   const [selectedTotalRounds, setSelectedTotalRounds] = useState(5);
   const [practiceGameId, setPracticeGameId] = useState<GameId>(1);
@@ -44,6 +47,7 @@ export function FirebaseLiveClass() {
   const [practiceRole, setPracticeRole] = useState<'first' | 'second'>('first');
   const [practiceBotOffer, setPracticeBotOffer] = useState<Choice>(() => randomChoice(30));
   const [practiceResult, setPracticeResult] = useState<{ ownChoice: Choice; botChoice: Choice | null; points: number; groupTotal?: number; botContributions?: number[] } | null>(null);
+  const [practiceRepeatedTurns, setPracticeRepeatedTurns] = useState<RepeatedTurn[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
@@ -70,6 +74,7 @@ export function FirebaseLiveClass() {
     setPracticeRole('first');
     setPracticeBotOffer(randomChoice(config.gameId === 19 ? 19 : 30));
     setPracticeResult(null);
+    setPracticeRepeatedTurns([]);
   }, [config?.gameId]);
 
   useEffect(() => onAuthStateChanged(auth, next => {
@@ -93,6 +98,9 @@ export function FirebaseLiveClass() {
     setCentipedePaths({});
     setMyCentipedeDecisions({});
     setMyCentipedePath(null);
+    setRepeatedDecisions({});
+    setMyRepeatedDecisions({});
+    setMyRepeatedPath(null);
     if (!user) return;
 
     const fail = (err: Error) => setError(errorText(err));
@@ -108,6 +116,7 @@ export function FirebaseLiveClass() {
         setArchive(room?.archive || {});
         setCentipedeDecisions(room?.centipedeDecisions || {});
         setCentipedePaths(room?.centipedePaths || {});
+        setRepeatedDecisions(room?.repeatedDecisions || {});
       }, fail));
     } else {
       unsubs.push(onValue(ref(db, `${ROOT}/config`), snapshot => setConfig(snapshot.val()), fail));
@@ -120,6 +129,8 @@ export function FirebaseLiveClass() {
       unsubs.push(onValue(ref(db, `${ROOT}/results/${user.uid}`), snapshot => setResult(snapshot.val()), fail));
       unsubs.push(onValue(ref(db, `${ROOT}/centipedeDecisions/${user.uid}`), snapshot => setMyCentipedeDecisions(snapshot.val() || {}), fail));
       unsubs.push(onValue(ref(db, `${ROOT}/centipedePaths/${user.uid}`), snapshot => setMyCentipedePath(snapshot.val()), fail));
+      unsubs.push(onValue(ref(db, `${ROOT}/repeatedDecisions/${user.uid}`), snapshot => setMyRepeatedDecisions(snapshot.val() || {}), fail));
+      unsubs.push(onValue(ref(db, `${ROOT}/repeatedPaths/${user.uid}`), snapshot => setMyRepeatedPath(snapshot.val()), fail));
     }
     return () => unsubs.forEach(unsub => unsub());
   }, [user, instructor]);
@@ -131,7 +142,7 @@ export function FirebaseLiveClass() {
   }, [user, config, participant, alias]);
 
   useEffect(() => {
-    if (!user?.isAnonymous || config?.phase !== 'playing' || !participant || assignment !== null || ([2, 5, 19, 30].includes(config.gameId) && config.step === 'respond')) return;
+    if (!user?.isAnonymous || config?.phase !== 'playing' || !participant || assignment !== null || ([2, 5, 19, 30].includes(config.gameId) && config.step === 'respond') || (config.gameId === 6 && (config.repeatedTurn || 1) > 1)) return;
     const fallback: Assignment = config.gameId === 12
       ? { round: config.round, kind: 'group', groupId: user.uid, groupSize: 1, opponentAlias: 'Public goods group', role: 'first' }
       : { round: config.round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' };
@@ -168,10 +179,13 @@ export function FirebaseLiveClass() {
       offers: null,
       centipedeDecisions: null,
       centipedePaths: null,
+      repeatedDecisions: null,
+      repeatedPaths: null,
       ...(!config.totalRounds ? { results: null } : {}),
       'config/phase': 'playing',
       'config/step': [2, 5, 19, 30].includes(config.gameId) ? 'offer' : null,
       'config/centipedeNode': config.gameId === 20 ? 1 : null,
+      'config/repeatedTurn': config.gameId === 6 ? 1 : null,
     }));
   }
 
@@ -195,6 +209,11 @@ export function FirebaseLiveClass() {
       { applyLocally: false }));
   }
 
+  async function advanceRepeatedTurn() {
+    await run(() => runTransaction(ref(db, ROOT), current => current ? advanceRepeated(current as LiveRoom) || undefined : undefined,
+      { applyLocally: false }));
+  }
+
   async function revealLegacy() {
     await run(async () => {
       const roomRef = ref(db, ROOT);
@@ -204,7 +223,8 @@ export function FirebaseLiveClass() {
         return {
           ...room,
           config: { ...room.config, phase: 'revealed' },
-          results: room.config.gameId === 20 && room.config.centipedeNode === 7
+          results: room.config.gameId === 6 && room.config.repeatedTurn === 6 ? repeatedTurnResults(room)
+            : room.config.gameId === 20 && room.config.centipedeNode === 7
             ? centipedeTurnResults(room).results
             : resolveResults(room.assignments || {}, room.choices || {}, room.config.round, room.config.gameId || 1, room.offers || {}),
         };
@@ -229,14 +249,26 @@ export function FirebaseLiveClass() {
       offers: null,
       centipedeDecisions: null,
       centipedePaths: null,
+      repeatedDecisions: null,
+      repeatedPaths: null,
       ...(!config.totalRounds ? { results: null } : {}),
       'config/round': config.round + 1,
       'config/phase': 'lobby',
       'config/centipedeNode': null,
+      'config/repeatedTurn': null,
     }));
   }
 
   function playBot() {
+    if (practiceGameId === 6) {
+      if (practiceRepeatedTurns.length >= 5) return;
+      const botChoice = randomChoice(6) as 'Cooperate' | 'Defect';
+      const own = practiceChoice as 'Cooperate' | 'Defect';
+      const [ownPoints, otherPoints] = pointsFor(6, own, botChoice);
+      setPracticeRepeatedTurns([...practiceRepeatedTurns, { own, other: botChoice, ownPoints, otherPoints, bot: true }]);
+      setPracticeResult({ ownChoice: own, botChoice, points: ownPoints });
+      return;
+    }
     if (practiceGameId === 2 || practiceGameId === 5) {
       const botChoice = practiceRole === 'first' ? Math.random() < 0.5 ? 'Enter' : 'Stay Out' : practiceBotOffer;
       const [points] = pointsFor(practiceGameId, practiceChoice, botChoice, practiceRole);
@@ -309,6 +341,11 @@ export function FirebaseLiveClass() {
   const centipedeReady = centipedeActors.filter(([uid]) => centipedeDecisions[uid]?.[`n${centipedeNode}`]?.round === round).length;
   const myCentipedeMove = myCentipedeDecisions[`n${centipedeNode}`]?.round === round ? myCentipedeDecisions[`n${centipedeNode}`] : null;
   const myCentipedeFinished = myCentipedePath?.round === round && Boolean(myCentipedePath.exitNode);
+  const repeated = game.id === 6;
+  const repeatedTurn = config?.repeatedTurn || 1;
+  const repeatedActors = Object.entries(assignments).filter(([, item]) => item.round === round);
+  const repeatedReady = repeatedActors.filter(([uid]) => repeatedDecisions[uid]?.[`t${repeatedTurn}`]?.round === round).length;
+  const myRepeatedMove = myRepeatedDecisions[`t${repeatedTurn}`]?.round === round ? myRepeatedDecisions[`t${repeatedTurn}`] : null;
   const staged = entry || ultimatum || trust;
   const isResponder = currentAssignment?.role === 'second';
   const isMyStep = !staged || (config?.step === 'offer' ? !isResponder : isResponder);
@@ -346,6 +383,7 @@ export function FirebaseLiveClass() {
           setPracticeRole('first');
           setPracticeBotOffer(randomChoice(id === 2 || id === 5 || id === 20 ? id : id === 19 ? 19 : 30));
           setPracticeResult(null);
+          setPracticeRepeatedTurns([]);
         }} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
           {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
@@ -394,7 +432,10 @@ export function FirebaseLiveClass() {
             </label>
           ))}
         </fieldset>}
-        <button onClick={playBot} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">Play random bot</button>
+        {practiceGameId === 6 && practiceRepeatedTurns.length > 0 && <div className="text-sm space-y-1"><p>Turn {practiceRepeatedTurns.length} of 5 · Your total {practiceRepeatedTurns.reduce((sum, item) => sum + item.ownPoints, 0)} · Bot total {practiceRepeatedTurns.reduce((sum, item) => sum + item.otherPoints, 0)}</p>
+          <ol>{practiceRepeatedTurns.map((item, index) => <li key={index}>Turn {index + 1}: You {item.own}, bot {item.other} · {item.ownPoints} / {item.otherPoints}</li>)}</ol></div>}
+        {practiceGameId === 6 && practiceRepeatedTurns.length === 5 ? <button onClick={() => { setPracticeRepeatedTurns([]); setPracticeResult(null); }} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">New five-turn match</button>
+          : <button onClick={playBot} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">{practiceGameId === 6 ? `Play turn ${practiceRepeatedTurns.length + 1} of 5` : 'Play random bot'}</button>}
         {practiceResult && <p role="status">{practiceGameId === 19
           ? `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} points.`
           : practiceGameId === 12
@@ -460,13 +501,15 @@ export function FirebaseLiveClass() {
               {config?.phase === 'playing' && <>
                 <p>{publicGoods ? `${groupSizes.size} groups of four · ${plannedBotSeats} planned bot seats`
                   : `${roundAssignments.filter(item => item.kind === 'student').length / 2} student pairs · ${roundAssignments.filter(item => item.kind === 'bot').length} bot matches`}</p>
-              <p role="status" className="font-semibold">{centipede ? centipedeNode <= 6 ? `Node ${centipedeNode} of 6 · ${centipedeReady} of ${centipedeActors.length} active students decided` : 'All Centipede chains have ended' : staged ? `${stepSubmitted} of ${stepStudents.length} ${config.step === 'offer' ? entry ? 'first movers decided' : trust ? 'investors invested' : 'proposers offered' : entry ? 'second movers decided' : trust ? 'trustees returned' : 'responders decided'}` : `${progress.submitted} of ${progress.joined} joined students submitted`}</p>
-                {centipede ? <p className="text-sm text-slate-300">Advance each node after students decide. Any missing move is played by a random bot. Pairs that have already taken stop moving; scores stay hidden until the round ends.</p>
+              <p role="status" className="font-semibold">{repeated ? repeatedTurn <= 5 ? `Turn ${repeatedTurn} of 5 · ${repeatedReady} of ${repeatedActors.length} students decided` : 'All five turns complete' : centipede ? centipedeNode <= 6 ? `Node ${centipedeNode} of 6 · ${centipedeReady} of ${centipedeActors.length} active students decided` : 'All Centipede chains have ended' : staged ? `${stepSubmitted} of ${stepStudents.length} ${config.step === 'offer' ? entry ? 'first movers decided' : trust ? 'investors invested' : 'proposers offered' : entry ? 'second movers decided' : trust ? 'trustees returned' : 'responders decided'}` : `${progress.submitted} of ${progress.joined} joined students submitted`}</p>
+                {repeated ? <p className="text-sm text-slate-300">Advance after students decide. Any missing decision is played by a random bot for that turn. Partners stay the same across all five turns; each pair sees its previous choices after advancement.</p>
+                  : centipede ? <p className="text-sm text-slate-300">Advance each node after students decide. Any missing move is played by a random bot. Pairs that have already taken stop moving; scores stay hidden until the round ends.</p>
                   : (staged ? stepStudents.length > 0 && stepSubmitted === stepStudents.length : progress.allSubmitted) ? <p className="rounded-lg border border-emerald-600 bg-emerald-950/50 p-3 text-emerald-200">Everyone in this step has submitted. {staged && config.step === 'offer' ? entry ? 'Let second movers see the first choices.' : trust ? 'Let trustees see the investments.' : 'Let responders see their offers.' : lastRound ? 'Finish the class to show the full report.' : 'Choose whether to reveal this round before continuing.'}</p>
                   : <p className="text-sm text-slate-300">Choices stay hidden until you reveal them. You can end the round early; a bot will fill {publicGoods ? 'each missing group seat' : 'a missing partner'} in the results.</p>}
-                {centipede && centipedeNode <= 6 ? <button disabled={busy} onClick={advanceCentipedeNode} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Advance from node {centipedeNode}{centipedeReady < centipedeActors.length ? ' (bot fills missing moves)' : ''}</button>
+                {repeated && repeatedTurn <= 5 ? <button disabled={busy} onClick={advanceRepeatedTurn} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Reveal turn {repeatedTurn} and advance{repeatedReady < repeatedActors.length ? ' (bot fills missing choices)' : ''}</button>
+                : centipede && centipedeNode <= 6 ? <button disabled={busy} onClick={advanceCentipedeNode} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Advance from node {centipedeNode}{centipedeReady < centipedeActors.length ? ' (bot fills missing moves)' : ''}</button>
                 : staged && config.step === 'offer' ? <button disabled={busy} onClick={startResponses} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">{entry ? 'Show first choices to second movers' : trust ? 'Show investments to trustees' : 'Show offers to responders'}</button>
-                : legacyClass ? <button disabled={busy || legacySummary.submitted === 0} onClick={revealLegacy} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Reveal results</button>
+                : legacyClass ? <button disabled={busy || (repeated ? repeatedTurn !== 6 : legacySummary.submitted === 0)} onClick={revealLegacy} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Reveal results</button>
                   : lastRound ? <button disabled={busy} onClick={() => endRound(true)} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Finish class and show all results</button>
                   : <div className="flex flex-wrap gap-3">
                     <button disabled={busy || !Object.values(submissions).some(item => item.round === round)} onClick={() => endRound(true)} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Reveal this round</button>
@@ -489,6 +532,7 @@ export function FirebaseLiveClass() {
                   <ul className="grid gap-2 sm:grid-cols-2">
                     {joinedStudents.map(([uid, student]) => {
                       const status = config.phase === 'lobby' ? 'Waiting for round'
+                        : repeated && config.phase === 'playing' ? repeatedTurn > 5 ? 'Five turns complete' : assignments[uid]?.round !== round ? 'Joining round' : repeatedDecisions[uid]?.[`t${repeatedTurn}`]?.round === round ? 'Decided' : 'Waiting for choice'
                         : centipede && config.phase === 'playing' ? centipedePaths[uid]?.exitNode ? `Ended at node ${centipedePaths[uid].exitNode}` : assignments[uid]?.round !== round ? 'Joining round' : assignments[uid].role === centipedeActorRole && centipedeNode <= 6 ? centipedeDecisions[uid]?.[`n${centipedeNode}`]?.round === round ? 'Decided' : 'Waiting for move' : 'Waiting for partner'
                         : submissions[uid]?.round === round ? 'Submitted'
                         : config.phase === 'revealed' ? 'No choice'
@@ -527,12 +571,25 @@ export function FirebaseLiveClass() {
             </div> : <p>{currentSubmission ? 'Calculating your result…' : 'No choice submitted this round.'}</p>
           ) : !currentAssignment ? (
             <div className="space-y-2">
-              <p>{staged && config.step === 'respond' ? entry ? `${deterrence ? 'Incumbents' : 'First movers'} have already chosen. You can join the next round.` : trust ? 'Investments are already with trustees. You can join the next round.' : 'Offers are already with responders. You can join the next round.'
+              <p>{repeated && repeatedTurn > 1 ? 'This five-turn match has started. You can join the next class round.' : staged && config.step === 'respond' ? entry ? `${deterrence ? 'Incumbents' : 'First movers'} have already chosen. You can join the next round.` : trust ? 'Investments are already with trustees. You can join the next round.' : 'Offers are already with responders. You can join the next round.'
                 : publicGoods ? 'Finding your group. If you joined late, three random bots will fill the other seats.'
                   : 'Finding your match. If you joined after pairing, a bot will take the other seat.'}</p>
-              {!(staged && config.step === 'respond') && <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/assignments/${user.uid}`),
+              {!(staged && config.step === 'respond') && !(repeated && repeatedTurn > 1) && <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/assignments/${user.uid}`),
                 publicGoods ? { round, kind: 'group', groupId: user.uid, groupSize: 1, opponentAlias: 'Public goods group', role: 'first' }
                   : { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' }))} className="text-sm underline">Try bot fallback</button>}
+            </div>
+          ) : repeated ? (
+            <div className="space-y-3">
+              <p className="font-bold">Round {round}: five turns with {currentAssignment.opponentAlias}</p>
+              <p>Both choose Cooperate or Defect each turn. Your choices stay hidden until the instructor advances. You keep the same partner for all five turns.</p>
+              <p className="text-sm text-slate-300">{game.payoffs}</p>
+              {myRepeatedPath?.round === round && <div className="overflow-x-auto"><table className="w-full text-sm text-left"><caption className="text-left font-semibold mb-1">Completed turns</caption><thead><tr><th>Turn</th><th>You</th><th>Opponent</th><th>Points</th></tr></thead><tbody>{Object.entries(myRepeatedPath.turns).map(([turn, item]) => <tr key={turn}><td>{turn}</td><td>{item.own}</td><td>{item.other}{item.bot ? ' (bot filled a choice)' : ''}</td><td>{item.ownPoints} / {item.otherPoints}</td></tr>)}</tbody></table></div>}
+              {myRepeatedPath?.round === round && <p>Your total so far: {Object.values(myRepeatedPath.turns).reduce((sum, item) => sum + item.ownPoints, 0)} points</p>}
+              {repeatedTurn > 5 ? <p role="status">All five turns are complete. Waiting for the instructor to end the round.</p>
+                : myRepeatedMove ? <p role="status">Your {myRepeatedMove.choice} choice is locked for turn {repeatedTurn}. Waiting for the instructor to advance.</p>
+                : <div className="space-y-3"><p className="font-semibold">Turn {repeatedTurn} of 5: choose secretly</p><div className="flex gap-3">
+                  {(['Cooperate', 'Defect'] as const).map(move => <button key={move} disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/repeatedDecisions/${user.uid}/t${repeatedTurn}`), { round, choice: move }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">{move}</button>)}
+                </div></div>}
             </div>
           ) : centipede ? (
             <div className="space-y-3">
