@@ -15,6 +15,11 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, centipedePath, valuation }: Props) {
+  if (gameId === 24) return <div data-game-diagram="common-value" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
+    <h3 className="font-bold text-slate-100">How the oil lease auction scores</h3>
+    <p>Your survey and the rival's survey are private estimates of one shared lease value. Their average becomes the true value after bidding. The highest bidder pays their own bid; a tied bid goes to the first bidder.</p>
+    <p>Winner profit = true value minus winning bid. The loser earns $0. A bid above the true value makes the winner lose money.</p>
+  </div>;
   if (gameId === 22) {
     const own = hotellingLocation(result?.ownChoice || choice);
     const bot = result?.botChoice ? hotellingLocation(result.botChoice) : null;
