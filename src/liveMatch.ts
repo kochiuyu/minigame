@@ -1,10 +1,11 @@
-export type GameId = 1 | 13 | 15 | 17 | 18 | 29;
-export type Choice = 'Cooperate' | 'Defect' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors';
+export type GameId = 1 | 13 | 15 | 17 | 18 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
   phase: 'lobby' | 'playing' | 'revealed' | 'finished';
   gameId: GameId;
+  step?: 'offer' | 'respond';
   totalRounds?: number; // Absent in classes started before round limits were added.
   summaries?: Record<string, RoundSummary>; // Only rounds released to students.
 };
@@ -17,6 +18,7 @@ export type Assignment = {
   role?: Role;
 };
 export type Submission = { round: number; choice: Choice };
+export type VisibleOffer = { round: number; choice: Choice; fromBot: boolean };
 export type MatchResult = {
   round: number;
   ownChoice: Choice;
@@ -50,6 +52,7 @@ export type LiveRoom = {
   participants?: Record<string, Participant>;
   assignments?: Record<string, Assignment> | null;
   choices?: Record<string, Submission> | null;
+  offers?: Record<string, VisibleOffer> | null;
   results?: Record<string, MatchResult | Record<string, MatchResult>>;
   archive?: Record<string, RoundArchive>;
 };
@@ -99,6 +102,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
   { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
   { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
+  { id: 30, title: 'Ultimatum Game', options: ['Offer 0', 'Offer 1', 'Offer 2', 'Offer 3', 'Offer 4', 'Offer 5', 'Offer 6', 'Offer 7', 'Offer 8', 'Offer 9', 'Offer 10', 'Accept', 'Reject'], payoffs: 'Proposer offers 0–10 points from a pot of 10. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
 ];
 
 export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
@@ -106,12 +110,27 @@ export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
 }
 
 export function randomChoice(gameId: GameId = 1): Choice {
-  const options = gameFor(gameId).options;
+  const options = gameId === 30 ? gameFor(30).options.slice(0, 11) : gameFor(gameId).options;
   return options[randomIndex(options.length)];
+}
+
+export function offerAmount(choice: Choice): number | null {
+  const match = /^Offer (10|[0-9])$/.exec(choice);
+  return match ? Number(match[1]) : null;
+}
+
+export function ultimatumPoints(offer: Choice, response: Choice): [number, number] {
+  const amount = offerAmount(offer);
+  if (amount === null || (response !== 'Accept' && response !== 'Reject')) return [0, 0];
+  return response === 'Accept' ? [10 - amount, amount] : [0, 0];
 }
 
 export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role = 'first'): [number, number] {
   switch (gameId) {
+    case 30: {
+      const [proposer, responder] = role === 'first' ? ultimatumPoints(own, other) : ultimatumPoints(other, own);
+      return role === 'first' ? [proposer, responder] : [responder, proposer];
+    }
     case 13:
       if (own === 'Hunt Stag' && other === 'Hunt Stag') return [10, 10];
       if (own === 'Hunt Hare' && other === 'Hunt Hare') return [4, 4];
@@ -166,7 +185,9 @@ export function resolveResults(
   choices: Record<string, Submission>,
   round: number,
   gameId: GameId = 1,
+  offers: Record<string, VisibleOffer> = {},
 ): Record<string, MatchResult> {
+  if (gameId === 30) return resolveUltimatumResults(assignments, choices, offers, round);
   const results: Record<string, MatchResult> = {};
   for (const [uid, assignment] of Object.entries(assignments)) {
     const ownChoice = choices[uid]?.round === round ? choices[uid].choice : null;
@@ -187,6 +208,34 @@ export function resolveResults(
       opponentKind: fallback ? 'bot' : assignment.kind,
       fallback,
     };
+  }
+  return results;
+}
+
+export function prepareUltimatumResponses(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, VisibleOffer> {
+  const offers: Record<string, VisibleOffer> = {};
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== round || assignment.role !== 'second') continue;
+    const proposer = assignment.opponentUid && choices[assignment.opponentUid]?.round === round ? choices[assignment.opponentUid].choice : null;
+    offers[uid] = { round, choice: proposer && offerAmount(proposer) !== null ? proposer : randomChoice(30), fromBot: !proposer || offerAmount(proposer) === null };
+  }
+  return offers;
+}
+
+function resolveUltimatumResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, offers: Record<string, VisibleOffer>, round: number): Record<string, MatchResult> {
+  const results: Record<string, MatchResult> = {};
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== round) continue;
+    const own = choices[uid]?.round === round ? choices[uid].choice : null;
+    if (!own) continue;
+    const proposer = assignment.role !== 'second';
+    const partnerChoice = assignment.opponentUid && choices[assignment.opponentUid]?.round === round ? choices[assignment.opponentUid].choice : null;
+    const counterpart = proposer ? partnerChoice && (partnerChoice === 'Accept' || partnerChoice === 'Reject') ? partnerChoice : Math.random() < 0.5 ? 'Accept' : 'Reject'
+      : offers[uid]?.round === round ? offers[uid].choice : randomChoice(30);
+    const fallback = assignment.kind === 'student' && (proposer ? !partnerChoice : offers[uid]?.fromBot !== false);
+    const [ownPoints, opponentPoints] = pointsFor(30, own, counterpart, proposer ? 'first' : 'second');
+    results[uid] = { round, ownChoice: own, opponentChoice: counterpart, ownPoints, opponentPoints,
+      opponentAlias: fallback ? BOT_ALIAS : assignment.opponentAlias, opponentKind: fallback ? 'bot' : assignment.kind, fallback };
   }
   return results;
 }
@@ -227,7 +276,8 @@ export function summarizeRound(
     count: submitted.filter(([, item]) => item.choice === option).length,
   }));
 
-  const outcomeNames = gameId === 1 ? ['Both cooperate', 'Both defect', 'Different choices']
+  const outcomeNames = gameId === 30 ? ['Accepted', 'Rejected']
+    : gameId === 1 ? ['Both cooperate', 'Both defect', 'Different choices']
     : gameId === 13 ? ['Both hunt stag', 'Both hunt hare', 'Different choices']
     : gameId === 15 ? ['Both dove', 'Both hawk', 'Different choices']
     : gameId === 17 ? ['Matching choices', 'Different choices']
@@ -241,7 +291,8 @@ export function summarizeRound(
     const other = results[assignment.opponentUid];
     if (own?.round !== round || other?.round !== round || own.opponentKind !== 'student' || other.opponentKind !== 'student') continue;
     studentPairs++;
-    const index = gameId === 29 ? rpsOutcomeIndex(own.ownChoice, other.ownChoice)
+    const index = gameId === 30 ? (own.ownChoice === 'Reject' || other.ownChoice === 'Reject' ? 1 : 0)
+      : gameId === 29 ? rpsOutcomeIndex(own.ownChoice, other.ownChoice)
       : gameId === 17 ? (own.ownChoice === other.ownChoice ? 0 : 1)
       : own.ownChoice === other.ownChoice ? (own.ownChoice === game.options[0] ? 0 : 1) : 2;
     outcomes[index].count++;
@@ -258,8 +309,9 @@ export function summarizeRound(
 export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null {
   const config = room.config;
   if (!config?.totalRounds || config.phase !== 'playing') return null;
+  if (config.gameId === 30 && config.step !== 'respond') return null;
   const round = config.round;
-  const roundResults = resolveResults(room.assignments || {}, room.choices || {}, round, config.gameId);
+  const roundResults = resolveResults(room.assignments || {}, room.choices || {}, round, config.gameId, room.offers || {});
   const summary = summarizeRound(room.assignments || {}, room.choices || {}, roundResults, round, config.gameId);
   const aliases = Object.fromEntries(Object.entries(room.participants || {}).map(([uid, participant]) => [uid, participant.alias]));
   const archive: Record<string, RoundArchive> = { ...(room.archive || {}), [round]: { summary, results: roundResults, aliases } };
@@ -281,6 +333,7 @@ export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null
     results: publishedResults,
     assignments: isFinal || !revealNow ? null : room.assignments || null,
     choices: isFinal || !revealNow ? null : room.choices || null,
+    offers: null,
     config: {
       ...config,
       summaries: publishedSummaries,

@@ -1,6 +1,37 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, LIVE_GAMES, finishRound, pairParticipants, pointsFor, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, LIVE_GAMES, finishRound, pairParticipants, pointsFor, prepareUltimatumResponses, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+
+test('ultimatum offers, acceptance and rejection score both roles', () => {
+  for (let amount = 0; amount <= 10; amount++) {
+    assert.deepEqual(pointsFor(30, `Offer ${amount}`, 'Accept', 'first'), [10 - amount, amount]);
+    assert.deepEqual(pointsFor(30, 'Accept', `Offer ${amount}`, 'second'), [amount, 10 - amount]);
+    assert.deepEqual(pointsFor(30, `Offer ${amount}`, 'Reject', 'first'), [0, 0]);
+  }
+});
+
+test('ultimatum response step shares the offer, handles missing players, and archives results', () => {
+  const assignments = {
+    a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    c: { round: 1, kind: 'student', opponentUid: 'd', opponentAlias: 'D', role: 'first' },
+    d: { round: 1, kind: 'student', opponentUid: 'c', opponentAlias: 'C', role: 'second' },
+  };
+  const choices = { a: { round: 1, choice: 'Offer 3' }, b: { round: 1, choice: 'Accept' }, d: { round: 1, choice: 'Reject' } };
+  const offers = prepareUltimatumResponses(assignments, choices, 1);
+  assert.deepEqual(offers.b, { round: 1, choice: 'Offer 3', fromBot: false });
+  assert.equal(offers.d.fromBot, true);
+  const results = resolveResults(assignments, choices, 1, 30, offers);
+  assert.deepEqual([results.a.ownPoints, results.b.ownPoints], [7, 3]);
+  assert.equal(results.d.fallback, true);
+  assert.equal(results.c, undefined);
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', step: 'respond', gameId: 30 },
+    participants: { a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' }, d: { alias: 'D' } }, assignments, choices, offers }, true);
+  assert.equal(finished.config.phase, 'finished');
+  assert.equal(finished.offers, null);
+  assert.deepEqual(finished.config.summaries[1].outcomes, [{ label: 'Accepted', count: 1 }, { label: 'Rejected', count: 0 }]);
+  assert.equal(finished.results.b[1].ownPoints, 3);
+});
 
 const cases = [
   [1, [[2, 2], [0, 3], [3, 0], [1, 1]]],
