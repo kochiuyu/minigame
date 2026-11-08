@@ -1,6 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, commonValueBid, commonValueOutcome, contributionAmount, cournotPoints, cournotQuantity, dollarAuctionBid, dollarAuctionPoints, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, commonValueBid, commonValueOutcome, contributionAmount, cournotPoints, cournotQuantity, dollarAuctionBid, dollarAuctionPoints, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, travelerClaim, travelerPoints, trawlerAmount } from '../src/liveMatch.ts';
+
+test('Traveler claims score ties, lower-claim bonus, pair results, fallback, and CSV', () => {
+  assert.equal(LIVE_GAMES.find(game => game.id === 26)?.options.length, 99);
+  assert.equal(travelerClaim('Claim 2'), 2);
+  assert.equal(travelerClaim('Claim 100'), 100);
+  assert.equal(travelerClaim('Claim 1'), null);
+  assert.equal(travelerClaim('Claim 101'), null);
+  assert.deepEqual(travelerPoints(80, 80), [80, 80]);
+  assert.deepEqual(travelerPoints(80, 100), [82, 78]);
+  assert.deepEqual(travelerPoints(100, 80), [78, 82]);
+  assert.deepEqual(travelerPoints(2, 100), [4, 0]);
+  assert.throws(() => pointsFor(26, 'Claim 101', 'Claim 90'));
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' } };
+  const choices = { a: { round: 1, choice: 'Claim 80' }, b: { round: 1, choice: 'Claim 100' } };
+  const results = resolveResults(assignments, choices, 1, 26);
+  assert.deepEqual([results.a.ownPoints, results.b.ownPoints], [82, 78]);
+  const summary = summarizeRound(assignments, choices, results, 1, 26);
+  assert.equal(summary.outcomes[1].count, 1);
+  assert.equal(summary.choiceCounts.reduce((sum, band) => sum + band.count, 0), 2);
+  const csv = buildReportCsv(() => "Traveler's Dilemma", [summary], { 1: { summary, aliases: { a: 'A', b: 'B' }, results } });
+  assert.match(csv, /"Own traveler claim","Rival traveler claim","Lower claim","Claim adjustment"/);
+  assert.match(csv, /"80","100","80","2"/);
+  const fallback = resolveResults(assignments, { a: choices.a }, 1, 26).a;
+  assert.equal(fallback.opponentKind, 'bot');
+  assert.equal(fallback.ownPoints, travelerPoints(80, travelerClaim(fallback.opponentChoice))[0]);
+  assert.equal(randomChoice(26).startsWith('Claim '), true);
+});
 
 test('dollar auction charges both bidders and breaks ties by pairing role', () => {
   assert.equal(dollarAuctionBid('Bid 2.5'), 2.5);

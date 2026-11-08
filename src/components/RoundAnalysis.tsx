@@ -26,7 +26,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
         : `${summary.submitted} ${summary.gameId === 20 || summary.gameId === 6 ? 'played' : 'submitted'} · ${summary.studentPairs} completed student pairs · ${summary.botMatches} bot matches${summary.fallbacks ? ` · ${summary.fallbacks} bot fallbacks` : ''}${summary.gameId === 19 ? ` · Average return ${score(summary.averageReturn)}` : ''}`} · Average student score {score(summary.averagePoints)}</p>
     </div>
     <div>
-      <h4 className="font-semibold mb-2">{summary.gameId === 11 ? 'Guess distribution' : summary.gameId === 12 ? 'Student contributions' : summary.gameId === 19 ? 'Student investments' : 'Student choices'}</h4>
+      <h4 className="font-semibold mb-2">{summary.gameId === 11 ? 'Guess distribution' : summary.gameId === 26 ? 'Claim distribution ($)' : summary.gameId === 12 ? 'Student contributions' : summary.gameId === 19 ? 'Student investments' : 'Student choices'}</h4>
       <div className="space-y-2" role="img" aria-label={summary.choiceCounts.map(item => `${item.label}: ${item.count}`).join(', ')}>
         {summary.choiceCounts.map(item => <div key={item.label} className="grid grid-cols-[6rem_1fr_2rem] items-center gap-2 text-sm">
           <span>{item.label}</span>
@@ -58,6 +58,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
           <tr><th scope="row" className="py-2 font-normal">{personal.opponentAlias}</th><td>{personal.repeatedTurns ? 'Five turns' : personal.opponentChoice}</td><td>{personal.opponentPoints}</td></tr>
         </tbody>
       </table> : <p className="text-sm text-slate-300">No personal result is available for this round.</p>}
+      {summary.gameId === 26 && personal?.opponentChoice && <p className="mt-2 text-sm text-blue-200">The lower claim was ${Math.min(Number(personal.ownChoice.slice(6)), Number(personal.opponentChoice.slice(6)))}. {personal.ownChoice === personal.opponentChoice ? 'Matching claims received that amount.' : Number(personal.ownChoice.slice(6)) < Number(personal.opponentChoice.slice(6)) ? 'Your lower claim earned a $2 bonus.' : 'Your higher claim incurred a $2 penalty.'}</p>}
       {personal?.exitNode && <p className="mt-2 text-sm text-blue-200">{personal.exitNode === 7 ? 'Both players passed all six nodes.' : `The chain ended with Take at Node ${personal.exitNode}.`}</p>}
         {personal?.auction && <p className="mt-2 text-sm text-blue-200">Your private value: {personal.auction.valuation}. {personal.auction.won ? `You won and paid ${personal.auction.price}.` : `${personal.opponentAlias} won and paid ${personal.auction.price}.`} Your profit: {personal.ownPoints}.</p>}
       {personal?.commonValue && <p className="mt-2 text-sm text-blue-200">Your survey: ${personal.commonValue.signal}; rival survey: ${personal.commonValue.otherSignal}; true lease value: ${personal.commonValue.trueValue}. {personal.commonValue.won ? 'You won.' : 'You lost.'} Your profit: ${personal.ownPoints}.</p>}
@@ -244,4 +245,3 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
     </details>)}
   </div>;
 }
-

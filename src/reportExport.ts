@@ -12,6 +12,7 @@ const HEADER = [
   'Market price', 'Combined output', 'Own beach location', 'Rival beach location', 'Beach market share',
   'Private survey signal', 'Rival survey signal', 'Common true value', 'Won common-value auction',
   'Own dollar bid', 'Rival dollar bid', 'Won dollar auction',
+  'Own traveler claim', 'Rival traveler claim', 'Lower claim', 'Claim adjustment',
 ];
 
 function csvCell(value: ReportRow[number]): string {
@@ -47,6 +48,10 @@ function resultRow(round: number, game: string, alias: string, result?: MatchRes
     game === 'Escalating Dollar Auction' && result?.opponentChoice ? Number(result.opponentChoice.slice(4)) : '',
     game === 'Escalating Dollar Auction' && result?.opponentChoice
       ? result.ownPoints + Number(result.ownChoice.slice(4)) > 0 ? 'Yes' : 'No' : '',
+    game === "Traveler's Dilemma" && result?.ownChoice ? Number(result.ownChoice.slice(6)) : '',
+    game === "Traveler's Dilemma" && result?.opponentChoice ? Number(result.opponentChoice.slice(6)) : '',
+    game === "Traveler's Dilemma" && result?.opponentChoice ? Math.min(Number(result.ownChoice.slice(6)), Number(result.opponentChoice.slice(6))) : '',
+    game === "Traveler's Dilemma" && result?.opponentChoice ? result.ownPoints - Math.min(Number(result.ownChoice.slice(6)), Number(result.opponentChoice.slice(6))) : '',
   ];
 }
 
