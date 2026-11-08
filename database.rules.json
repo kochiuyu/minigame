@@ -29,7 +29,75 @@
             }
           }
         }
+      },
+      "DOTE-3090-pairs": {
+        ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
+        ".write": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
+        "config": {
+          ".read": "auth != null"
+        },
+        "participants": {
+          ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && (!newData.exists() || (!data.exists() && root.child('rooms/DOTE-3090-pairs/config').exists()))",
+            ".validate": "newData.hasChildren(['alias']) && newData.child('alias').isString() && newData.child('alias').val().length > 0 && newData.child('alias').val().length <= 30",
+            "alias": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "assignments": {
+          ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('rooms/DOTE-3090-pairs/config/phase').val() === 'playing' && root.child('rooms/DOTE-3090-pairs/participants').child($uid).exists()",
+            ".validate": "newData.hasChildren(['round', 'kind', 'opponentAlias']) && newData.child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && (newData.child('kind').val() === 'bot' || (newData.child('kind').val() === 'student' && newData.child('opponentUid').isString())) && (auth.token.email === 'kochiuyu@gmail.com' || (newData.child('kind').val() === 'bot' && newData.child('opponentAlias').val() === 'Random bot' && !newData.child('opponentUid').exists()))",
+            "round": {
+              ".validate": "newData.val() === root.child('rooms/DOTE-3090-pairs/config/round').val()"
+            },
+            "kind": {
+              ".validate": "newData.val() === 'student' || newData.val() === 'bot'"
+            },
+            "opponentAlias": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+            },
+            "opponentUid": {
+              ".validate": "newData.isString()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "choices": {
+          ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('rooms/DOTE-3090-pairs/config/phase').val() === 'playing' && root.child('rooms/DOTE-3090-pairs/assignments').child($uid).child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val()",
+            ".validate": "newData.hasChildren(['round', 'choice']) && newData.child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && (newData.child('choice').val() === 'Cooperate' || newData.child('choice').val() === 'Defect')",
+            "round": {
+              ".validate": "newData.val() === root.child('rooms/DOTE-3090-pairs/config/round').val()"
+            },
+            "choice": {
+              ".validate": "newData.val() === 'Cooperate' || newData.val() === 'Defect'"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "results": {
+          ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid"
+          }
+        }
       }
     }
   }
 }
+

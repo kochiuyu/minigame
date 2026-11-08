@@ -1,15 +1,24 @@
 # Live classroom setup
 
-The website stays on GitHub Pages. Student and instructor browsers connect directly to Firebase Realtime Database. The first live activity is a single shared Prisoner's Dilemma room (`DOTE-3090`). It stores only aliases and choices until the instructor ends the class.
+The site stays on GitHub Pages and uses the Firebase Spark no-cost plan. The first paired activity is Prisoner's Dilemma in room `DOTE-3090`.
 
-Before merging the live-room change:
+## How the class works
 
-1. In Firebase Console, confirm **Authentication → Sign-in method** has **Google** and **Anonymous** enabled.
-2. Under **Authentication → Settings → Authorized domains**, add `kochiuyu.github.io`.
-3. In **Realtime Database → Rules**, replace the locked starter rules with the contents of `database.rules.json`, then click **Publish**. Do not use public test rules. The rules grant instructor controls only to the configured, verified Google account; students can write only their own one-time choice for an open round.
-4. Open the published site in two separate browser profiles. Sign in as instructor in one, start a class, then join as an anonymous student in the other. Lock a choice, reveal totals, start another round, and end the class. Confirm the room disappears after ending.
+1. Anyone can use **Bot practice** without joining a room. The bot randomly chooses Cooperate or Defect, and the result is private and not recorded.
+2. The instructor signs in with the configured Google account and clicks **Start class**. Students enter an alias and click **Join as student**. No student ID is requested.
+3. Once students have joined, the instructor clicks **Pair students and start round**. Students are shuffled into pairs. An odd student gets a bot. A student who joins after pairing also gets a bot.
+4. Each student locks one choice. The instructor sees how many choices arrived, then clicks **Reveal match results**. If a human partner did not choose, a random bot takes their place for the result.
+5. **Start next round** reshuffles the same students. **End class and clear room** removes the room data.
 
-The instructor's **End class and clear room** action removes the classroom data. Firebase still creates anonymous Authentication accounts for students; those accounts are separate from the room data and can be removed in the Firebase Console if desired.
+The current published version uses `rooms/DOTE-3090`. The pairing version uses `rooms/DOTE-3090-pairs`. `database.rules.json` includes both rule sets so the current site keeps working while the pairing version is tested and deployed.
 
-The Firebase web configuration in `src/firebase.ts` is public project identification, not a password. Access is controlled by the published database rules. Never put a Firebase service-account private key in the repository.
+## Before merging the pairing version
+
+1. Confirm **Authentication → Sign-in method** has **Google** and **Anonymous** enabled, and **Authentication → Settings → Authorized domains** includes `kochiuyu.github.io`.
+2. In **Realtime Database → Rules**, publish the contents of `database.rules.json`. Do not use public test rules.
+3. Test the pairing version with separate instructor and student browsers. Check an even pair, an odd bot match, a late student, a missing partner, a locked choice, a revealed result, a second round, and room cleanup.
+
+The instructor's **End class and clear room** action removes classroom data. Firebase still creates anonymous Authentication accounts for students; those accounts are separate from room data and can be removed in Firebase Console if desired.
+
+The Firebase web configuration in `src/firebase.ts` is public project identification, not a password. Access is controlled by the published database rules. Never put a Firebase service-account private key in this repository.
 
