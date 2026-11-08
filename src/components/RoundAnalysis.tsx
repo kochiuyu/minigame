@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import { gameFor, summarizeClass, summarizePeople, summarizePerson } from '../liveMatch';
 import type { MatchResult, RoundArchive, RoundSummary } from '../liveMatch';
+import { buildReportCsv } from '../reportExport';
 
 function score(value: number | null | undefined): string {
   return value == null ? '—' : value.toFixed(1);
@@ -127,16 +129,42 @@ function PersonAnalysis({ analysis, title }: { analysis: ReturnType<typeof summa
   </div>;
 }
 
-export function FinalAnalysis({ summaries, archives, personalResults, studentView = false }: {
+export function FinalAnalysis({ summaries, archives, personalResults, alias, studentView = false }: {
   summaries: RoundSummary[];
   archives?: Record<string, RoundArchive>;
   personalResults?: Record<string, MatchResult>;
+  alias?: string;
   studentView?: boolean;
 }) {
+  const reportRef = useRef<HTMLDivElement>(null);
   const classSummary = summarizeClass(summaries);
   const people = archives ? summarizePeople(summaries, archives) : [];
   const maximumSubmitted = Math.max(1, ...summaries.map(item => item.submitted));
-  return <div className="space-y-4">
+  function downloadCsv() {
+    const content = buildReportCsv(id => gameFor(id).title, summaries, studentView ? undefined : archives,
+      studentView ? personalResults : undefined, alias);
+    const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `DOTE3090-${studentView ? 'my' : 'class'}-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  function printReport() {
+    const details = Array.from(reportRef.current?.querySelectorAll('details') || []);
+    const prior = details.map(item => item.open);
+    details.forEach(item => { item.open = true; });
+    window.addEventListener('afterprint', () => details.forEach((item, index) => { item.open = prior[index]; }), { once: true });
+    window.print();
+  }
+  return <div id="live-final-report" ref={reportRef} className="space-y-4">
+    <div className="report-export-controls flex flex-wrap gap-3 rounded-xl border border-blue-700 bg-blue-950/30 p-4">
+      <button type="button" onClick={printReport} className="rounded-lg bg-blue-600 px-4 py-2 font-bold">Print / Save PDF</button>
+      <button type="button" onClick={downloadCsv} className="rounded-lg border border-blue-400 px-4 py-2 font-bold">Download results CSV</button>
+      <p className="w-full text-sm text-slate-300">Save a PDF with charts or a spreadsheet with round results before the class data is cleared.</p>
+    </div>
     <div className="rounded-xl border border-blue-700 bg-blue-950/30 p-4 space-y-2">
       <h2 className="text-xl font-bold">{studentView ? 'Class results and your analysis' : 'Class results and analysis'}</h2>
       <p>{classSummary.rounds} rounds · {classSummary.submitted} submissions · {classSummary.studentPairs} completed student pairs{classSummary.studentGroups ? ` · ${classSummary.studentGroups} groups` : ''} · {classSummary.botMatches} bot matches{classSummary.botSeats ? ` · ${classSummary.botSeats} bot seats` : ''}</p>

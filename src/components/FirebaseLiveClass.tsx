@@ -446,7 +446,7 @@ export function FirebaseLiveClass() {
           ) : !config ? (
             <p>Waiting for the instructor to start the class. You can practice with the bot above.</p>
           ) : config.phase === 'finished' ? (
-            <FinalAnalysis summaries={publishedSummaries} personalResults={personalResults} studentView />
+            <FinalAnalysis summaries={publishedSummaries} personalResults={personalResults} alias={participant?.alias || alias.trim()} studentView />
           ) : !participant ? (
             <p>{alias.trim() ? 'Joining classroom…' : 'Your alias is missing. Leave and rejoin with an alias.'}</p>
           ) : config.phase === 'lobby' ? (
