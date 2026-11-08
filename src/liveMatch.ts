@@ -1,5 +1,5 @@
-export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 27 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Signal' | 'No Signal' | 'Trust' | 'Do Not Trust' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Price ${number}` | `Quantity ${number}` | `Location ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Signal' | 'No Signal' | 'Trust' | 'Do Not Trust' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Claim ${number}` | `Price ${number}` | `Quantity ${number}` | `Location ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -155,6 +155,16 @@ export const COURNOT_QUANTITIES = Array.from({ length: 36 }, (_, index) => `Quan
 export const HOTELLING_LOCATIONS = Array.from({ length: 101 }, (_, index) => `Location ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const COMMON_VALUE_BIDS = Array.from({ length: 81 }, (_, index) => `Bid ${index + 10}` as Choice) as [Choice, Choice, ...Choice[]];
 export const DOLLAR_AUCTION_BIDS = Array.from({ length: 25 }, (_, index) => `Bid ${((index + 1) / 10).toFixed(1)}` as Choice) as [Choice, Choice, ...Choice[]];
+export const TRAVELER_CLAIMS = Array.from({ length: 99 }, (_, index) => `Claim ${index + 2}` as Choice) as [Choice, Choice, ...Choice[]];
+export function travelerClaim(choice: Choice): number | null {
+  return /^Claim (?:100|[2-9]|[1-9][0-9])$/.test(choice) ? Number(choice.slice(6)) : null;
+}
+export function travelerPoints(ownClaim: number, otherClaim: number): [number, number] {
+  if (![ownClaim, otherClaim].every(value => Number.isInteger(value) && value >= 2 && value <= 100)) throw new Error('Invalid Traveler claim.');
+  if (ownClaim === otherClaim) return [ownClaim, otherClaim];
+  const base = Math.min(ownClaim, otherClaim);
+  return ownClaim < otherClaim ? [base + 2, base - 2] : [base - 2, base + 2];
+}
 export function dollarAuctionBid(choice: Choice): number | null {
   const match = /^Bid (0\.[1-9]|1\.[0-9]|2\.[0-5])$/.exec(choice);
   return match ? Number(match[1]) : null;
@@ -242,6 +252,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], rules: 'You and the bot each choose one move without seeing the other choice. Each move beats one other move.', payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
   { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], rules: 'The Proposer offers part of a 10-point pot. The Responder sees the offer and accepts or rejects it.', payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
   { id: 25, title: 'Escalating Dollar Auction', options: DOLLAR_AUCTION_BIDS, rules: 'Secretly bid $0.10 to $2.50 in ten-cent steps for a $1 bill. Both bidders pay their bids. The first paired bidder wins a tie.', payoffs: 'Winner earns $1 minus their bid. Loser loses their bid, even if the winning bid exceeds $1.' },
+  { id: 26, title: "Traveler's Dilemma", options: TRAVELER_CLAIMS, rules: 'Two travelers secretly claim $2 to $100 for identical lost luggage. The airline bases both payments on the lower claim.', payoffs: 'Equal claims: each receives that amount. Different claims: lower claimant receives the lower claim plus $2; higher claimant receives the lower claim minus $2.' },
 ];
 
 export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
@@ -384,6 +395,12 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
       const otherBid = dollarAuctionBid(other);
       if (ownBid === null || otherBid === null) throw new Error('Invalid Dollar Auction choice.');
       return dollarAuctionPoints(ownBid, otherBid, role === 'first');
+    }
+    case 26: {
+      const ownClaim = travelerClaim(own);
+      const otherClaim = travelerClaim(other);
+      if (ownClaim === null || otherClaim === null) throw new Error('Invalid Traveler claim.');
+      return travelerPoints(ownClaim, otherClaim);
     }
     case 27: {
       const ownBoats = trawlerAmount(own);
@@ -945,9 +962,12 @@ export function summarizeRound(
   const submitted = Object.entries(choices).filter(([uid, item]) =>
     item.round === round && assignments[uid]?.round === round);
   const finished = Object.entries(results).filter(([, item]) => item.round === round);
-  const choiceCounts = (gameId === 24 ? Array.from({ length: 9 }, (_, index) => `${10 + index * 10}–${Math.min(90, 19 + index * 10)}`) : game.options).map(option => ({
+  const choiceCounts = (gameId === 26 ? ['2-19', '20-39', '40-59', '60-79', '80-100']
+    : gameId === 24 ? Array.from({ length: 9 }, (_, index) => `${10 + index * 10}–${Math.min(90, 19 + index * 10)}`) : game.options).map(option => ({
     label: option,
-    count: submitted.filter(([, item]) => gameId === 24
+    count: submitted.filter(([, item]) => gameId === 26
+      ? (() => { const claim = travelerClaim(item.choice); const [low, high] = option.split('-').map(Number); return claim !== null && claim >= low && claim <= high; })()
+      : gameId === 24
       ? (() => { const bid = commonValueBid(item.choice); const [low, high] = option.split('–').map(Number); return bid !== null && bid >= low && bid <= high; })()
       : item.choice === option).length,
   }));
@@ -959,6 +979,7 @@ export function summarizeRound(
     : gameId === 21 ? ['Combined output below 60', 'Combined output 60', 'Combined output above 60']
     : gameId === 22 ? ['Same location: split beach', 'Different locations: divided beach']
     : gameId === 25 ? ['Winner gains', 'Winner breaks even', 'Winner overbids $1']
+    : gameId === 26 ? ['Equal claims', 'Different claims']
     : gameId === 27 ? ['Healthy stock (0–8 boats)', 'Depleted stock (9–12 boats)', 'Overfished (13–20 boats)']
     : gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
     : gameId === 20 ? ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Both pass all nodes']
@@ -989,6 +1010,7 @@ export function summarizeRound(
       : gameId === 22 ? (own.ownChoice === other.ownChoice ? 0 : 1)
       : gameId === 10 ? (own.signaling?.signal ? own.signaling.trusted ? 0 : 1 : own.signaling?.trusted ? 2 : 3)
       : gameId === 25 ? (() => { const ownBid = dollarAuctionBid(own.ownChoice)!; const otherBid = dollarAuctionBid(other.ownChoice)!; const winner = ownBid > otherBid || (ownBid === otherBid && assignment.role === 'first') ? own : other; return winner.ownPoints > 0 ? 0 : winner.ownPoints < 0 ? 2 : 1; })()
+      : gameId === 26 ? (own.ownChoice === other.ownChoice ? 0 : 1)
       : gameId === 27 ? (() => { const total = (trawlerAmount(own.ownChoice) || 0) + (trawlerAmount(other.ownChoice) || 0); return total > 12 ? 2 : total > 8 ? 1 : 0; })()
       : gameId === 20 ? (own.exitNode || 7) - 1 : gameId === 19 ? (() => {
       const investor = assignment.role === 'first' ? own : other;
