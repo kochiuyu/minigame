@@ -292,7 +292,7 @@ export function FirebaseLiveClass() {
             <p>{practiceGame.rules}</p>
             <p><strong className="text-slate-100">Points:</strong> {practiceGame.payoffs}</p>
             <p><strong className="text-slate-100">Random bot:</strong> {practiceGameId === 19
-              ? 'As Investor, it returns a random whole amount from 0 to three times your investment. As Trustee, it invests a random whole amount from 0 to 10.'
+              ? 'When you invest, the bot returns a random whole amount from 0 to three times your investment. When you are the Trustee, the bot invests a random whole amount from 0 to 10.'
               : practiceGameId === 30
               ? 'As Proposer, the bot accepts or rejects with equal chance. As Responder, it offers a random amount from 0 to 10 in half-point steps.'
               : 'The bot picks each available choice with equal chance.'}</p>
