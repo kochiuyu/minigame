@@ -14,7 +14,11 @@ test('common-value auction shares one true value and handles ties and losses', (
   assert.equal(results.a.ownPoints, 5);
   assert.equal(results.b.ownPoints, 0);
   assert.equal(results.a.commonValue.trueValue, results.b.commonValue.trueValue);
-  assert.equal(summarizeRound(assignments, choices, results, 1, 24).outcomes[0].count, 1);
+  const summary = summarizeRound(assignments, choices, results, 1, 24);
+  assert.equal(summary.outcomes[0].count, 1);
+  const csv = buildReportCsv(() => 'Common-Value Auction', [summary], { 1: { summary, aliases: { a: 'A', b: 'B' }, results } });
+  assert.match(csv, /"Private survey signal","Rival survey signal","Common true value","Won common-value auction"/);
+  assert.match(csv, /"40","60","50","Yes"/);
 });
 
 test('Hotelling locations score pairs, bot fallbacks, outcomes, and CSV shares', () => {
