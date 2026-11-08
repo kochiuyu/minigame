@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advanceRepeated, centipedeTurnResults, contributionAmount, finishRound, gameFor, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound,
+  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advanceRepeated, centipedeTurnResults, contributionAmount, finishRound, gameFor, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound, trawlerAmount,
 } from '../liveMatch';
 import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, RepeatedPath, RepeatedTurn, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
@@ -413,7 +413,11 @@ export function FirebaseLiveClass() {
         {(practiceGameId === 2 || practiceGameId === 5) && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot chose {practiceBotOffer}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="ml-2 underline">New first move</button></p>}
         {practiceGameId === 20 && <p className="text-sm text-blue-200">Choose your complete plan. The bot's plan stays hidden until you play.</p>}
         {practiceGameId === 19 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot invested {investAmount(practiceBotOffer)} points, tripled to {(investAmount(practiceBotOffer) ?? 0) * 3}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(19)); setPracticeChoice('Return 0'); setPracticeResult(null); }} className="ml-2 underline">New investment</button></p>}
-        {practiceGameId === 12 ? <div className="space-y-2">
+        {practiceGameId === 27 ? <div className="space-y-2">
+          <label htmlFor="practice-trawlers" className="block font-semibold">Deploy {trawlerAmount(practiceChoice) ?? 0} trawlers</label>
+          <input id="practice-trawlers" type="range" min="0" max="10" step="1" value={trawlerAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Trawlers ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
+          <p className="text-sm text-slate-300">The bot also deploys 0–10 trawlers. Together, your fleets determine fishery health.</p>
+        </div> : practiceGameId === 12 ? <div className="space-y-2">
           <label htmlFor="practice-contribution" className="block font-semibold">Contribute {contributionAmount(practiceChoice) ?? 0} of 10 points</label>
           <input id="practice-contribution" type="range" min="0" max="10" step="1" value={contributionAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Contribute ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
           <p className="text-sm text-slate-300">You keep {10 - (contributionAmount(practiceChoice) ?? 0)} points before the group pool pays out.</p>
@@ -623,7 +627,11 @@ export function FirebaseLiveClass() {
               {entry && isResponder && visibleOffer && <p className="rounded-lg bg-blue-950 p-3">{visibleOffer.fromBot ? 'Random bot' : currentAssignment.opponentAlias} chose {visibleOffer.choice}. Now decide whether to Enter or Stay Out.</p>}
               {trust && isResponder && visibleOffer && <p className="rounded-lg bg-blue-950 p-3">{visibleOffer.fromBot ? 'Random bot' : currentAssignment.opponentAlias} invested {investAmount(visibleOffer.choice)} points. You received {(investAmount(visibleOffer.choice) ?? 0) * 3} points and can return any whole amount from 0 to that total.</p>}
               <p className="text-sm text-slate-300">{game.payoffs}</p>
-              {publicGoods ? <div className="space-y-2">
+              {game.id === 27 ? <div className="space-y-2">
+                <label htmlFor="live-trawlers" className="block font-semibold">Deploy {trawlerAmount(choice) ?? 0} trawlers</label>
+                <input id="live-trawlers" type="range" min="0" max="10" step="1" value={trawlerAmount(choice) ?? 0} onChange={event => setChoice(`Trawlers ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
+                <p className="text-sm text-slate-300">The combined fleet determines the health of your shared fishery.</p>
+              </div> : publicGoods ? <div className="space-y-2">
                 <label htmlFor="live-contribution" className="block font-semibold">Contribute {contributionAmount(choice) ?? 0} of 10 points</label>
                 <input id="live-contribution" type="range" min="0" max="10" step="1" value={contributionAmount(choice) ?? 0} onChange={event => setChoice(`Contribute ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
                 <p className="text-sm text-slate-300">You keep {10 - (contributionAmount(choice) ?? 0)} points before the shared pool pays out.</p>

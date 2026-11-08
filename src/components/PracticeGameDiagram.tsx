@@ -1,4 +1,4 @@
-import { blottoAllocation, centipedeExitNode, contributionAmount, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount } from '../liveMatch';
+import { blottoAllocation, centipedeExitNode, contributionAmount, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, trawlerAmount } from '../liveMatch';
 import type { Choice, GameId, Role } from '../liveMatch';
 
 type PracticeResult = { ownChoice: Choice; botChoice: Choice | null; groupTotal?: number } | null;
@@ -12,6 +12,19 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result }: Props) {
+  if (gameId === 27) {
+    const own = trawlerAmount(choice) ?? 0;
+    const bot = result?.botChoice ? trawlerAmount(result.botChoice) : null;
+    const total = bot === null ? null : own + bot;
+    return <div data-game-diagram="fishery" className="space-y-2 border-t border-slate-700 pt-3">
+      <h3 className="font-bold text-slate-100">Shared fishery health</h3>
+      <p>Profit per trawler falls when both fleets overfish. Each classroom round starts with a fresh fishery.</p>
+      <table className="w-full text-sm text-left"><thead><tr><th>Combined boats</th><th>Stock</th><th>Profit per boat</th></tr></thead><tbody>
+        <tr><td>0–8</td><td>Healthy</td><td>2</td></tr><tr><td>9–12</td><td>Depleted</td><td>0.9</td></tr><tr><td>13–20</td><td>Overfished</td><td>−0.5</td></tr>
+      </tbody></table>
+      {total !== null && <p>Your {own} boats plus the bot's {bot} made {total}. Your profit: {fisheryPoints(own, bot!)[0]} points.</p>}
+    </div>;
+  }
   if (gameId === 20) {
     const first = role === 'first' ? choice : result?.botChoice || botOffer;
     const second = role === 'second' ? choice : result?.botChoice;

@@ -1,5 +1,5 @@
-export type GameId = 1 | 2 | 4 | 5 | 6 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Deploy ${number}/${number}/${number}`;
+export type GameId = 1 | 2 | 4 | 5 | 6 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -108,6 +108,7 @@ export function shuffleAliasIcon(alias: string): string {
 
 export const ULTIMATUM_OFFERS = Array.from({ length: 21 }, (_, index) => `Offer ${index / 2}` as Choice) as [Choice, Choice, ...Choice[]];
 export const PUBLIC_GOODS_CONTRIBUTIONS = Array.from({ length: 11 }, (_, index) => `Contribute ${index}` as Choice) as [Choice, Choice, ...Choice[]];
+export const FISHERY_TRAWLERS = Array.from({ length: 11 }, (_, index) => `Trawlers ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const TRUST_INVESTMENTS = Array.from({ length: 11 }, (_, index) => `Invest ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const BLOTTO_DEPLOYMENTS = ['Deploy 34/33/33', 'Deploy 50/50/0', 'Deploy 50/0/50', 'Deploy 0/50/50', 'Deploy 60/0/40', 'Deploy 0/60/40'] as const;
 export const CENTIPEDE_FIRST = ['Take at Node 1', 'Take at Node 3', 'Take at Node 5', 'Pass All'] as const;
@@ -135,6 +136,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 19, title: 'Trust Game', options: TRUST_INVESTMENTS, rules: 'The Investor starts with 10 points and sends 0–10 to the Trustee. The amount sent triples. The Trustee then chooses how much of the tripled amount to return.', payoffs: 'Investor score = 10 − amount invested + amount returned. Trustee score = 3 × amount invested − amount returned.', roles: ['Investor', 'Trustee'] },
   { id: 20, title: 'Centipede Game', options: ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Pass All'], rules: 'Player 1 moves at nodes 1, 3, and 5; Player 2 moves at nodes 2, 4, and 6. At each turn, Take ends the game and Pass gives the next turn to the other player. If both pass all six nodes, both earn 8.', payoffs: 'Take at node 1: 2 / 0 · 2: 1 / 4 · 3: 4 / 2 · 4: 3 / 6 · 5: 6 / 4 · 6: 5 / 8 · Both Pass All: 8 / 8 (Player 1 / Player 2)', roles: ['Player 1', 'Player 2'] },
   { id: 23, title: 'Colonel Blotto', options: BLOTTO_DEPLOYMENTS, rules: 'Choose how to deploy 100 troops across Fronts A, B, and C. Each number in a deployment plan is the troop count for one front. Your opponent chooses secretly.', payoffs: 'More troops wins a front. Win more fronts than your opponent: +1 point; lose more: −1 point; equal front wins: 0 points.' },
+  { id: 27, title: 'Renewable Fishery', options: FISHERY_TRAWLERS, rules: 'You and one partner secretly deploy 0–10 trawlers each. More boats can earn more, but heavy combined effort depletes the shared fishery. Each class round is an independent catch.', payoffs: 'Total boats 0–8: 2 points profit per boat · 9–12: 0.9 per boat · 13–20: −0.5 per boat. Both fleets face the same stock condition.' },
   { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], rules: 'You and the bot each choose one move without seeing the other choice. Each move beats one other move.', payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
   { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], rules: 'The Proposer offers part of a 10-point pot. The Responder sees the offer and accepts or rejects it.', payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
 ];
@@ -175,6 +177,17 @@ export function randomReturn(investment: number): Choice {
 export function contributionAmount(choice: Choice): number | null {
   if (!/^Contribute (?:10|[0-9])$/.test(choice)) return null;
   return Number(choice.slice(11));
+}
+
+export function trawlerAmount(choice: Choice): number | null {
+  return /^Trawlers (?:10|[0-9])$/.test(choice) ? Number(choice.slice(9)) : null;
+}
+
+export function fisheryPoints(ownBoats: number, otherBoats: number): [number, number] {
+  if (![ownBoats, otherBoats].every(value => Number.isInteger(value) && value >= 0 && value <= 10)) throw new Error('Invalid fishery fleet.');
+  const total = ownBoats + otherBoats;
+  const profitPerBoat = total > 12 ? -0.5 : total > 8 ? 0.9 : 2;
+  return [Math.round(ownBoats * profitPerBoat * 10) / 10, Math.round(otherBoats * profitPerBoat * 10) / 10];
 }
 
 export function publicGoodsPoints(contribution: number, totalPool: number): number {
@@ -220,6 +233,12 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
     }
     case 12:
       throw new Error('Public Goods requires a four-player group pool.');
+    case 27: {
+      const ownBoats = trawlerAmount(own);
+      const otherBoats = trawlerAmount(other);
+      if (ownBoats === null || otherBoats === null) throw new Error('Invalid fishery choices.');
+      return fisheryPoints(ownBoats, otherBoats);
+    }
     case 19: {
       const investment = investAmount(role === 'first' ? own : other);
       const returned = returnAmount(role === 'first' ? other : own);
@@ -643,7 +662,8 @@ export function summarizeRound(
     count: submitted.filter(([, item]) => item.choice === option).length,
   }));
 
-  const outcomeNames = gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
+  const outcomeNames = gameId === 27 ? ['Healthy stock (0–8 boats)', 'Depleted stock (9–12 boats)', 'Overfished (13–20 boats)']
+    : gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
     : gameId === 20 ? ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Both pass all nodes']
     : gameId === 2 ? ['Launch + Enter', 'Launch + Stay Out', 'Wait + Enter', 'Wait + Stay Out']
     : gameId === 5 ? ['Commit + Enter', 'Commit + Stay Out', 'Stay Flexible + Enter', 'Stay Flexible + Stay Out']
@@ -664,7 +684,8 @@ export function summarizeRound(
     const other = results[assignment.opponentUid];
     if (own?.round !== round || other?.round !== round || own.opponentKind !== 'student' || other.opponentKind !== 'student') continue;
     studentPairs++;
-    const index = gameId === 20 ? (own.exitNode || 7) - 1 : gameId === 19 ? (() => {
+    const index = gameId === 27 ? (() => { const total = (trawlerAmount(own.ownChoice) || 0) + (trawlerAmount(other.ownChoice) || 0); return total > 12 ? 2 : total > 8 ? 1 : 0; })()
+      : gameId === 20 ? (own.exitNode || 7) - 1 : gameId === 19 ? (() => {
       const investor = assignment.role === 'first' ? own : other;
       const trustee = assignment.role === 'second' ? own : other;
       const invested = investAmount(investor.ownChoice) || 0;
