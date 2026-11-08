@@ -1,4 +1,4 @@
-export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
 export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
@@ -120,6 +120,10 @@ export function auctionPayoff(ownBid: number, otherBid: number, valuation: numbe
   const won = ownBid > otherBid || (ownBid === otherBid && winTie);
   return { points: won ? valuation - otherBid : 0, won, price: won ? otherBid : 0 };
 }
+export function firstPriceAuctionPayoff(ownBid: number, otherBid: number, valuation: number, winTie = false): { points: number; won: boolean; price: number } {
+  const outcome = auctionPayoff(ownBid, otherBid, valuation, winTie);
+  return { points: outcome.won ? valuation - ownBid : 0, won: outcome.won, price: outcome.won ? ownBid : 0 };
+}
 export const PUBLIC_GOODS_CONTRIBUTIONS = Array.from({ length: 11 }, (_, index) => `Contribute ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const FISHERY_TRAWLERS = Array.from({ length: 11 }, (_, index) => `Trawlers ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const TRUST_INVESTMENTS = Array.from({ length: 11 }, (_, index) => `Invest ${index}` as Choice) as [Choice, Choice, ...Choice[]];
@@ -139,6 +143,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 1, title: "Prisoner's Dilemma", options: ['Cooperate', 'Defect'], rules: 'You and the bot each choose Cooperate or Defect without seeing the other choice.', payoffs: 'Both Cooperate: 2 each · Both Defect: 1 each · Defect against Cooperate: 3–0' },
   { id: 3, title: 'Highway Gas War', options: ['High Price', 'Low Price'], rules: 'Two stations across a highway secretly post a High ($4) or Low ($3) price. Motorists choose the cheaper station.', payoffs: 'Both High: 2 each · Both Low: 1 each · Low against High: 3 / 0 (Low / High)' },
   { id: 7, title: 'Second-Price Auction', options: AUCTION_BIDS, rules: 'You receive a private value from 1–10 for the artwork. Submit a sealed whole-point bid from 0–12. The highest bid wins but pays the other bid.', payoffs: 'Winner score = own value − other bid. Loser scores 0. If bids tie, the first paired bidder wins.' },
+  { id: 8, title: 'First-Price Auction', options: AUCTION_BIDS, rules: 'You receive a private value from 1–10 for the artwork. Submit a sealed whole-point bid from 0–12. The highest bid wins and pays their own bid.', payoffs: 'Winner score = own value − own bid. Loser scores 0. If bids tie, the first paired bidder wins.' },
   { id: 2, title: 'Sequential Entry', options: ['Launch', 'Wait', 'Enter', 'Stay Out'], rules: 'The First Mover chooses Launch or Wait. The Second Mover sees that decision, then chooses Enter or Stay Out.', payoffs: 'Launch + Stay Out: 4 / 1 · Launch + Enter: 2 / 2 · Wait + Enter: 1 / 4 · Wait + Stay Out: 0 / 0 (First / Second Mover)', roles: ['First Mover', 'Second Mover'] },
   { id: 5, title: 'Entry Deterrence', options: ['Commit', 'Stay Flexible', 'Enter', 'Stay Out'], rules: 'The Incumbent chooses whether to make an irreversible commitment. The Rival sees that choice, then decides whether to enter the market.', payoffs: 'Commit + Stay Out: 4 / 0 · Commit + Enter: −2 / −2 · Stay Flexible + Enter: 2 / 2 · Stay Flexible + Stay Out: 4 / 0 (Incumbent / Rival)', roles: ['Incumbent', 'Rival'] },
   { id: 6, title: "Repeated Prisoner's Dilemma", options: ['Cooperate', 'Defect'], rules: 'Play five turns with the same partner. Each turn, both choose Cooperate or Defect without seeing the other choice. After both decisions, you see what happened before choosing again.', payoffs: 'Each turn: Both Cooperate 2 each · Both Defect 1 each · Defect against Cooperate 3 / 0' },
@@ -224,6 +229,7 @@ export function ultimatumPoints(offer: Choice, response: Choice): [number, numbe
 export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role = 'first'): [number, number] {
   switch (gameId) {
     case 7:
+    case 8:
       throw new Error('Auction scoring requires private valuations.');
     case 3:
       if (!['High Price', 'Low Price'].includes(own) || !['High Price', 'Low Price'].includes(other)) throw new Error('Invalid Highway Gas War choices.');
@@ -362,10 +368,10 @@ export function pairParticipants(participants: Record<string, Participant>, roun
     const first = uids[i];
     const second = uids[i + 1];
     if (!second) {
-      assignments[first] = { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...(gameId === 7 ? { valuation: randomAuctionValue() } : {}) };
+      assignments[first] = { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}) };
     } else {
-      assignments[first] = { round, kind: 'student', opponentUid: second, opponentAlias: participants[second].alias, role: 'first', ...(gameId === 7 ? { valuation: randomAuctionValue() } : {}) };
-      assignments[second] = { round, kind: 'student', opponentUid: first, opponentAlias: participants[first].alias, role: 'second', ...(gameId === 7 ? { valuation: randomAuctionValue() } : {}) };
+      assignments[first] = { round, kind: 'student', opponentUid: second, opponentAlias: participants[second].alias, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}) };
+      assignments[second] = { round, kind: 'student', opponentUid: first, opponentAlias: participants[first].alias, role: 'second', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}) };
     }
   }
   return assignments;
@@ -396,7 +402,7 @@ export function resolveResults(
   offers: Record<string, VisibleOffer> = {},
 ): Record<string, MatchResult> {
   if (gameId === 12) return resolvePublicGoodsResults(assignments, choices, round);
-  if (gameId === 7) return resolveAuctionResults(assignments, choices, round);
+  if (gameId === 7 || gameId === 8) return resolveAuctionResults(assignments, choices, round, gameId);
   if (gameId === 20) return resolveCentipedeResults(assignments, choices, round);
   if (gameId === 2 || gameId === 5) return resolveSequentialResults(assignments, choices, offers, round, gameId);
   if (gameId === 19) return resolveTrustResults(assignments, choices, offers, round);
@@ -425,7 +431,7 @@ export function resolveResults(
   return results;
 }
 
-function resolveAuctionResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, MatchResult> {
+function resolveAuctionResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number, gameId: 7 | 8): Record<string, MatchResult> {
   const results: Record<string, MatchResult> = {};
   for (const [uid, assignment] of Object.entries(assignments)) {
     const valuation = assignment.valuation;
@@ -439,11 +445,12 @@ function resolveAuctionResults(assignments: Record<string, Assignment>, choices:
     const fallback = assignment.kind === 'student' && validPartnerBid === null;
     const otherBid = validPartnerBid ?? randomIndex(13);
     const otherValue = partnerUid && validPartnerBid !== null ? assignments[partnerUid]?.valuation : randomAuctionValue();
-    const own = auctionPayoff(ownBid, otherBid, valuation, assignment.role !== 'second');
-    const opponent = auctionPayoff(otherBid, ownBid, otherValue ?? randomAuctionValue(), assignment.role === 'second');
+    const payoff = gameId === 8 ? firstPriceAuctionPayoff : auctionPayoff;
+    const own = payoff(ownBid, otherBid, valuation, assignment.role !== 'second');
+    const opponent = payoff(otherBid, ownBid, otherValue ?? randomAuctionValue(), assignment.role === 'second');
     results[uid] = { round, ownChoice: ownChoice!, opponentChoice: `Bid ${otherBid}`, ownPoints: own.points, opponentPoints: opponent.points,
       opponentAlias: fallback ? BOT_ALIAS : assignment.opponentAlias, opponentKind: fallback ? 'bot' : assignment.kind, fallback,
-      auction: { valuation, winningBid: Math.max(ownBid, otherBid), price: Math.min(ownBid, otherBid), won: own.won } };
+      auction: { valuation, winningBid: Math.max(ownBid, otherBid), price: gameId === 8 ? Math.max(ownBid, otherBid) : Math.min(ownBid, otherBid), won: own.won } };
   }
   return results;
 }
@@ -740,7 +747,7 @@ export function summarizeRound(
     count: submitted.filter(([, item]) => item.choice === option).length,
   }));
 
-  const outcomeNames = gameId === 7 ? ['Winner gains points', 'Winner breaks even', 'Winner loses points']
+  const outcomeNames = gameId === 7 || gameId === 8 ? ['Winner gains points', 'Winner breaks even', 'Winner loses points']
     : gameId === 27 ? ['Healthy stock (0–8 boats)', 'Depleted stock (9–12 boats)', 'Overfished (13–20 boats)']
     : gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
     : gameId === 20 ? ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Both pass all nodes']
@@ -764,7 +771,7 @@ export function summarizeRound(
     const other = results[assignment.opponentUid];
     if (own?.round !== round || other?.round !== round || own.opponentKind !== 'student' || other.opponentKind !== 'student') continue;
     studentPairs++;
-    const index = gameId === 7 ? (() => { const winner = own.auction?.won ? own : other; return winner.ownPoints > 0 ? 0 : winner.ownPoints < 0 ? 2 : 1; })()
+    const index = gameId === 7 || gameId === 8 ? (() => { const winner = own.auction?.won ? own : other; return winner.ownPoints > 0 ? 0 : winner.ownPoints < 0 ? 2 : 1; })()
       : gameId === 27 ? (() => { const total = (trawlerAmount(own.ownChoice) || 0) + (trawlerAmount(other.ownChoice) || 0); return total > 12 ? 2 : total > 8 ? 1 : 0; })()
       : gameId === 20 ? (own.exitNode || 7) - 1 : gameId === 19 ? (() => {
       const investor = assignment.role === 'first' ? own : other;
@@ -960,4 +967,3 @@ export function summarizePeople(summaries: RoundSummary[], archives: Record<stri
     .map(person => ({ uid: person.uid, alias: person.alias, analysis: summarizePerson(summaries, person.results) }))
     .sort((a, b) => a.alias.localeCompare(b.alias) || a.uid.localeCompare(b.uid));
 }
-
