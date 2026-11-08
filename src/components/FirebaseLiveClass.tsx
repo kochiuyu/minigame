@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPrice, centipedeTurnResults, classParticipants, contributionAmount, demandAmount, finishRound, gameFor, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomAuctionValue, randomBeautyGuess, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeRound, trawlerAmount,
+  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPrice, cournotQuantity, centipedeTurnResults, classParticipants, contributionAmount, demandAmount, finishRound, gameFor, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomAuctionValue, randomBeautyGuess, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeRound, trawlerAmount,
 } from '../liveMatch';
 import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, PracticeCentipedePath, RepeatedPath, RepeatedTurn, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
@@ -477,6 +477,10 @@ export function FirebaseLiveClass() {
           <label htmlFor="practice-price" className="block font-semibold">Your price: ${bertrandPrice(practiceChoice) ?? 10}</label>
           <input id="practice-price" type="range" min="10" max="50" step="1" value={bertrandPrice(practiceChoice) ?? 10} onChange={event => { setPracticeChoice(`Price ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
           <p className="text-sm text-slate-300">The random bot also sets a price from $10 to $50.</p>
+        </div> : practiceGameId === 21 ? <div className="space-y-2">
+          <label htmlFor="practice-quantity" className="block font-semibold">Your output: {cournotQuantity(practiceChoice) ?? 10} units</label>
+          <input id="practice-quantity" type="range" min="10" max="45" step="1" value={cournotQuantity(practiceChoice) ?? 10} onChange={event => { setPracticeChoice(`Quantity ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
+          <p className="text-sm text-slate-300">The bot secretly produces 10–45 units. Combined output sets the market price.</p>
         </div> : practiceGameId === 27 ? <div className="space-y-2">
           <label htmlFor="practice-trawlers" className="block font-semibold">Deploy {trawlerAmount(practiceChoice) ?? 0} trawlers</label>
           <input id="practice-trawlers" type="range" min="0" max="10" step="1" value={trawlerAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Trawlers ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
@@ -512,6 +516,8 @@ export function FirebaseLiveClass() {
           ? `You demanded ${demandAmount(practiceResult.ownChoice)}; the bot demanded ${demandAmount(practiceResult.botChoice || 'Demand 0')}. ${((demandAmount(practiceResult.ownChoice) ?? 0) + (demandAmount(practiceResult.botChoice || 'Demand 0') ?? 0)) <= 10 ? 'Deal reached.' : 'Deal failed; both take the 1-point outside option.'} You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
           : practiceGameId === 14
           ? `You priced at $${bertrandPrice(practiceResult.ownChoice)}; the bot priced at $${bertrandPrice(practiceResult.botChoice || 'Price 10')}. ${practiceResult.ownChoice === practiceResult.botChoice ? 'You split the market.' : (bertrandPrice(practiceResult.ownChoice) ?? 10) < (bertrandPrice(practiceResult.botChoice || 'Price 10') ?? 10) ? 'You captured the market.' : 'The bot undercut you.'} Your profit: ${practiceResult.points}.`
+          : practiceGameId === 21
+          ? `You produced ${cournotQuantity(practiceResult.ownChoice)} units; the bot produced ${cournotQuantity(practiceResult.botChoice || 'Quantity 10')}. Market price was ${Math.max(0, 100 - (cournotQuantity(practiceResult.ownChoice) ?? 0) - (cournotQuantity(practiceResult.botChoice || 'Quantity 10') ?? 0))}. Your profit: ${practiceResult.points}.`
           : practiceGameId === 19
           ? `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
           : practiceGameId === 12
@@ -725,6 +731,10 @@ export function FirebaseLiveClass() {
                 <label htmlFor="live-price" className="block font-semibold">Your private price: ${bertrandPrice(choice) ?? 10}</label>
                 <input id="live-price" type="range" min="10" max="50" step="1" value={bertrandPrice(choice) ?? 10} onChange={event => setChoice(`Price ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
                 <p className="text-sm text-slate-300">Your rival's price stays hidden until results are revealed.</p>
+              </div> : game.id === 21 ? <div className="space-y-2">
+                <label htmlFor="live-quantity" className="block font-semibold">Your private output: {cournotQuantity(choice) ?? 10} units</label>
+                <input id="live-quantity" type="range" min="10" max="45" step="1" value={cournotQuantity(choice) ?? 10} onChange={event => setChoice(`Quantity ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
+                <p className="text-sm text-slate-300">Your rival's output stays hidden until results are revealed.</p>
               </div> : game.id === 27 ? <div className="space-y-2">
                 <label htmlFor="live-trawlers" className="block font-semibold">Deploy {trawlerAmount(choice) ?? 0} trawlers</label>
                 <input id="live-trawlers" type="range" min="0" max="10" step="1" value={trawlerAmount(choice) ?? 0} onChange={event => setChoice(`Trawlers ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
