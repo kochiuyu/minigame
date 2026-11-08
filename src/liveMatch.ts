@@ -59,8 +59,7 @@ export type LiveRoom = {
 
 export const BOT_ALIAS = 'Random bot';
 export const ALIAS_ICONS = ['🦊', '🐼', '🐙', '🐢', '🦉', '🐬', '🦋', '🐝', '🦖', '🐧'] as const;
-const ALIAS_ADJECTIVES = ['Bright', 'Brave', 'Clever', 'Cosmic', 'Curious', 'Gentle', 'Jolly', 'Lucky', 'Mighty', 'Playful', 'Sunny', 'Swift'];
-const ALIAS_NOUNS = ['Breeze', 'Comet', 'Echo', 'Nova', 'Orbit', 'Pixel', 'Puzzle', 'Ripple', 'Rocket', 'Spark', 'Star', 'Wave'];
+const ALIAS_WORDS = ['Breeze', 'Comet', 'Echo', 'Nova', 'Orbit', 'Pixel', 'Puzzle', 'Ripple', 'Rocket', 'Spark', 'Star', 'Wave', 'Clover', 'Mochi', 'Pebble', 'Sunny', 'Tiger', 'Willow'];
 
 function randomIndex(length: number): number {
   return Math.floor(Math.random() * length);
@@ -68,10 +67,7 @@ function randomIndex(length: number): number {
 
 export function randomStudentAlias(): string {
   const icon = ALIAS_ICONS[randomIndex(ALIAS_ICONS.length)];
-  const adjective = ALIAS_ADJECTIVES[randomIndex(ALIAS_ADJECTIVES.length)];
-  const noun = ALIAS_NOUNS[randomIndex(ALIAS_NOUNS.length)];
-  const number = 100 + randomIndex(900);
-  return `${icon} ${adjective} ${noun} ${number}`;
+  return `${icon} ${ALIAS_WORDS[randomIndex(ALIAS_WORDS.length)]}${100 + randomIndex(900)}`;
 }
 
 export function shuffleAliasIcon(alias: string): string {
@@ -89,6 +85,8 @@ export function shuffleAliasIcon(alias: string): string {
   return `${icon} ${fitted.trim()}`;
 }
 
+export const ULTIMATUM_OFFERS = Array.from({ length: 21 }, (_, index) => `Offer ${index / 2}` as Choice) as [Choice, Choice, ...Choice[]];
+
 export const LIVE_GAMES: ReadonlyArray<{
   id: GameId;
   title: string;
@@ -102,7 +100,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
   { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
   { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
-  { id: 30, title: 'Ultimatum Game', options: ['Offer 0', 'Offer 1', 'Offer 2', 'Offer 3', 'Offer 4', 'Offer 5', 'Offer 6', 'Offer 7', 'Offer 8', 'Offer 9', 'Offer 10', 'Accept', 'Reject'], payoffs: 'Proposer offers 0–10 points from a pot of 10. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
+  { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
 ];
 
 export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
@@ -110,13 +108,14 @@ export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
 }
 
 export function randomChoice(gameId: GameId = 1): Choice {
-  const options = gameId === 30 ? gameFor(30).options.slice(0, 11) : gameFor(gameId).options;
+  const options = gameId === 30 ? ULTIMATUM_OFFERS : gameFor(gameId).options;
   return options[randomIndex(options.length)];
 }
 
 export function offerAmount(choice: Choice): number | null {
-  const match = /^Offer (10|[0-9])$/.exec(choice);
-  return match ? Number(match[1]) : null;
+  if (!/^Offer (?:10|[0-9])(?:\.5)?$/.test(choice)) return null;
+  const amount = Number(choice.slice(6));
+  return amount <= 10 ? amount : null;
 }
 
 export function ultimatumPoints(offer: Choice, response: Choice): [number, number] {

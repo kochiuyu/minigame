@@ -1,13 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, LIVE_GAMES, finishRound, pairParticipants, pointsFor, prepareUltimatumResponses, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, LIVE_GAMES, ULTIMATUM_OFFERS, finishRound, offerAmount, pairParticipants, pointsFor, prepareUltimatumResponses, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
 
 test('ultimatum offers, acceptance and rejection score both roles', () => {
-  for (let amount = 0; amount <= 10; amount++) {
+  assert.equal(ULTIMATUM_OFFERS.length, 21);
+  for (let amount = 0; amount <= 10; amount += 0.5) {
+    assert.equal(offerAmount(`Offer ${amount}`), amount);
     assert.deepEqual(pointsFor(30, `Offer ${amount}`, 'Accept', 'first'), [10 - amount, amount]);
     assert.deepEqual(pointsFor(30, 'Accept', `Offer ${amount}`, 'second'), [amount, 10 - amount]);
     assert.deepEqual(pointsFor(30, `Offer ${amount}`, 'Reject', 'first'), [0, 0]);
   }
+  assert.equal(offerAmount('Offer 10.5'), null);
+  assert.equal(offerAmount('Offer 3.7'), null);
 });
 
 test('ultimatum response step shares the offer, handles missing players, and archives results', () => {
@@ -320,7 +324,7 @@ test('students can generate a short emoji alias and change its icon before joini
     const originalIcon = ALIAS_ICONS.find(icon => alias.startsWith(`${icon} `));
     assert.ok(originalIcon);
     assert.ok(alias.length <= 30);
-    assert.match(alias, / [1-9][0-9]{2}$/);
+    assert.match(alias, /^\S+ [A-Za-z]+[1-9][0-9]{2}$/);
     const changed = shuffleAliasIcon(alias);
     assert.ok(changed.length <= 30);
     assert.notEqual(changed.split(' ')[0], originalIcon);
