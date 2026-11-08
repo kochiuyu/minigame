@@ -279,8 +279,9 @@ export function FirebaseLiveClass() {
                   <ul className="grid gap-2 sm:grid-cols-2">
                     {joinedStudents.map(([uid, student]) => {
                       const status = config.phase === 'lobby' ? 'Waiting for round'
-                        : assignments[uid]?.round !== round ? 'Joining round'
-                        : submissions[uid]?.round === round ? 'Submitted' : 'Waiting for choice';
+                        : submissions[uid]?.round === round ? 'Submitted'
+                        : config.phase === 'revealed' ? 'No choice'
+                        : assignments[uid]?.round === round ? 'Waiting for choice' : 'Joining round';
                       return <li key={uid} className="flex justify-between gap-3 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm">
                         <span className="truncate" title={student.alias}>{student.alias}</span>
                         <span className={status === 'Submitted' ? 'shrink-0 text-emerald-300' : 'shrink-0 text-amber-200'}>{status}</span>
