@@ -76,7 +76,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
           .map(uid => [uid, archive.aliases?.[uid] || 'Student who left'] as const)
           .sort((a, b) => a[1].localeCompare(b[1])).map(([uid, alias]) => {
           const result = archive.results?.[uid];
-          return <tr key={uid} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{alias}</th><td className="pr-2">{result?.repeatedTurns ? Object.entries(result.repeatedTurns).map(([turn, item]) => `${turn}: ${item.own}`).join(' · ') : result?.ownChoice || 'No choice'}{result?.auction ? ` (value ${result.auction.valuation}; ${result.auction.won ? `won, paid ${result.auction.price}` : 'lost'})` : ''}</td><td className="pr-2">{summary.gameId === 11 ? score(result?.beauty?.distance) : summary.gameId === 12 ? result?.group?.totalContribution ?? '—' : result?.opponentAlias || '—'}</td><td>{result?.ownPoints ?? '—'}</td></tr>;
+          return <tr key={uid} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{alias}</th><td className="pr-2">{result?.repeatedTurns ? Object.entries(result.repeatedTurns).map(([turn, item]) => `${turn}: ${item.own}`).join(' · ') : result?.ownChoice || 'No choice'}{result?.auction ? ` (value ${result.auction.valuation}; ${result.auction.won ? `won, paid ${result.auction.price}` : 'lost'})` : ''}{result?.signaling ? ` (quality ${result.signaling.quality})` : ''}</td><td className="pr-2">{summary.gameId === 11 ? score(result?.beauty?.distance) : summary.gameId === 12 ? result?.group?.totalContribution ?? '—' : result?.opponentAlias || '—'}</td><td>{result?.ownPoints ?? '—'}</td></tr>;
         })}</tbody>
       </table>
     </div>}
