@@ -5,3 +5,28 @@
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   }
 }
+
+@media print {
+  @page { margin: 12mm; }
+  body * { visibility: hidden !important; }
+  #live-final-report, #live-final-report * { visibility: visible !important; }
+  #live-final-report {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    color: #111827 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  #live-final-report * {
+    color: #111827 !important;
+    background-color: transparent !important;
+    border-color: #cbd5e1 !important;
+  }
+  #live-final-report .report-export-controls { display: none !important; }
+  #live-final-report [class~="bg-blue-500"] { background-color: #3b82f6 !important; }
+  #live-final-report [class~="bg-emerald-500"] { background-color: #10b981 !important; }
+  #live-final-report [class~="bg-amber-500"] { background-color: #f59e0b !important; }
+  #live-final-report tr, #live-final-report details { break-inside: avoid; }
+}
