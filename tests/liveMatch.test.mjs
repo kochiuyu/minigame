@@ -31,6 +31,10 @@ test('Lemons Market gives the seller private quality and sequential sale choices
   const rejected = resolveResults(assignments, { ...buyer, b: { round: 1, choice: 'Reject' } }, 1, 28, offers);
   assert.deepEqual([rejected.a.ownPoints, rejected.b.ownPoints], [0, 0]);
   assert.equal(rejected.a.lemons.accepted, false);
+  const loneBuyer = pairParticipants({ a: { alias: 'A' } }, 1, 28).a;
+  assert.equal(loneBuyer.kind, 'bot');
+  assert.equal(loneBuyer.quality, undefined);
+  assert.equal(resolveResults({ a: loneBuyer }, buyer, 1, 28).a.opponentKind, 'bot');
   const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 28, step: 'respond' },
     participants: { a: { alias: 'A' }, b: { alias: 'B' } }, assignments, choices, offers }, true);
   assert.equal(finished.config.phase, 'finished');

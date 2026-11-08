@@ -159,7 +159,7 @@ export function FirebaseLiveClass() {
       ? { round: config.round, kind: 'class', opponentAlias: 'Class', role: 'first' }
       : config.gameId === 12
       ? { round: config.round, kind: 'group', groupId: user.uid, groupSize: 1, opponentAlias: 'Public goods group', role: 'first' }
-      : { round: config.round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(config.gameId) ? { valuation: randomAuctionValue() } : {}), ...(config.gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...([10, 28].includes(config.gameId) ? { quality: randomLemonsQuality() } : {}) };
+      : { round: config.round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(config.gameId) ? { valuation: randomAuctionValue() } : {}), ...(config.gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...(config.gameId === 10 ? { quality: randomLemonsQuality() } : {}) };
     set(ref(db, `${ROOT}/assignments/${user.uid}`), fallback).catch(() => {
       // A human assignment may have reached the server before this listener updated.
     });
@@ -717,7 +717,7 @@ export function FirebaseLiveClass() {
               {!(staged && config.step === 'respond') && !(repeated && repeatedTurn > 1) && <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/assignments/${user.uid}`),
                 classwide ? { round, kind: 'class', opponentAlias: 'Class', role: 'first' }
                   : publicGoods ? { round, kind: 'group', groupId: user.uid, groupSize: 1, opponentAlias: 'Public goods group', role: 'first' }
-                  : { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(game.id) ? { valuation: randomAuctionValue() } : {}), ...(game.id === 24 ? { valuation: randomSurveySignal() } : {}), ...([10, 28].includes(game.id) ? { quality: randomLemonsQuality() } : {}) }))} className="text-sm underline">{classwide ? 'Try joining contest' : 'Try bot fallback'}</button>}
+                  : { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(game.id) ? { valuation: randomAuctionValue() } : {}), ...(game.id === 24 ? { valuation: randomSurveySignal() } : {}), ...(game.id === 10 ? { quality: randomLemonsQuality() } : {}) }))} className="text-sm underline">{classwide ? 'Try joining contest' : 'Try bot fallback'}</button>}
             </div>
           ) : repeated ? (
             <div className="space-y-3">
