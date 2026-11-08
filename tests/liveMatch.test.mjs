@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LIVE_GAMES, pairParticipants, pointsFor, randomChoice, resolveResults } from '../src/liveMatch.ts';
+import { LIVE_GAMES, pairParticipants, pointsFor, randomChoice, resolveResults, submissionProgress, summarizeRound } from '../src/liveMatch.ts';
 
 const cases = [
   [1, [[2, 2], [0, 3], [3, 0], [1, 1]]],
@@ -68,3 +68,41 @@ test('reveal gives reciprocal results and substitutes a bot for a missing partne
   assert.equal(fallback.b, undefined);
 });
 
+test('submission progress waits for every joined student, including a late arrival', () => {
+  const participants = { a: { alias: 'A' }, b: { alias: 'B' } };
+  const assignments = { a: { round: 2, kind: 'bot', opponentAlias: 'Random bot' } };
+  const choices = { a: { round: 2, choice: 'Cooperate' } };
+  assert.deepEqual(submissionProgress(participants, assignments, choices, 2), { joined: 2, submitted: 1, allSubmitted: false });
+  assignments.b = { round: 2, kind: 'bot', opponentAlias: 'Random bot' };
+  choices.b = { round: 2, choice: 'Defect' };
+  assert.deepEqual(submissionProgress(participants, assignments, choices, 2), { joined: 2, submitted: 2, allSubmitted: true });
+  assert.equal(submissionProgress(participants, assignments, choices, 3).allSubmitted, false);
+});
+
+test('post-reveal summary counts student pairs once and separates bot fallbacks', () => {
+  const assignments = {
+    a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A' },
+    c: { round: 1, kind: 'student', opponentUid: 'd', opponentAlias: 'D' },
+    d: { round: 1, kind: 'student', opponentUid: 'c', opponentAlias: 'C' },
+    e: { round: 1, kind: 'bot', opponentAlias: 'Random bot' },
+  };
+  const choices = Object.fromEntries(['a', 'b', 'c', 'e'].map(uid => [uid, { round: 1, choice: uid === 'c' ? 'Defect' : 'Cooperate' }]));
+  const results = {
+    a: { round: 1, ownChoice: 'Cooperate', ownPoints: 2, opponentKind: 'student', fallback: false },
+    b: { round: 1, ownChoice: 'Cooperate', ownPoints: 2, opponentKind: 'student', fallback: false },
+    c: { round: 1, ownChoice: 'Defect', ownPoints: 3, opponentKind: 'bot', fallback: true },
+    e: { round: 1, ownChoice: 'Cooperate', ownPoints: 0, opponentKind: 'bot', fallback: false },
+  };
+  const summary = summarizeRound(assignments, choices, results, 1, 1);
+  assert.deepEqual(summary.choiceCounts, [{ label: 'Cooperate', count: 3 }, { label: 'Defect', count: 1 }]);
+  assert.deepEqual(summary.outcomes, [{ label: 'Both cooperate', count: 1 }, { label: 'Both defect', count: 0 }, { label: 'Different choices', count: 0 }]);
+  assert.equal(summary.studentPairs, 1);
+  assert.equal(summary.botMatches, 2);
+  assert.equal(summary.fallbacks, 1);
+  assert.equal(summary.averagePoints, 1.75);
+
+  const pennies = summarizeRound(assignments, { a: { round: 1, choice: 'Heads' }, b: { round: 1, choice: 'Tails' } },
+    { a: { round: 1, ownChoice: 'Heads', ownPoints: 0, opponentKind: 'student' }, b: { round: 1, ownChoice: 'Tails', ownPoints: 2, opponentKind: 'student' } }, 1, 17);
+  assert.deepEqual(pennies.outcomes, [{ label: 'Matching choices', count: 0 }, { label: 'Different choices', count: 1 }]);
+});

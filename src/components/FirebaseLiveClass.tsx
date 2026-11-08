@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, LIVE_GAMES, gameFor, pairParticipants, pointsFor, randomChoice, resolveResults,
+  BOT_ALIAS, LIVE_GAMES, gameFor, pairParticipants, pointsFor, randomChoice, resolveResults, submissionProgress, summarizeRound,
 } from '../liveMatch';
 import type { Assignment, Choice, GameId, MatchResult, Participant, RoomConfig, Submission } from '../liveMatch';
 
@@ -164,10 +164,10 @@ export function FirebaseLiveClass() {
   const currentAssignment = assignment?.round === round ? assignment : null;
   const currentSubmission = submission?.round === round ? submission : null;
   const currentResult = result?.round === round ? result : null;
-  const currentSubmissions = Object.values(submissions).filter(item => item.round === round);
   const roundAssignments = Object.values(assignments).filter(item => item.round === round);
-  const roundResults = Object.values(results).filter(item => item.round === round);
-  const choiceCounts = game.options.map(option => `${option}: ${currentSubmissions.filter(item => item.choice === option).length}`).join(' · ');
+  const joinedStudents = Object.entries(participants).sort((a, b) => a[1].alias.localeCompare(b[1].alias));
+  const progress = submissionProgress(participants, assignments, submissions, round);
+  const summary = summarizeRound(assignments, submissions, results, round, game.id);
   const roleLabel = currentAssignment && game.roles ? game.roles[currentAssignment.role === 'second' ? 1 : 0] : null;
 
   return (
@@ -179,7 +179,7 @@ export function FirebaseLiveClass() {
         {config && <p className="text-sm text-blue-200 mt-2">{game.payoffs}</p>}
       </div>
 
-      <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-3">
+      {!instructor && <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-3">
         <h2 className="text-lg font-bold">Bot practice</h2>
         <p className="text-sm text-slate-300">Private practice. It does not count toward the class round.</p>
         <label htmlFor="practice-game" className="block text-sm font-bold">Practice game</label>
@@ -203,7 +203,7 @@ export function FirebaseLiveClass() {
         </fieldset>
         <button onClick={playBot} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">Play random bot</button>
         {practiceResult && <p role="status">You chose {practiceResult.ownChoice}; the bot chose {practiceResult.botChoice}. You earned {practiceResult.points} points.</p>}
-      </div>
+      </div>}
 
       {!user && (
         <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-3">
@@ -246,20 +246,49 @@ export function FirebaseLiveClass() {
                 <select id="class-game" value={game.id} onChange={event => run(() => update(ref(db, `${ROOT}/config`), { gameId: Number(event.target.value) as GameId }))} disabled={busy} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
                   {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
                 </select>
-                <p>{Object.keys(participants).length} students joined</p>
+                <p>{joinedStudents.length} students joined</p>
                 <p className="text-sm text-slate-300">Pairing is random each round. An odd student gets a bot; students who join later get a bot too.</p>
-                <button disabled={busy || Object.keys(participants).length === 0} onClick={startPairing} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Pair students and start round</button>
+                <button disabled={busy || joinedStudents.length === 0} onClick={startPairing} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Pair students and start round</button>
               </>}
               {config?.phase === 'playing' && <>
                 <p>{roundAssignments.filter(item => item.kind === 'student').length / 2} student pairs · {roundAssignments.filter(item => item.kind === 'bot').length} bot matches</p>
-                <p>{currentSubmissions.length} choices received · {choiceCounts}</p>
-                <button disabled={busy} onClick={reveal} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Reveal match results</button>
+                <p role="status" className="font-semibold">{progress.submitted} of {progress.joined} joined students submitted</p>
+                {progress.allSubmitted ? <p className="rounded-lg border border-emerald-600 bg-emerald-950/50 p-3 text-emerald-200">Everyone has submitted. Reveal results, then start the next round.</p>
+                  : <p className="text-sm text-slate-300">Choices stay hidden until reveal. You can reveal early if someone cannot submit; a bot will replace a missing partner.</p>}
+                <button disabled={busy || summary.submitted === 0} onClick={reveal} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Reveal results</button>
               </>}
               {config?.phase === 'revealed' && <>
-                <p>{roundResults.length} results · {roundResults.filter(item => item.fallback).length} missing-partner bot fallbacks</p>
-                <p>{choiceCounts}</p>
+                <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4 space-y-2">
+                  <h3 className="font-bold">Round {round} summary</h3>
+                  <p>{summary.submitted} students submitted · {summary.studentPairs} completed student pairs · {summary.botMatches} bot matches{summary.fallbacks > 0 ? ` (${summary.fallbacks} missing-partner fallbacks)` : ''}</p>
+                  <p>Choices: {summary.choiceCounts.map(item => `${item.label} ${item.count}`).join(' · ')}</p>
+                  <p>Student pair outcomes: {summary.outcomes.map(item => `${item.label} ${item.count}`).join(' · ')}</p>
+                  {summary.averagePoints !== null && <p>Average student score: {summary.averagePoints.toFixed(1)} points</p>}
+                  <p className="text-sm text-blue-200">{game.id === 1 ? 'Discuss how often pairs reached mutual cooperation.'
+                    : game.id === 13 ? 'Discuss whether pairs coordinated on Stag or chose the safer Hare.'
+                    : game.id === 15 ? 'Discuss how often two Hawks met and what that cost them.'
+                    : game.id === 17 ? 'Matching choices favor the Matcher; different choices favor the Mismatcher.'
+                    : 'Discuss how often pairs coordinated on Opera or Football.'}</p>
+                </div>
+                <p className="font-semibold">Results are revealed. Start the next round when students have read them.</p>
                 <button disabled={busy} onClick={() => run(() => update(ref(db, ROOT), { assignments: null, choices: null, results: null, 'config/round': round + 1, 'config/phase': 'lobby' }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start next round</button>
               </>}
+              {config && <div className="border-t border-slate-700 pt-4 space-y-2">
+                <h3 className="font-bold">Joined students ({joinedStudents.length})</h3>
+                {joinedStudents.length === 0 ? <p className="text-sm text-slate-300">No students have joined yet.</p> :
+                  <ul className="grid gap-2 sm:grid-cols-2">
+                    {joinedStudents.map(([uid, student]) => {
+                      const status = config.phase === 'lobby' ? 'Waiting for round'
+                        : submissions[uid]?.round === round ? 'Submitted'
+                        : config.phase === 'revealed' ? 'No choice'
+                        : assignments[uid]?.round === round ? 'Waiting for choice' : 'Joining round';
+                      return <li key={uid} className="flex justify-between gap-3 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm">
+                        <span className="truncate" title={student.alias}>{student.alias}</span>
+                        <span className={status === 'Submitted' ? 'shrink-0 text-emerald-300' : 'shrink-0 text-amber-200'}>{status}</span>
+                      </li>;
+                    })}
+                  </ul>}
+              </div>}
               {config && <button disabled={busy} onClick={() => run(() => remove(ref(db, ROOT)))} className="block text-sm text-red-300 underline disabled:opacity-50">End class and clear room</button>}
             </>
           ) : !config ? (
@@ -300,4 +329,3 @@ export function FirebaseLiveClass() {
     </section>
   );
 }
-

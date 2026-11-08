@@ -122,3 +122,56 @@ export function resolveResults(
   return results;
 }
 
+export function submissionProgress(
+  participants: Record<string, Participant>,
+  assignments: Record<string, Assignment>,
+  choices: Record<string, Submission>,
+  round: number,
+) {
+  const joined = Object.keys(participants).length;
+  const submitted = Object.keys(participants).filter(uid =>
+    assignments[uid]?.round === round && choices[uid]?.round === round).length;
+  return { joined, submitted, allSubmitted: joined > 0 && submitted === joined };
+}
+
+export function summarizeRound(
+  assignments: Record<string, Assignment>,
+  choices: Record<string, Submission>,
+  results: Record<string, MatchResult>,
+  round: number,
+  gameId: GameId,
+) {
+  const game = gameFor(gameId);
+  const submitted = Object.entries(choices).filter(([uid, item]) =>
+    item.round === round && assignments[uid]?.round === round);
+  const finished = Object.entries(results).filter(([, item]) => item.round === round);
+  const choiceCounts = game.options.map(option => ({
+    label: option,
+    count: submitted.filter(([, item]) => item.choice === option).length,
+  }));
+
+  const outcomeNames = gameId === 1 ? ['Both cooperate', 'Both defect', 'Different choices']
+    : gameId === 13 ? ['Both hunt stag', 'Both hunt hare', 'Different choices']
+    : gameId === 15 ? ['Both dove', 'Both hawk', 'Different choices']
+    : gameId === 17 ? ['Matching choices', 'Different choices']
+    : ['Both opera', 'Both football', 'Different choices'];
+  const outcomes = outcomeNames.map(label => ({ label, count: 0 }));
+  let studentPairs = 0;
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== round || assignment.kind !== 'student' || !assignment.opponentUid || uid >= assignment.opponentUid) continue;
+    const own = results[uid];
+    const other = results[assignment.opponentUid];
+    if (own?.round !== round || other?.round !== round || own.opponentKind !== 'student' || other.opponentKind !== 'student') continue;
+    studentPairs++;
+    const index = gameId === 17 ? (own.ownChoice === other.ownChoice ? 0 : 1)
+      : own.ownChoice === other.ownChoice ? (own.ownChoice === game.options[0] ? 0 : 1) : 2;
+    outcomes[index].count++;
+  }
+
+  const botMatches = finished.filter(([, item]) => item.opponentKind === 'bot').length;
+  const fallbacks = finished.filter(([, item]) => item.fallback).length;
+  const averagePoints = finished.length
+    ? finished.reduce((total, [, item]) => total + item.ownPoints, 0) / finished.length
+    : null;
+  return { submitted: submitted.length, choiceCounts, studentPairs, outcomes, botMatches, fallbacks, averagePoints };
+}
