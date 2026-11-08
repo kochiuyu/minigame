@@ -47,7 +47,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
       <h4 className="font-semibold">Your result</h4>
       {personal?.beauty ? <div className="mt-2 space-y-1 text-sm text-slate-300">
         <p>Your guess: {personal.ownChoice}. Class average: {score(personal.beauty.average)}. Target: {score(personal.beauty.target)}. Your distance: {score(personal.beauty.distance)}.</p>
-        <p>{personal.beauty.winner ? 'Your guess was closest.' : 'Another guess was closer.'} You earned <strong className="text-slate-100">{personal.ownPoints} points</strong>.</p>
+        <p>{personal.beauty.winner ? 'Your guess was closest.' : 'Another guess was closer.'} You earned <strong className="text-slate-100">{personal.ownPoints} {personal.ownPoints === 1 ? 'point' : 'points'}</strong>.</p>
       </div> : personal?.group ? <div className="mt-2 space-y-1 text-sm text-slate-300">
         <p>You {personal.ownChoice.toLowerCase().replace('contribute', 'contributed')} points. The group pool was {personal.group.totalContribution}; your share was {score(personal.group.totalContribution * 0.4)} points.</p>
         <p>You earned <strong className="text-slate-100">{score(personal.ownPoints)} points</strong>. Your group included {personal.group.classmates} other students and {personal.group.bots} random bots.</p>
