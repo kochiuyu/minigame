@@ -341,7 +341,7 @@ function resolveTrustResults(assignments: Record<string, Assignment>, choices: R
     const validPartner = partner && returnAmount(partner) !== null && returnAmount(partner)! <= 3 * investAmount(investment)!;
     const response = investor ? validPartner ? partner! : randomReturn(investAmount(investment)!) : own;
     if (returnAmount(response) === null || returnAmount(response)! > 3 * investAmount(investment)!) continue;
-    const fallback = assignment.kind === 'bot' || (assignment.kind === 'student' && (investor ? !validPartner : offers[uid]?.fromBot !== false));
+    const fallback = assignment.kind === 'student' && (investor ? !validPartner : offers[uid]?.fromBot !== false);
     const [investorPoints, trusteePoints] = trustPoints(investAmount(investment)!, returnAmount(response)!);
     results[uid] = { round, ownChoice: own, opponentChoice: investor ? response : investment,
       ownPoints: investor ? investorPoints : trusteePoints, opponentPoints: investor ? trusteePoints : investorPoints,

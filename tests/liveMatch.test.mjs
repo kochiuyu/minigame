@@ -40,6 +40,10 @@ test('Trust Game uses random bots when a partner does not act', () => {
   const invalid = resolveResults(assignments, { a: choices.a, b: { round: 1, choice: 'Return 30' } }, 1, 19, offers);
   assert.equal(invalid.a.fallback, true);
   assert.equal(invalid.b, undefined);
+  const planned = resolveResults({ solo: { round: 1, kind: 'bot', opponentAlias: 'Random bot', role: 'first' } },
+    { solo: { round: 1, choice: 'Invest 5' } }, 1, 19);
+  assert.equal(planned.solo.opponentKind, 'bot');
+  assert.equal(planned.solo.fallback, false);
 });
 
 test('ultimatum offers, acceptance and rejection score both roles', () => {
