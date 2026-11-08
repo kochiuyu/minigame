@@ -1,6 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, LIVE_GAMES, ULTIMATUM_OFFERS, blottoAllocation, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+
+test('Centipede plans resolve the first Take, score both roles, and archive the exit', () => {
+  const payoffs = [[2, 0], [1, 4], [4, 2], [3, 6], [6, 4], [5, 8], [8, 8]];
+  for (const first of CENTIPEDE_FIRST) for (const second of CENTIPEDE_SECOND) {
+    const node = centipedeExitNode(first, second);
+    assert.deepEqual(pointsFor(20, first, second), payoffs[node - 1]);
+    assert.deepEqual(pointsFor(20, second, first, 'second'), [...payoffs[node - 1]].reverse());
+  }
+  assert.equal(centipedeExitNode('Pass All', 'Pass All'), 7);
+  assert.throws(() => centipedeExitNode('Take at Node 2', 'Pass All'));
+  const assignments = {
+    a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    c: { round: 1, kind: 'bot', opponentAlias: 'Random bot', role: 'first' },
+  };
+  const choices = { a: { round: 1, choice: 'Take at Node 5' }, b: { round: 1, choice: 'Take at Node 4' },
+    c: { round: 1, choice: 'Pass All' } };
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 20 },
+    participants: { a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' } }, assignments, choices }, true);
+  assert.deepEqual([finished.archive[1].results.a.ownPoints, finished.archive[1].results.b.ownPoints], [3, 6]);
+  assert.deepEqual([finished.archive[1].results.a.exitNode, finished.archive[1].results.b.exitNode], [4, 4]);
+  assert.equal(finished.config.summaries[1].outcomes[3].count, 1);
+  assert.equal(finished.config.summaries[1].botMatches, 1);
+  assert.ok([2, 4, 6, 7].includes(finished.archive[1].results.c.exitNode));
+  const fallback = resolveResults(assignments, { a: choices.a }, 1, 20);
+  assert.equal(fallback.a.opponentKind, 'bot');
+  assert.equal(fallback.b, undefined);
+});
 
 test('Sequential Entry reveals the first move and scores both roles', () => {
   const payoffs = [

@@ -1,5 +1,5 @@
-export type GameId = 1 | 2 | 4 | 5 | 12 | 13 | 15 | 17 | 18 | 19 | 23 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Deploy ${number}/${number}/${number}`;
+export type GameId = 1 | 2 | 4 | 5 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -30,6 +30,7 @@ export type MatchResult = {
   opponentAlias: string;
   opponentKind: 'student' | 'bot' | 'group';
   fallback: boolean;
+  exitNode?: number; // Centipede: 1–6 for a Take, 7 when both pass all nodes.
   group?: { totalContribution: number; classmates: number; bots: number; missing: number };
 };
 export type RoundSummary = {
@@ -97,6 +98,8 @@ export const ULTIMATUM_OFFERS = Array.from({ length: 21 }, (_, index) => `Offer 
 export const PUBLIC_GOODS_CONTRIBUTIONS = Array.from({ length: 11 }, (_, index) => `Contribute ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const TRUST_INVESTMENTS = Array.from({ length: 11 }, (_, index) => `Invest ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const BLOTTO_DEPLOYMENTS = ['Deploy 34/33/33', 'Deploy 50/50/0', 'Deploy 50/0/50', 'Deploy 0/50/50', 'Deploy 60/0/40', 'Deploy 0/60/40'] as const;
+export const CENTIPEDE_FIRST = ['Take at Node 1', 'Take at Node 3', 'Take at Node 5', 'Pass All'] as const;
+export const CENTIPEDE_SECOND = ['Take at Node 2', 'Take at Node 4', 'Take at Node 6', 'Pass All'] as const;
 export const PUBLIC_GOODS_GROUP_SIZE = 4;
 
 export const LIVE_GAMES: ReadonlyArray<{
@@ -117,6 +120,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], rules: 'Both choose Heads or Tails. The Matcher scores when the choices match; the Mismatcher scores when they differ.', payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
   { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], rules: 'Both choose Opera or Football. You score only if your choices match; each role prefers a different match.', payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
   { id: 19, title: 'Trust Game', options: TRUST_INVESTMENTS, rules: 'The Investor starts with 10 points and sends 0–10 to the Trustee. The amount sent triples. The Trustee then chooses how much of the tripled amount to return.', payoffs: 'Investor score = 10 − amount invested + amount returned. Trustee score = 3 × amount invested − amount returned.', roles: ['Investor', 'Trustee'] },
+  { id: 20, title: 'Centipede Game', options: ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Pass All'], rules: 'Choose a complete plan secretly before the chain starts. Player 1 moves at nodes 1, 3, and 5; Player 2 moves at nodes 2, 4, and 6. Your plan says when you would Take; before that node you Pass. If both pass all six nodes, both earn 8.', payoffs: 'Take at node 1: 2 / 0 · 2: 1 / 4 · 3: 4 / 2 · 4: 3 / 6 · 5: 6 / 4 · 6: 5 / 8 · Both Pass All: 8 / 8 (Player 1 / Player 2)', roles: ['Player 1', 'Player 2'] },
   { id: 23, title: 'Colonel Blotto', options: BLOTTO_DEPLOYMENTS, rules: 'Choose how to deploy 100 troops across Fronts A, B, and C. Each number in a deployment plan is the troop count for one front. Your opponent chooses secretly.', payoffs: 'More troops wins a front. Win more fronts than your opponent: +1 point; lose more: −1 point; equal front wins: 0 points.' },
   { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], rules: 'You and the bot each choose one move without seeing the other choice. Each move beats one other move.', payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
   { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], rules: 'The Proposer offers part of a 10-point pot. The Responder sees the offer and accepts or rejects it.', payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
@@ -127,7 +131,7 @@ export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
 }
 
 export function randomChoice(gameId: GameId = 1): Choice {
-  const options = gameId === 30 ? ULTIMATUM_OFFERS : gameId === 2 ? (['Launch', 'Wait'] as const) : gameId === 5 ? (['Commit', 'Stay Flexible'] as const) : gameFor(gameId).options;
+  const options = gameId === 30 ? ULTIMATUM_OFFERS : gameId === 2 ? (['Launch', 'Wait'] as const) : gameId === 5 ? (['Commit', 'Stay Flexible'] as const) : gameId === 20 ? CENTIPEDE_FIRST : gameFor(gameId).options;
   return options[randomIndex(options.length)];
 }
 
@@ -178,6 +182,14 @@ export function ultimatumPoints(offer: Choice, response: Choice): [number, numbe
 
 export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role = 'first'): [number, number] {
   switch (gameId) {
+    case 20: {
+      const first = role === 'first' ? own : other;
+      const second = role === 'first' ? other : own;
+      const node = centipedeExitNode(first, second);
+      const payoff: [number, number] = node === 1 ? [2, 0] : node === 2 ? [1, 4] : node === 3 ? [4, 2]
+        : node === 4 ? [3, 6] : node === 5 ? [6, 4] : node === 6 ? [5, 8] : [8, 8];
+      return role === 'first' ? payoff : [payoff[1], payoff[0]];
+    }
     case 2: {
       const first = role === 'first' ? own : other;
       const second = role === 'first' ? other : own;
@@ -245,6 +257,13 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
   }
 }
 
+export function centipedeExitNode(first: Choice, second: Choice): number {
+  if (!CENTIPEDE_FIRST.includes(first as typeof CENTIPEDE_FIRST[number]) || !CENTIPEDE_SECOND.includes(second as typeof CENTIPEDE_SECOND[number])) throw new Error('Invalid Centipede plans.');
+  const firstTake = first === 'Pass All' ? 7 : Number(first.slice(-1));
+  const secondTake = second === 'Pass All' ? 7 : Number(second.slice(-1));
+  return Math.min(firstTake, secondTake);
+}
+
 export function pairParticipants(participants: Record<string, Participant>, round: number): Record<string, Assignment> {
   const uids = Object.keys(participants);
   for (let i = uids.length - 1; i > 0; i--) {
@@ -290,6 +309,7 @@ export function resolveResults(
   offers: Record<string, VisibleOffer> = {},
 ): Record<string, MatchResult> {
   if (gameId === 12) return resolvePublicGoodsResults(assignments, choices, round);
+  if (gameId === 20) return resolveCentipedeResults(assignments, choices, round);
   if (gameId === 2 || gameId === 5) return resolveSequentialResults(assignments, choices, offers, round, gameId);
   if (gameId === 19) return resolveTrustResults(assignments, choices, offers, round);
   if (gameId === 30) return resolveUltimatumResults(assignments, choices, offers, round);
@@ -313,6 +333,25 @@ export function resolveResults(
       opponentKind: fallback ? 'bot' : assignment.kind,
       fallback,
     };
+  }
+  return results;
+}
+
+function resolveCentipedeResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, MatchResult> {
+  const results: Record<string, MatchResult> = {};
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== round) continue;
+    const own = choices[uid]?.round === round ? choices[uid].choice : null;
+    const first = assignment.role !== 'second';
+    if (!own || !(first ? CENTIPEDE_FIRST : CENTIPEDE_SECOND).some(option => option === own)) continue;
+    const partner = assignment.opponentUid && choices[assignment.opponentUid]?.round === round ? choices[assignment.opponentUid].choice : null;
+    const validPartner = partner && (first ? CENTIPEDE_SECOND : CENTIPEDE_FIRST).some(option => option === partner);
+    const counterpart = validPartner ? partner! : (first ? CENTIPEDE_SECOND : CENTIPEDE_FIRST)[randomIndex(4)];
+    const fallback = assignment.kind === 'student' && !validPartner;
+    const [ownPoints, opponentPoints] = pointsFor(20, own, counterpart, first ? 'first' : 'second');
+    results[uid] = { round, ownChoice: own, opponentChoice: counterpart, ownPoints, opponentPoints,
+      opponentAlias: fallback ? BOT_ALIAS : assignment.opponentAlias, opponentKind: fallback ? 'bot' : assignment.kind,
+      fallback, exitNode: centipedeExitNode(first ? own : counterpart, first ? counterpart : own) };
   }
   return results;
 }
@@ -475,6 +514,7 @@ export function summarizeRound(
   }));
 
   const outcomeNames = gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
+    : gameId === 20 ? ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Both pass all nodes']
     : gameId === 2 ? ['Launch + Enter', 'Launch + Stay Out', 'Wait + Enter', 'Wait + Stay Out']
     : gameId === 5 ? ['Commit + Enter', 'Commit + Stay Out', 'Stay Flexible + Enter', 'Stay Flexible + Stay Out']
     : gameId === 30 ? ['Accepted', 'Rejected']
@@ -494,7 +534,7 @@ export function summarizeRound(
     const other = results[assignment.opponentUid];
     if (own?.round !== round || other?.round !== round || own.opponentKind !== 'student' || other.opponentKind !== 'student') continue;
     studentPairs++;
-    const index = gameId === 19 ? (() => {
+    const index = gameId === 20 ? (own.exitNode || 7) - 1 : gameId === 19 ? (() => {
       const investor = assignment.role === 'first' ? own : other;
       const trustee = assignment.role === 'second' ? own : other;
       const invested = investAmount(investor.ownChoice) || 0;

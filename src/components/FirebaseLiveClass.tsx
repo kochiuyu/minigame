@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, contributionAmount, finishRound, gameFor, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomReturn, returnAmount, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound,
+  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, contributionAmount, finishRound, gameFor, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomReturn, returnAmount, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound,
 } from '../liveMatch';
 import type { Assignment, Choice, GameId, LiveRoom, MatchResult, Participant, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
@@ -52,6 +52,7 @@ export function FirebaseLiveClass() {
     if ((game.id === 2 || game.id === 5) && assignment?.role) setChoice(assignment.role === 'second' ? 'Enter' : game.id === 2 ? 'Launch' : 'Commit');
     if (game.id === 30 && assignment?.role) setChoice(assignment.role === 'second' ? 'Accept' : 'Offer 5');
     if (game.id === 19 && assignment?.role) setChoice(assignment.role === 'second' ? 'Return 0' : 'Invest 5');
+    if (game.id === 20 && assignment?.role) setChoice(assignment.role === 'second' ? CENTIPEDE_SECOND[0] : CENTIPEDE_FIRST[0]);
   }, [game.id, assignment?.role]);
   useEffect(() => {
     if (game.id !== 19 || !assignment || assignment.round !== config?.round) return;
@@ -217,6 +218,12 @@ export function FirebaseLiveClass() {
       setPracticeResult({ ownChoice: practiceChoice, botChoice, points });
       return;
     }
+    if (practiceGameId === 20) {
+      const botChoice = practiceRole === 'first' ? CENTIPEDE_SECOND[Math.floor(Math.random() * 4)] : practiceBotOffer;
+      const [points] = pointsFor(20, practiceChoice, botChoice, practiceRole);
+      setPracticeResult({ ownChoice: practiceChoice, botChoice, points });
+      return;
+    }
     if (practiceGameId === 12) {
       const botContributions = Array.from({ length: PUBLIC_GOODS_GROUP_SIZE - 1 }, () => contributionAmount(randomChoice(12)) ?? 0);
       const ownContribution = contributionAmount(practiceChoice) ?? 0;
@@ -269,6 +276,7 @@ export function FirebaseLiveClass() {
   const entry = game.id === 2 || game.id === 5;
   const deterrence = game.id === 5;
   const trust = game.id === 19;
+  const centipede = game.id === 20;
   const staged = entry || ultimatum || trust;
   const isResponder = currentAssignment?.role === 'second';
   const isMyStep = !staged || (config?.step === 'offer' ? !isResponder : isResponder);
@@ -304,7 +312,7 @@ export function FirebaseLiveClass() {
           setPracticeGameId(id);
           setPracticeChoice(gameFor(id).options[0]);
           setPracticeRole('first');
-          setPracticeBotOffer(randomChoice(id === 2 || id === 5 ? id : id === 19 ? 19 : 30));
+          setPracticeBotOffer(randomChoice(id === 2 || id === 5 || id === 20 ? id : id === 19 ? 19 : 30));
           setPracticeResult(null);
         }} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
           {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
@@ -320,17 +328,20 @@ export function FirebaseLiveClass() {
               ? 'When you invest, the bot returns a random whole amount from 0 to three times your investment. When you are the Trustee, the bot invests a random whole amount from 0 to 10.'
               : practiceGameId === 30
               ? 'As Proposer, the bot accepts or rejects with equal chance. As Responder, it offers a random amount from 0 to 10 in half-point steps.'
+              : practiceGameId === 20
+              ? 'The bot randomly chooses one of its four complete plans. The earliest Take ends the chain.'
               : 'The bot picks each available choice with equal chance.'}</p>
             <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} />
           </div>
         </details>
-        {([2, 5, 19, 30] as number[]).includes(practiceGameId) ? <label className="block text-sm font-bold">Practice role
-          <select value={practiceRole} onChange={event => { const role = event.target.value as 'first' | 'second'; setPracticeRole(role); setPracticeChoice(practiceGameId === 2 ? role === 'first' ? 'Launch' : 'Enter' : practiceGameId === 5 ? role === 'first' ? 'Commit' : 'Enter' : practiceGameId === 19 ? role === 'first' ? 'Invest 5' : 'Return 0' : role === 'first' ? 'Offer 5' : 'Accept'); setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="mt-2 w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
-            <option value="first">{practiceGameId === 2 ? 'First Mover' : practiceGameId === 5 ? 'Incumbent' : practiceGameId === 19 ? 'Investor' : 'Proposer'}</option><option value="second">{practiceGameId === 2 ? 'Second Mover' : practiceGameId === 5 ? 'Rival' : practiceGameId === 19 ? 'Trustee' : 'Responder'}</option>
+        {([2, 5, 19, 20, 30] as number[]).includes(practiceGameId) ? <label className="block text-sm font-bold">Practice role
+          <select value={practiceRole} onChange={event => { const role = event.target.value as 'first' | 'second'; setPracticeRole(role); setPracticeChoice(practiceGameId === 2 ? role === 'first' ? 'Launch' : 'Enter' : practiceGameId === 5 ? role === 'first' ? 'Commit' : 'Enter' : practiceGameId === 19 ? role === 'first' ? 'Invest 5' : 'Return 0' : practiceGameId === 20 ? role === 'first' ? CENTIPEDE_FIRST[0] : CENTIPEDE_SECOND[0] : role === 'first' ? 'Offer 5' : 'Accept'); setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="mt-2 w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
+            <option value="first">{practiceGameId === 2 ? 'First Mover' : practiceGameId === 5 ? 'Incumbent' : practiceGameId === 19 ? 'Investor' : practiceGameId === 20 ? 'Player 1' : 'Proposer'}</option><option value="second">{practiceGameId === 2 ? 'Second Mover' : practiceGameId === 5 ? 'Rival' : practiceGameId === 19 ? 'Trustee' : practiceGameId === 20 ? 'Player 2' : 'Responder'}</option>
           </select>
         </label> : practiceGame.roles && <p className="text-sm text-slate-300">Your role: {practiceGame.roles[0]}</p>}
         {practiceGameId === 30 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot offered you {practiceBotOffer.slice(6)} of 10 points. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(30)); setPracticeResult(null); }} className="ml-2 underline">New offer</button></p>}
         {(practiceGameId === 2 || practiceGameId === 5) && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot chose {practiceBotOffer}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="ml-2 underline">New first move</button></p>}
+        {practiceGameId === 20 && <p className="text-sm text-blue-200">Choose your complete plan. The bot's plan stays hidden until you play.</p>}
         {practiceGameId === 19 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot invested {investAmount(practiceBotOffer)} points, tripled to {(investAmount(practiceBotOffer) ?? 0) * 3}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(19)); setPracticeChoice('Return 0'); setPracticeResult(null); }} className="ml-2 underline">New investment</button></p>}
         {practiceGameId === 12 ? <div className="space-y-2">
           <label htmlFor="practice-contribution" className="block font-semibold">Contribute {contributionAmount(practiceChoice) ?? 0} of 10 points</label>
@@ -345,7 +356,7 @@ export function FirebaseLiveClass() {
           <p className="text-sm text-slate-300">If accepted, you keep {10 - (offerAmount(practiceChoice) ?? 0)} points.</p>
         </div> : <fieldset className="flex flex-wrap gap-5">
           <legend className="sr-only">Practice choice</legend>
-          {(practiceGameId === 2 || practiceGameId === 5 ? practiceRole === 'first' ? practiceGameId === 2 ? ['Launch', 'Wait'] as const : ['Commit', 'Stay Flexible'] as const : ['Enter', 'Stay Out'] as const : practiceGameId === 30 ? ['Accept', 'Reject'] as const : practiceGame.options).map(option => (
+          {(practiceGameId === 2 || practiceGameId === 5 ? practiceRole === 'first' ? practiceGameId === 2 ? ['Launch', 'Wait'] as const : ['Commit', 'Stay Flexible'] as const : ['Enter', 'Stay Out'] as const : practiceGameId === 20 ? practiceRole === 'first' ? CENTIPEDE_FIRST : CENTIPEDE_SECOND : practiceGameId === 30 ? ['Accept', 'Reject'] as const : practiceGame.options).map(option => (
             <label key={option} className="flex gap-2 items-center">
               <input type="radio" name="practice-choice" checked={practiceChoice === option} onChange={() => setPracticeChoice(option)} />{option}
             </label>
@@ -499,6 +510,7 @@ export function FirebaseLiveClass() {
               <p className="font-bold">Round {round}{config.totalRounds ? ` of ${config.totalRounds}` : ''}: {publicGoods ? 'your group of four' : `you play ${currentAssignment.opponentAlias}`}</p>
               {publicGoods && <p className="text-sm text-blue-200">{(currentAssignment.groupSize || 1) - 1} classmates and {PUBLIC_GOODS_GROUP_SIZE - (currentAssignment.groupSize || 1)} random bots share your pool. A bot fills any seat whose student does not contribute.</p>}
               {roleLabel && <p className="text-sm text-blue-200">Your role: {roleLabel}</p>}
+              {centipede && <p className="rounded-lg bg-blue-950 p-3 text-sm">Choose your complete plan before seeing your partner's plan. You will Pass until the Take node you select; Pass All means you never take. The first Take ends the chain.</p>}
               {ultimatum && isResponder && visibleOffer && <p className="rounded-lg bg-blue-950 p-3">{visibleOffer.fromBot ? 'Random bot' : currentAssignment.opponentAlias} offered you {visibleOffer.choice.slice(6)} of 10 points. Accept to take those points, or reject so both get 0.</p>}
               {entry && isResponder && visibleOffer && <p className="rounded-lg bg-blue-950 p-3">{visibleOffer.fromBot ? 'Random bot' : currentAssignment.opponentAlias} chose {visibleOffer.choice}. Now decide whether to Enter or Stay Out.</p>}
               {trust && isResponder && visibleOffer && <p className="rounded-lg bg-blue-950 p-3">{visibleOffer.fromBot ? 'Random bot' : currentAssignment.opponentAlias} invested {investAmount(visibleOffer.choice)} points. You received {(investAmount(visibleOffer.choice) ?? 0) * 3} points and can return any whole amount from 0 to that total.</p>}
@@ -516,7 +528,7 @@ export function FirebaseLiveClass() {
                 <p className="text-sm text-slate-300">If accepted, you keep {10 - (offerAmount(choice) ?? 5)} points.</p>
               </div> : <fieldset className="flex flex-wrap gap-5">
                 <legend className="sr-only">Your class choice</legend>
-                {(entry ? isResponder ? ['Enter', 'Stay Out'] as const : deterrence ? ['Commit', 'Stay Flexible'] as const : ['Launch', 'Wait'] as const : ultimatum ? ['Accept', 'Reject'] as const : game.options).map(option => <label key={option} className="flex gap-2 items-center"><input type="radio" name="live-choice" checked={choice === option} onChange={() => setChoice(option)} />{option}</label>)}
+                {(entry ? isResponder ? ['Enter', 'Stay Out'] as const : deterrence ? ['Commit', 'Stay Flexible'] as const : ['Launch', 'Wait'] as const : centipede ? isResponder ? CENTIPEDE_SECOND : CENTIPEDE_FIRST : ultimatum ? ['Accept', 'Reject'] as const : game.options).map(option => <label key={option} className="flex gap-2 items-center"><input type="radio" name="live-choice" checked={choice === option} onChange={() => setChoice(option)} />{option}</label>)}
               </fieldset>}
               <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/choices/${user.uid}`), { choice: entry ? isResponder ? choice === 'Stay Out' ? 'Stay Out' : 'Enter' : deterrence ? choice === 'Stay Flexible' ? 'Stay Flexible' : 'Commit' : choice === 'Wait' ? 'Wait' : 'Launch' : trust ? isResponder ? choice.startsWith('Return ') ? choice : 'Return 0' : choice.startsWith('Invest ') ? choice : 'Invest 5' : ultimatum ? isResponder ? choice === 'Reject' ? 'Reject' : 'Accept' : choice.startsWith('Offer ') ? choice : 'Offer 5' : choice, round }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Lock {publicGoods ? 'contribution' : entry ? 'decision' : trust ? isResponder ? 'return' : 'investment' : ultimatum ? isResponder ? 'response' : 'offer' : 'choice'}</button>
             </div>
