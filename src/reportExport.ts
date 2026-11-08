@@ -8,6 +8,7 @@ const HEADER = [
   'Submitted', 'Student pairs', 'Student groups', 'Bot matches', 'Bot seats', 'Average score',
   'Private value', 'Won auction', 'Winning bid', 'Price paid',
   'Class average', 'Beauty target', 'Distance to target', 'Closest guess',
+  'Product quality', 'Seller signaled', 'Buyer trusted',
 ];
 
 function csvCell(value: ReportRow[number]): string {
@@ -28,6 +29,8 @@ function resultRow(round: number, game: string, alias: string, result?: MatchRes
     result?.auction?.winningBid, result?.auction?.won ? result.auction.price : '',
     result?.beauty?.average, result?.beauty?.target, result?.beauty?.distance,
     result?.beauty ? (result.beauty.winner ? 'Yes' : 'No') : '',
+    result?.signaling?.quality, result?.signaling ? (result.signaling.signal ? 'Yes' : 'No') : '',
+    result?.signaling ? (result.signaling.trusted ? 'Yes' : 'No') : '',
   ];
 }
 
@@ -65,3 +68,4 @@ export function buildReportCsv(gameTitle: (id: GameId) => string, summaries: Rou
   }
   return '\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
+
