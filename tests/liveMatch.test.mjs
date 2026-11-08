@@ -1,6 +1,42 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, LIVE_GAMES, ULTIMATUM_OFFERS, blottoAllocation, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, LIVE_GAMES, ULTIMATUM_OFFERS, blottoAllocation, contributionAmount, finishRound, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound } from '../src/liveMatch.ts';
+
+test('Sequential Entry reveals the first move and scores both roles', () => {
+  const payoffs = [
+    ['Launch', 'Enter', 2, 2], ['Launch', 'Stay Out', 4, 1],
+    ['Wait', 'Enter', 1, 4], ['Wait', 'Stay Out', 0, 0],
+  ];
+  for (const [first, second, a, b] of payoffs) {
+    assert.deepEqual(pointsFor(2, first, second), [a, b]);
+    assert.deepEqual(pointsFor(2, second, first, 'second'), [b, a]);
+  }
+  const assignments = {
+    a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    c: { round: 1, kind: 'student', opponentUid: 'd', opponentAlias: 'D', role: 'first' },
+    d: { round: 1, kind: 'student', opponentUid: 'c', opponentAlias: 'C', role: 'second' },
+  };
+  const choices = { a: { round: 1, choice: 'Launch' }, b: { round: 1, choice: 'Stay Out' },
+    c: { round: 1, choice: 'Wait' }, d: { round: 1, choice: 'Enter' } };
+  const offers = prepareEntryResponses(assignments, choices, 1);
+  assert.deepEqual(offers.b, { round: 1, choice: 'Launch', fromBot: false });
+  assert.deepEqual(offers.d, { round: 1, choice: 'Wait', fromBot: false });
+  assert.equal(finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', step: 'offer', gameId: 2 }, assignments, choices, offers }, true), null);
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', step: 'respond', gameId: 2 },
+    participants: { a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' }, d: { alias: 'D' } }, assignments, choices, offers }, true);
+  assert.deepEqual(['a', 'b', 'c', 'd'].map(uid => finished.archive[1].results[uid].ownPoints), [4, 1, 1, 4]);
+  assert.deepEqual(finished.config.summaries[1].outcomes, [
+    { label: 'Launch + Enter', count: 0 }, { label: 'Launch + Stay Out', count: 1 },
+    { label: 'Wait + Enter', count: 1 }, { label: 'Wait + Stay Out', count: 0 },
+  ]);
+  const missing = prepareEntryResponses(assignments, { b: choices.b }, 1);
+  assert.equal(missing.b.fromBot, true);
+  assert.equal(['Launch', 'Wait'].includes(missing.b.choice), true);
+  const fallback = resolveResults(assignments, { b: choices.b }, 1, 2, missing);
+  assert.equal(fallback.b.opponentKind, 'bot');
+  assert.equal(fallback.a, undefined);
+});
 
 test('Trust Game invests, triples, returns, and archives reciprocal results', () => {
   const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },

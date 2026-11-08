@@ -12,6 +12,21 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result }: Props) {
+  if (gameId === 2) {
+    const first = role === 'first' ? choice : botOffer;
+    const second = role === 'second' ? choice : result?.botChoice;
+    return <div data-game-diagram="tree" className="space-y-2 border-t border-slate-700 pt-3">
+      <h3 className="font-bold text-slate-100">Decision tree</h3>
+      <p>The First Mover chooses; the Second Mover sees that choice before deciding. Points are First / Second Mover.</p>
+      <div className="grid gap-3 sm:grid-cols-2">{(['Launch', 'Wait'] as const).map(firstMove => <div key={firstMove} className="rounded-lg border border-slate-700 p-3">
+        <p className="font-semibold">First: {firstMove}</p>
+        {(['Enter', 'Stay Out'] as const).map(secondMove => {
+          const [a, b] = pointsFor(2, firstMove, secondMove);
+          return <p key={secondMove} className={first === firstMove && second === secondMove ? 'font-bold text-emerald-300' : ''}>Second: {secondMove} → {a} / {b}</p>;
+        })}
+      </div>)}</div>
+    </div>;
+  }
   if (gameId === 23) {
     const yourTroops = blottoAllocation(choice) || [34, 33, 33];
     const botTroops = result?.botChoice ? blottoAllocation(result.botChoice) : null;
