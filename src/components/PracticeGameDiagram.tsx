@@ -1,4 +1,4 @@
-import { blottoAllocation, contributionAmount, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, trawlerAmount } from '../liveMatch';
+import { auctionBid, auctionPayoff, blottoAllocation, contributionAmount, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, trawlerAmount } from '../liveMatch';
 import type { Choice, GameId, PracticeCentipedePath, Role } from '../liveMatch';
 import { CentipedeTree } from './CentipedeTree';
 
@@ -11,9 +11,21 @@ type Props = {
   botOffer: Choice;
   result: PracticeResult;
   centipedePath?: PracticeCentipedePath;
+  valuation?: number;
 };
 
-export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, centipedePath }: Props) {
+export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, centipedePath, valuation }: Props) {
+  if (gameId === 7) {
+    const ownBid = auctionBid(result?.ownChoice || choice) ?? 0;
+    const botBid = result?.botChoice ? auctionBid(result.botChoice) : null;
+    const outcome = botBid === null ? null : auctionPayoff(ownBid, botBid, valuation ?? 1, true);
+    return <div data-game-diagram="auction" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
+      <h3 className="font-bold text-slate-100">How the auction scores</h3>
+      <p>The highest sealed bid wins the artwork. The winner pays the other bid; the loser pays nothing. Ties go to you in bot practice.</p>
+      <p>Your profit if you win = your private value ({valuation}) − bot bid. Bidding above your value can produce a loss.</p>
+      {outcome && <p className="font-semibold text-blue-200">Your bid {ownBid} · Bot bid {botBid} · {outcome.won ? `You paid ${outcome.price} and scored ${outcome.points}.` : 'The bot won; you scored 0.'}</p>}
+    </div>;
+  }
   if (gameId === 27) {
     const own = trawlerAmount(choice) ?? 0;
     const bot = result?.botChoice ? trawlerAmount(result.botChoice) : null;

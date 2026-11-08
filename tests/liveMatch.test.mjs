@@ -1,7 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, fisheryPoints, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, fisheryPoints, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
 import { buildReportCsv } from '../src/reportExport.ts';
+
+test('second-price auction uses private values, other bid as price, and reciprocal results', () => {
+  assert.equal(auctionBid('Bid 12'), 12);
+  assert.equal(auctionBid('Bid 12.5'), null);
+  assert.deepEqual(auctionPayoff(9, 6, 8), { points: 2, won: true, price: 6 });
+  assert.deepEqual(auctionPayoff(11, 9, 7), { points: -2, won: true, price: 9 });
+  assert.deepEqual(auctionPayoff(7, 7, 8, false), { points: 0, won: false, price: 0 });
+  assert.deepEqual(auctionPayoff(7, 7, 8, true), { points: 1, won: true, price: 7 });
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first', valuation: 8 },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second', valuation: 10 },
+    c: { round: 1, kind: 'bot', opponentAlias: 'Random bot', role: 'first', valuation: 4 } };
+  const choices = { a: { round: 1, choice: 'Bid 9' }, b: { round: 1, choice: 'Bid 6' }, c: { round: 1, choice: 'Bid 0' } };
+  const oldRandom = Math.random; Math.random = () => 0;
+  try {
+    const paired = pairParticipants({ a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' } }, 1, 7);
+    assert.deepEqual(Object.values(paired).map(item => item.valuation), [1, 1, 1]);
+    const results = resolveResults(assignments, choices, 1, 7);
+    assert.equal(results.a.ownPoints, 2);
+    assert.equal(results.b.ownPoints, 0);
+    assert.equal(results.a.auction.price, 6);
+    assert.equal(results.b.auction.valuation, 10);
+    assert.equal(results.c.auction.won, true);
+    const summary = summarizeRound(assignments, choices, results, 1, 7);
+    assert.equal(summary.outcomes.find(item => item.label === 'Winner gains points').count, 1);
+    const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 7 }, participants: { a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' } }, assignments, choices }, true);
+    assert.equal(finished.archive[1].results.a.auction.valuation, 8);
+    const csv = buildReportCsv(() => 'Second-Price Auction', [finished.config.summaries[1]], finished.archive);
+    assert.match(csv, /"Private value".*"Won auction".*"Winning bid".*"Price paid"/);
+    assert.match(csv, /"Student result","1","Second-Price Auction","A".*"8","Yes","9","6"/);
+    const tied = resolveResults({ a: { ...assignments.a, valuation: 6 }, b: { ...assignments.b, valuation: 9 } },
+      { a: { round: 1, choice: 'Bid 7' }, b: { round: 1, choice: 'Bid 7' } }, 1, 7);
+    assert.deepEqual([tied.a.ownPoints, tied.b.ownPoints], [-1, 0]);
+    const fallback = resolveResults({ a: assignments.a, b: assignments.b }, { a: { round: 1, choice: 'Bid 2' } }, 1, 7);
+    assert.equal(fallback.a.fallback, true);
+    assert.equal(fallback.a.opponentKind, 'bot');
+  } finally { Math.random = oldRandom; }
+});
 
 test('Highway Gas War scores, pairs, bot fallback, and class outcomes', () => {
   assert.deepEqual(pointsFor(3, 'High Price', 'High Price'), [2, 2]);

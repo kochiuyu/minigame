@@ -6,6 +6,7 @@ const HEADER = [
   'Type', 'Round', 'Game', 'Alias', 'Choice or outcome', 'Count', 'Opponent or group',
   'Opponent choice', 'Points', 'Opponent points', 'Match type', 'Bot fallback',
   'Submitted', 'Student pairs', 'Student groups', 'Bot matches', 'Bot seats', 'Average score',
+  'Private value', 'Won auction', 'Winning bid', 'Price paid',
 ];
 
 function csvCell(value: ReportRow[number]): string {
@@ -21,6 +22,9 @@ function resultRow(round: number, game: string, alias: string, result?: MatchRes
     result?.group ? `Group pool ${result.group.totalContribution}` : result?.opponentAlias,
     result?.opponentChoice, result?.ownPoints, result?.opponentPoints,
     result?.opponentKind, result?.fallback ? 'Yes' : 'No',
+    '', '', '', '', '', '',
+    result?.auction?.valuation, result?.auction ? (result.auction.won ? 'Yes' : 'No') : '',
+    result?.auction?.winningBid, result?.auction?.won ? result.auction.price : '',
   ];
 }
 
