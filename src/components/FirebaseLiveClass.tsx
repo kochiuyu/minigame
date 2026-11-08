@@ -42,6 +42,7 @@ export function FirebaseLiveClass() {
   const [practiceResult, setPracticeResult] = useState<{ ownChoice: Choice; botChoice: Choice | null; points: number; groupTotal?: number; botContributions?: number[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [confirmClear, setConfirmClear] = useState(false);
   const instructor = Boolean(user?.email === INSTRUCTOR_EMAIL && user.emailVerified);
   const game = gameFor(config?.gameId);
   const practiceGame = gameFor(practiceGameId);
@@ -262,6 +263,17 @@ export function FirebaseLiveClass() {
   const isMyStep = !staged || (config?.step === 'offer' ? !isResponder : isResponder);
   const stepStudents = Object.keys(participants).filter(uid => assignments[uid]?.round === round && (config?.step === 'offer' ? assignments[uid].role !== 'second' : assignments[uid].role === 'second'));
   const stepSubmitted = stepStudents.filter(uid => submissions[uid]?.round === round).length;
+  const clearControls = config && <div className="rounded-xl border border-red-800 bg-red-950/30 p-4 space-y-3">
+    <h3 className="font-bold">Clear class data</h3>
+    <p className="text-sm text-slate-300">This erases the class report, student aliases, choices, and scores from Firebase. Students will lose access to their reports. You can then start a new class.</p>
+    {confirmClear ? <div className="space-y-3" role="group" aria-label="Confirm clearing class data">
+      <p className="font-semibold text-red-200">Clear this class permanently?</p>
+      <div className="flex flex-wrap gap-3">
+        <button type="button" disabled={busy} onClick={() => run(async () => { await remove(ref(db, ROOT)); setConfirmClear(false); })} className="rounded-lg bg-red-700 px-4 py-2 font-bold disabled:opacity-50">Yes, clear class data</button>
+        <button type="button" disabled={busy} onClick={() => setConfirmClear(false)} className="rounded-lg border border-slate-500 px-4 py-2 disabled:opacity-50">Cancel</button>
+      </div>
+    </div> : <button type="button" disabled={busy} onClick={() => setConfirmClear(true)} className="rounded-lg border border-red-500 px-4 py-2 font-bold text-red-100 disabled:opacity-50">{config.phase === 'finished' ? 'Clear finished class' : 'End class and clear data'}</button>}
+  </div>;
 
   return (
     <section className="max-w-3xl mx-auto mt-6 space-y-5 text-slate-100">
@@ -408,8 +420,9 @@ export function FirebaseLiveClass() {
                 <button disabled={busy} onClick={startNextRound} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start next round</button>
               </>}
               {config?.phase === 'finished' && <>
+                {clearControls}
                 <FinalAnalysis summaries={publishedSummaries} archives={archive} />
-                <p className="text-sm text-slate-300">Students can view this report until you end the class and clear the room.</p>
+                <p className="text-sm text-slate-300">Students can view this report until you clear the class data.</p>
               </>}
               {config && config.phase !== 'finished' && <div className="border-t border-slate-700 pt-4 space-y-2">
                 <h3 className="font-bold">Joined students ({joinedStudents.length})</h3>
@@ -428,7 +441,7 @@ export function FirebaseLiveClass() {
                     })}
                   </ul>}
               </div>}
-              {config && <button disabled={busy} onClick={() => run(() => remove(ref(db, ROOT)))} className="block text-sm text-red-300 underline disabled:opacity-50">End class and clear room</button>}
+              {config?.phase !== 'finished' && clearControls}
             </>
           ) : !config ? (
             <p>Waiting for the instructor to start the class. You can practice with the bot above.</p>
