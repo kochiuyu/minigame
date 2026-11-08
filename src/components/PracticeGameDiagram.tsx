@@ -21,8 +21,8 @@ export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, ce
     const price = own !== null && bot !== null ? Math.max(0, 100 - own - bot) : null;
     return <div data-game-diagram="cournot" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
       <h3 className="font-bold text-slate-100">How quantity competition scores</h3>
-      <p>Both firms choose output privately. Combined output sets market price: max(0, 100 − your output − bot output). Each firm's profit is its output × (market price − 10).</p>
-      {own !== null && bot !== null && <p>Your {own} units plus the bot's {bot} set price {price}. Your profit: {pointsFor(21, `Quantity ${own}`, `Quantity ${bot}`)[0]} points.</p>}
+      <p>Both firms choose output privately. Combined output sets market price: max(0, 100 − your output − bot output). Each firm's profit in dollars is its output × (market price − 10) / 100.</p>
+      {own !== null && bot !== null && <p>Your {own} units plus the bot's {bot} set price ${price}. Your profit: ${pointsFor(21, `Quantity ${own}`, `Quantity ${bot}`)[0].toFixed(2)}.</p>}
     </div>;
   }
   if (gameId === 14) {
