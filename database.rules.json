@@ -34,7 +34,10 @@
         ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
         ".write": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
         "config": {
-          ".read": "auth != null"
+          ".read": "auth != null",
+          "gameId": {
+            ".validate": "newData.val() === 1 || newData.val() === 13 || newData.val() === 15 || newData.val() === 17 || newData.val() === 18"
+          }
         },
         "participants": {
           ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
@@ -55,7 +58,7 @@
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
             ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('rooms/DOTE-3090-pairs/config/phase').val() === 'playing' && root.child('rooms/DOTE-3090-pairs/participants').child($uid).exists()",
-            ".validate": "newData.hasChildren(['round', 'kind', 'opponentAlias']) && newData.child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && (newData.child('kind').val() === 'bot' || (newData.child('kind').val() === 'student' && newData.child('opponentUid').isString())) && (auth.token.email === 'kochiuyu@gmail.com' || (newData.child('kind').val() === 'bot' && newData.child('opponentAlias').val() === 'Random bot' && !newData.child('opponentUid').exists()))",
+            ".validate": "newData.hasChildren(['round', 'kind', 'opponentAlias', 'role']) && newData.child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && (newData.child('role').val() === 'first' || newData.child('role').val() === 'second') && (newData.child('kind').val() === 'bot' || (newData.child('kind').val() === 'student' && newData.child('opponentUid').isString())) && (auth.token.email === 'kochiuyu@gmail.com' || (newData.child('kind').val() === 'bot' && newData.child('role').val() === 'first' && newData.child('opponentAlias').val() === 'Random bot' && !newData.child('opponentUid').exists()))",
             "round": {
               ".validate": "newData.val() === root.child('rooms/DOTE-3090-pairs/config/round').val()"
             },
@@ -68,6 +71,9 @@
             "opponentUid": {
               ".validate": "newData.isString()"
             },
+            "role": {
+              ".validate": "newData.val() === 'first' || newData.val() === 'second'"
+            },
             "$other": {
               ".validate": false
             }
@@ -78,12 +84,12 @@
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
             ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('rooms/DOTE-3090-pairs/config/phase').val() === 'playing' && root.child('rooms/DOTE-3090-pairs/assignments').child($uid).child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val()",
-            ".validate": "newData.hasChildren(['round', 'choice']) && newData.child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && (newData.child('choice').val() === 'Cooperate' || newData.child('choice').val() === 'Defect')",
+            ".validate": "newData.hasChildren(['round', 'choice']) && newData.child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val()",
             "round": {
               ".validate": "newData.val() === root.child('rooms/DOTE-3090-pairs/config/round').val()"
             },
             "choice": {
-              ".validate": "newData.val() === 'Cooperate' || newData.val() === 'Defect'"
+              ".validate": "((root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 1 || !root.child('rooms/DOTE-3090-pairs/config/gameId').exists()) && (newData.val() === 'Cooperate' || newData.val() === 'Defect')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 13 && (newData.val() === 'Hunt Stag' || newData.val() === 'Hunt Hare')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 15 && (newData.val() === 'Dove' || newData.val() === 'Hawk')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 17 && (newData.val() === 'Heads' || newData.val() === 'Tails')) || (root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 18 && (newData.val() === 'Opera' || newData.val() === 'Football'))"
             },
             "$other": {
               ".validate": false
