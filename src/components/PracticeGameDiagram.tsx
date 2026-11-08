@@ -1,5 +1,6 @@
 import { blottoAllocation, centipedeExitNode, contributionAmount, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, trawlerAmount } from '../liveMatch';
 import type { Choice, GameId, Role } from '../liveMatch';
+import { CentipedeTree } from './CentipedeTree';
 
 type PracticeResult = { ownChoice: Choice; botChoice: Choice | null; groupTotal?: number } | null;
 
@@ -29,16 +30,9 @@ export function PracticeGameDiagram({ gameId, choice, role, botOffer, result }: 
     const first = role === 'first' ? choice : result?.botChoice || botOffer;
     const second = role === 'second' ? choice : result?.botChoice;
     const exit = result?.botChoice ? centipedeExitNode(first, second!) : null;
-    const takePoints = ['2 / 0', '1 / 4', '4 / 2', '3 / 6', '6 / 4', '5 / 8'];
-    return <div data-game-diagram="tree" className="space-y-2 border-t border-slate-700 pt-3">
-      <h3 className="font-bold text-slate-100">Six-node decision chain</h3>
-      <p>Players alternate. Each plan passes until its chosen Take node. The first Take ends the game. Points are Player 1 / Player 2.</p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{takePoints.map((points, index) => <div key={index} className={`rounded-lg border p-2 ${exit === index + 1 ? 'border-emerald-500 bg-emerald-950' : 'border-slate-700'}`}>
-        <strong>Node {index + 1} · Player {(index % 2) + 1}</strong><span className="block">Take: {points}</span>
-      </div>)}</div>
-      <p className={exit === 7 ? 'font-bold text-emerald-300' : ''}>Both Pass All: 8 / 8</p>
-      {exit && <p className="font-semibold text-emerald-300">{exit === 7 ? 'Both passed every node.' : `The chain ended at Node ${exit}.`}</p>}
-    </div>;
+    const moves: Record<string, 'Take' | 'Pass'> = {};
+    if (exit) for (let node = 1; node <= Math.min(exit, 6); node++) moves[node] = node === exit ? 'Take' : 'Pass';
+    return <CentipedeTree currentNode={exit ? undefined : 1} moves={moves} exitNode={exit || undefined} />;
   }
   if (gameId === 2 || gameId === 5) {
     const first = role === 'first' ? choice : botOffer;

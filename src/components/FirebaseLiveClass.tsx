@@ -8,6 +8,7 @@ import {
 } from '../liveMatch';
 import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, RepeatedPath, RepeatedTurn, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
+import { CentipedeTree } from './CentipedeTree';
 import { FinalAnalysis, RoundAnalysis } from './RoundAnalysis';
 
 const ROOM = 'DOTE-3090';
@@ -506,6 +507,7 @@ export function FirebaseLiveClass() {
                 <p>{publicGoods ? `${groupSizes.size} groups of four · ${plannedBotSeats} planned bot seats`
                   : `${roundAssignments.filter(item => item.kind === 'student').length / 2} student pairs · ${roundAssignments.filter(item => item.kind === 'bot').length} bot matches`}</p>
               <p role="status" className="font-semibold">{repeated ? repeatedTurn <= 5 ? `Turn ${repeatedTurn} of 5 · ${repeatedReady} of ${repeatedActors.length} students decided` : 'All five turns complete' : centipede ? centipedeNode <= 6 ? `Node ${centipedeNode} of 6 · ${centipedeReady} of ${centipedeActors.length} active students decided` : 'All Centipede chains have ended' : staged ? `${stepSubmitted} of ${stepStudents.length} ${config.step === 'offer' ? entry ? 'first movers decided' : trust ? 'investors invested' : 'proposers offered' : entry ? 'second movers decided' : trust ? 'trustees returned' : 'responders decided'}` : `${progress.submitted} of ${progress.joined} joined students submitted`}</p>
+                {centipede && <CentipedeTree currentNode={centipedeNode <= 6 ? centipedeNode : undefined} />}
                 {repeated ? <p className="text-sm text-slate-300">Advance after students decide. Any missing decision is played by a random bot for that turn. Partners stay the same across all five turns; each pair sees its previous choices after advancement.</p>
                   : centipede ? <p className="text-sm text-slate-300">Advance each node after students decide. Any missing move is played by a random bot. Pairs that have already taken stop moving; scores stay hidden until the round ends.</p>
                   : (staged ? stepStudents.length > 0 && stepSubmitted === stepStudents.length : progress.allSubmitted) ? <p className="rounded-lg border border-emerald-600 bg-emerald-950/50 p-3 text-emerald-200">Everyone in this step has submitted. {staged && config.step === 'offer' ? entry ? 'Let second movers see the first choices.' : trust ? 'Let trustees see the investments.' : 'Let responders see their offers.' : lastRound ? 'Finish the class to show the full report.' : 'Choose whether to reveal this round before continuing.'}</p>
@@ -600,7 +602,7 @@ export function FirebaseLiveClass() {
               <p className="font-bold">Round {round}: Centipede with {currentAssignment.opponentAlias}</p>
               <p>Your role: {roleLabel}. Players alternate Take or Pass. Taking ends the chain; passing gives the other player the next turn.</p>
               <p className="text-sm text-slate-300">{game.payoffs}</p>
-              {myCentipedePath?.round === round && Object.keys(myCentipedePath.moves).length > 0 && <ol className="text-sm text-slate-300">{Object.entries(myCentipedePath.moves).map(([node, move]) => <li key={node}>Node {node}: Player {Number(node) % 2 ? 1 : 2} {move}</li>)}</ol>}
+              <CentipedeTree currentNode={centipedeTurn ? centipedeNode : undefined} moves={myCentipedePath?.round === round ? myCentipedePath.moves : {}} exitNode={myCentipedePath?.round === round ? myCentipedePath.exitNode : undefined} />
               {myCentipedeFinished ? <p role="status">The chain ended at node {myCentipedePath?.exitNode}. Scores will appear when the instructor ends the round.</p>
                 : !centipedeTurn ? <p role="status">All chains have ended. Waiting for the instructor to end the round.</p>
                 : currentAssignment.role !== centipedeActorRole ? <p role="status">Node {centipedeNode}: waiting for {currentAssignment.opponentAlias} to move.</p>
