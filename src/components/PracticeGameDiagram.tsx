@@ -1,4 +1,4 @@
-import { auctionBid, auctionPayoff, firstPriceAuctionPayoff, bertrandPrice, blottoAllocation, contributionAmount, cournotQuantity, dollarAuctionBid, hotellingLocation, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, signalingPoints, trawlerAmount } from '../liveMatch';
+import { auctionBid, auctionPayoff, firstPriceAuctionPayoff, bertrandPrice, blottoAllocation, contributionAmount, cournotQuantity, dollarAuctionBid, hotellingLocation, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, signalingPoints, travelerClaim, trawlerAmount } from '../liveMatch';
 import type { Choice, GameId, PracticeCentipedePath, Role } from '../liveMatch';
 import { CentipedeTree } from './CentipedeTree';
 
@@ -15,6 +15,15 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, centipedePath, valuation }: Props) {
+  if (gameId === 26) {
+    const own = travelerClaim(result?.ownChoice || choice);
+    const bot = result?.botChoice ? travelerClaim(result.botChoice) : null;
+    return <div data-game-diagram="travelers-dilemma" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
+      <h3 className="font-bold text-slate-100">How the airline pays</h3>
+      <p>Both travelers secretly claim a whole dollar amount from $2 to $100. If claims match, each receives that amount. Otherwise both start from the lower claim: the lower claimant gets a $2 bonus and the higher claimant gets a $2 penalty.</p>
+      {own !== null && bot !== null && <p>You claimed ${own}; the bot claimed ${bot}. You received ${pointsFor(26, `Claim ${own}`, `Claim ${bot}`)[0]}.</p>}
+    </div>;
+  }
   if (gameId === 25) {
     const own = dollarAuctionBid(result?.ownChoice || choice);
     const bot = result?.botChoice ? dollarAuctionBid(result.botChoice) : null;
