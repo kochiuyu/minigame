@@ -1,6 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, commonValueBid, commonValueOutcome, contributionAmount, cournotPoints, cournotQuantity, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, commonValueBid, commonValueOutcome, contributionAmount, cournotPoints, cournotQuantity, dollarAuctionBid, dollarAuctionPoints, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+
+test('dollar auction charges both bidders and breaks ties by pairing role', () => {
+  assert.equal(dollarAuctionBid('Bid 2.5'), 2.5);
+  assert.equal(dollarAuctionBid('Bid 0.0'), null);
+  assert.deepEqual(dollarAuctionPoints(0.8, 0.7), [0.2, -0.7]);
+  assert.deepEqual(dollarAuctionPoints(1.5, 1.2), [-0.5, -1.2]);
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' } };
+  const choices = { a: { round: 1, choice: 'Bid 1.2' }, b: { round: 1, choice: 'Bid 1.2' } };
+  const results = resolveResults(assignments, choices, 1, 25);
+  assert.equal(results.a.ownPoints, -0.2);
+  assert.equal(results.b.ownPoints, -1.2);
+  const summary = summarizeRound(assignments, choices, results, 1, 25);
+  assert.equal(summary.outcomes[2].count, 1);
+  const csv = buildReportCsv(() => 'Escalating Dollar Auction', [summary], { 1: { summary, aliases: { a: 'A', b: 'B' }, results } });
+  assert.match(csv, /"Own dollar bid","Rival dollar bid","Won dollar auction"/);
+  assert.match(csv, /"1.2","1.2","Yes"/);
+});
 
 test('common-value auction shares one true value and handles ties and losses', () => {
   assert.equal(commonValueBid('Bid 10'), 10);
@@ -980,4 +998,3 @@ test('students can generate a short emoji alias and change its icon before joini
   }
   assert.ok(shuffleAliasIcon('A'.repeat(30)).length <= 30);
 });
-

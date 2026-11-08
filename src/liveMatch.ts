@@ -1,4 +1,4 @@
-export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 27 | 29 | 30;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 27 | 29 | 30;
 export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Signal' | 'No Signal' | 'Trust' | 'Do Not Trust' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Price ${number}` | `Quantity ${number}` | `Location ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
@@ -154,6 +154,16 @@ export const BERTRAND_PRICES = Array.from({ length: 41 }, (_, index) => `Price $
 export const COURNOT_QUANTITIES = Array.from({ length: 36 }, (_, index) => `Quantity ${index + 10}` as Choice) as [Choice, Choice, ...Choice[]];
 export const HOTELLING_LOCATIONS = Array.from({ length: 101 }, (_, index) => `Location ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const COMMON_VALUE_BIDS = Array.from({ length: 81 }, (_, index) => `Bid ${index + 10}` as Choice) as [Choice, Choice, ...Choice[]];
+export const DOLLAR_AUCTION_BIDS = Array.from({ length: 25 }, (_, index) => `Bid ${((index + 1) / 10).toFixed(1)}` as Choice) as [Choice, Choice, ...Choice[]];
+export function dollarAuctionBid(choice: Choice): number | null {
+  const match = /^Bid (0\.[1-9]|1\.[0-9]|2\.[0-5])$/.exec(choice);
+  return match ? Number(match[1]) : null;
+}
+export function dollarAuctionPoints(ownBid: number, otherBid: number, winTie = false): [number, number] {
+  if (![ownBid, otherBid].every(value => Number.isInteger(value * 10) && value >= 0.1 && value <= 2.5)) throw new Error('Invalid Dollar Auction bid.');
+  const ownWins = ownBid > otherBid || (ownBid === otherBid && winTie);
+  return ownWins ? [Number((1 - ownBid).toFixed(1)), -otherBid] : [-ownBid, Number((1 - otherBid).toFixed(1))];
+}
 export const randomSurveySignal = (): number => 10 + randomIndex(81);
 export function commonValueBid(choice: Choice): number | null {
   return /^Bid (?:[1-8][0-9]|90)$/.test(choice) ? Number(choice.slice(4)) : null;
@@ -231,6 +241,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 27, title: 'Renewable Fishery', options: FISHERY_TRAWLERS, rules: 'You and one partner secretly deploy 0–10 trawlers each. More boats can earn more, but heavy combined effort depletes the shared fishery. Each class round is an independent catch.', payoffs: 'Total boats 0–8: 2 points profit per boat · 9–12: 0.9 per boat · 13–20: −0.5 per boat. Both fleets face the same stock condition.' },
   { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], rules: 'You and the bot each choose one move without seeing the other choice. Each move beats one other move.', payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
   { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], rules: 'The Proposer offers part of a 10-point pot. The Responder sees the offer and accepts or rejects it.', payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
+  { id: 25, title: 'Escalating Dollar Auction', options: DOLLAR_AUCTION_BIDS, rules: 'Secretly bid $0.10 to $2.50 in ten-cent steps for a $1 bill. Both bidders pay their bids. The first paired bidder wins a tie.', payoffs: 'Winner earns $1 minus their bid. Loser loses their bid, even if the winning bid exceeds $1.' },
 ];
 
 export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
@@ -367,6 +378,12 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
       const otherLocation = hotellingLocation(other);
       if (ownLocation === null || otherLocation === null) throw new Error('Invalid Hotelling choices.');
       return hotellingShares(ownLocation, otherLocation);
+    }
+    case 25: {
+      const ownBid = dollarAuctionBid(own);
+      const otherBid = dollarAuctionBid(other);
+      if (ownBid === null || otherBid === null) throw new Error('Invalid Dollar Auction choice.');
+      return dollarAuctionPoints(ownBid, otherBid, role === 'first');
     }
     case 27: {
       const ownBoats = trawlerAmount(own);
@@ -941,6 +958,7 @@ export function summarizeRound(
     : gameId === 14 ? ['Same price: split market', 'Different prices: one firm wins']
     : gameId === 21 ? ['Combined output below 60', 'Combined output 60', 'Combined output above 60']
     : gameId === 22 ? ['Same location: split beach', 'Different locations: divided beach']
+    : gameId === 25 ? ['Winner gains', 'Winner breaks even', 'Winner overbids $1']
     : gameId === 27 ? ['Healthy stock (0–8 boats)', 'Depleted stock (9–12 boats)', 'Overfished (13–20 boats)']
     : gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
     : gameId === 20 ? ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Both pass all nodes']
@@ -970,6 +988,7 @@ export function summarizeRound(
       : gameId === 21 ? (() => { const total = (cournotQuantity(own.ownChoice) || 0) + (cournotQuantity(other.ownChoice) || 0); return total < 60 ? 0 : total === 60 ? 1 : 2; })()
       : gameId === 22 ? (own.ownChoice === other.ownChoice ? 0 : 1)
       : gameId === 10 ? (own.signaling?.signal ? own.signaling.trusted ? 0 : 1 : own.signaling?.trusted ? 2 : 3)
+      : gameId === 25 ? (() => { const ownBid = dollarAuctionBid(own.ownChoice)!; const otherBid = dollarAuctionBid(other.ownChoice)!; const winner = ownBid > otherBid || (ownBid === otherBid && assignment.role === 'first') ? own : other; return winner.ownPoints > 0 ? 0 : winner.ownPoints < 0 ? 2 : 1; })()
       : gameId === 27 ? (() => { const total = (trawlerAmount(own.ownChoice) || 0) + (trawlerAmount(other.ownChoice) || 0); return total > 12 ? 2 : total > 8 ? 1 : 0; })()
       : gameId === 20 ? (own.exitNode || 7) - 1 : gameId === 19 ? (() => {
       const investor = assignment.role === 'first' ? own : other;
@@ -1180,4 +1199,3 @@ export function summarizePeople(summaries: RoundSummary[], archives: Record<stri
     .map(person => ({ uid: person.uid, alias: person.alias, analysis: summarizePerson(summaries, person.results) }))
     .sort((a, b) => a.alias.localeCompare(b.alias) || a.uid.localeCompare(b.uid));
 }
-
