@@ -410,9 +410,10 @@ export function FirebaseLiveClass() {
         </label> : practiceGame.roles && <p className="text-sm text-slate-300">Your role: {practiceGame.roles[0]}</p>}
         {practiceGameId === 30 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot offered you {practiceBotOffer.slice(6)} of 10 points. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(30)); setPracticeResult(null); }} className="ml-2 underline">New offer</button></p>}
         {(practiceGameId === 2 || practiceGameId === 5) && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot chose {practiceBotOffer}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="ml-2 underline">New first move</button></p>}
-        {practiceGameId === 20 && <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} centipedePath={practiceCentipede} />}
         {practiceGameId === 19 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot invested {investAmount(practiceBotOffer)} points, tripled to {(investAmount(practiceBotOffer) ?? 0) * 3}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(19)); setPracticeChoice('Return 0'); setPracticeResult(null); }} className="ml-2 underline">New investment</button></p>}
-        {practiceGameId === 20 ? <div className="space-y-3" role="status">
+        {practiceGameId === 20 ? <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_140px]">
+          <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} centipedePath={practiceCentipede} />
+          <div className="space-y-3" role="status">
           {practiceCentipede.exitNode ? <>
             <p>The chain ended {practiceCentipede.exitNode === 7 ? 'after both players passed all six nodes' : `at Node ${practiceCentipede.exitNode}`}. Your score: {practiceCentipedeScore?.[0]} {practiceCentipedeScore?.[0] === 1 ? 'point' : 'points'}; bot score: {practiceCentipedeScore?.[1]} {practiceCentipedeScore?.[1] === 1 ? 'point' : 'points'}.</p>
             <button type="button" onClick={() => setPracticeCentipede(advancePracticeCentipede({ node: 1, moves: {} }, practiceRole))} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">New Centipede match</button>
@@ -420,6 +421,7 @@ export function FirebaseLiveClass() {
             <p>Node {practiceCentipede.node}: your turn as Player {practiceRole === 'first' ? 1 : 2}.</p>
             <div className="flex gap-3">{(['Take', 'Pass'] as const).map(move => <button key={move} type="button" onClick={() => setPracticeCentipede(advancePracticeCentipede(practiceCentipede, practiceRole, move))} className="rounded-lg bg-blue-600 px-4 py-2 font-bold">{move}</button>)}</div>
           </>}
+          </div>
         </div> : practiceGameId === 27 ? <div className="space-y-2">
           <label htmlFor="practice-trawlers" className="block font-semibold">Deploy {trawlerAmount(practiceChoice) ?? 0} trawlers</label>
           <input id="practice-trawlers" type="range" min="0" max="10" step="1" value={trawlerAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Trawlers ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
@@ -607,7 +609,9 @@ export function FirebaseLiveClass() {
             <div className="space-y-3">
               <p className="font-bold">Round {round}: Centipede with {currentAssignment.opponentAlias}</p>
               <p>Your role: {roleLabel}. Players alternate Take or Pass. Taking ends the chain; passing gives the other player the next turn.</p>
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_160px]">
               <CentipedeTree currentNode={centipedeTurn ? centipedeNode : undefined} moves={myCentipedePath?.round === round ? myCentipedePath.moves : {}} exitNode={myCentipedePath?.round === round ? myCentipedePath.exitNode : undefined} />
+              <div className="space-y-2">
               {myCentipedeFinished ? <p role="status">The chain ended at node {myCentipedePath?.exitNode}. Scores will appear when the instructor ends the round.</p>
                 : !centipedeTurn ? <p role="status">All chains have ended. Waiting for the instructor to end the round.</p>
                 : currentAssignment.role !== centipedeActorRole ? <p role="status">Node {centipedeNode}: waiting for {currentAssignment.opponentAlias} to move.</p>
@@ -617,6 +621,8 @@ export function FirebaseLiveClass() {
                     {(['Take', 'Pass'] as const).map(move => <button key={move} disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/centipedeDecisions/${user.uid}/n${centipedeNode}`), { round, choice: move }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">{move}</button>)}
                   </div>
                 </div>}
+              </div>
+              </div>
             </div>
           ) : staged && !isMyStep ? (
             <p>{currentSubmission ? `Your ${currentSubmission.choice} is locked. Waiting for the second step to finish.` : isResponder ? entry ? deterrence ? 'Waiting for the Incumbent to choose Commit or Stay Flexible.' : 'Waiting for the First Mover to choose Launch or Wait.' : trust ? 'Waiting for the investor to choose an amount.' : 'Waiting for the proposer to make an offer.' : 'Your turn has passed. Waiting for the other student.'}</p>
