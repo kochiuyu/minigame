@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, LIVE_GAMES, finishRound, gameFor, offerAmount, pairParticipants, pointsFor, prepareUltimatumResponses, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound,
+  BOT_ALIAS, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, contributionAmount, finishRound, gameFor, groupParticipants, offerAmount, pairParticipants, pointsFor, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound,
 } from '../liveMatch';
 import type { Assignment, Choice, GameId, LiveRoom, MatchResult, Participant, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
@@ -39,7 +39,7 @@ export function FirebaseLiveClass() {
   const [practiceChoice, setPracticeChoice] = useState<Choice>('Cooperate');
   const [practiceRole, setPracticeRole] = useState<'first' | 'second'>('first');
   const [practiceBotOffer, setPracticeBotOffer] = useState<Choice>(() => randomChoice(30));
-  const [practiceResult, setPracticeResult] = useState<{ ownChoice: Choice; botChoice: Choice; points: number } | null>(null);
+  const [practiceResult, setPracticeResult] = useState<{ ownChoice: Choice; botChoice: Choice | null; points: number; groupTotal?: number; botContributions?: number[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const instructor = Boolean(user?.email === INSTRUCTOR_EMAIL && user.emailVerified);
@@ -54,6 +54,8 @@ export function FirebaseLiveClass() {
     if (!config?.gameId) return;
     setPracticeGameId(config.gameId);
     setPracticeChoice(gameFor(config.gameId).options[0]);
+    setPracticeRole('first');
+    setPracticeBotOffer(randomChoice(30));
     setPracticeResult(null);
   }, [config?.gameId]);
 
@@ -109,8 +111,10 @@ export function FirebaseLiveClass() {
 
   useEffect(() => {
     if (!user?.isAnonymous || config?.phase !== 'playing' || !participant || assignment !== null || (config.gameId === 30 && config.step === 'respond')) return;
-    const botAssignment: Assignment = { round: config.round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' };
-    set(ref(db, `${ROOT}/assignments/${user.uid}`), botAssignment).catch(() => {
+    const fallback: Assignment = config.gameId === 12
+      ? { round: config.round, kind: 'group', groupId: user.uid, groupSize: 1, opponentAlias: 'Public goods group', role: 'first' }
+      : { round: config.round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' };
+    set(ref(db, `${ROOT}/assignments/${user.uid}`), fallback).catch(() => {
       // A human assignment may have reached the server before this listener updated.
     });
   }, [user, config, participant, assignment]);
@@ -136,7 +140,7 @@ export function FirebaseLiveClass() {
 
   async function startPairing() {
     if (!config || config.phase !== 'lobby') return;
-    const pairs = pairParticipants(participants, config.round);
+    const pairs = config.gameId === 12 ? groupParticipants(participants, config.round) : pairParticipants(participants, config.round);
     await run(() => update(ref(db, ROOT), {
       assignments: pairs,
       choices: null,
@@ -195,6 +199,14 @@ export function FirebaseLiveClass() {
   }
 
   function playBot() {
+    if (practiceGameId === 12) {
+      const botContributions = Array.from({ length: PUBLIC_GOODS_GROUP_SIZE - 1 }, () => contributionAmount(randomChoice(12)) ?? 0);
+      const ownContribution = contributionAmount(practiceChoice) ?? 0;
+      const groupTotal = ownContribution + botContributions.reduce((sum, amount) => sum + amount, 0);
+      setPracticeResult({ ownChoice: practiceChoice, botChoice: null,
+        points: publicGoodsPoints(ownContribution, groupTotal), groupTotal, botContributions });
+      return;
+    }
     const actualBotChoice = practiceGameId === 30
       ? practiceRole === 'first' ? Math.random() < 0.5 ? 'Accept' : 'Reject' : practiceBotOffer
       : randomChoice(practiceGameId);
@@ -223,6 +235,9 @@ export function FirebaseLiveClass() {
   const publishedSummaries = Object.values(config?.summaries || {}).sort((a, b) => a.round - b.round);
   const lastRound = Boolean(config?.totalRounds && round >= config.totalRounds);
   const roleLabel = currentAssignment && game.roles ? game.roles[currentAssignment.role === 'second' ? 1 : 0] : null;
+  const publicGoods = game.id === 12;
+  const groupSizes = new Map(roundAssignments.filter(item => item.kind === 'group' && item.groupId).map(item => [item.groupId, item.groupSize || 1]));
+  const plannedBotSeats = Array.from(groupSizes.values()).reduce((sum, size) => sum + PUBLIC_GOODS_GROUP_SIZE - size, 0);
   const ultimatum = game.id === 30;
   const isResponder = currentAssignment?.role === 'second';
   const isMyStep = !ultimatum || (config?.step === 'offer' ? !isResponder : isResponder);
@@ -269,7 +284,11 @@ export function FirebaseLiveClass() {
           </select>
         </label> : practiceGame.roles && <p className="text-sm text-slate-300">Your role: {practiceGame.roles[0]}</p>}
         {practiceGameId === 30 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot offered you {practiceBotOffer.slice(6)} of 10 points. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(30)); setPracticeResult(null); }} className="ml-2 underline">New offer</button></p>}
-        {practiceGameId === 30 && practiceRole === 'first' ? <div className="space-y-2">
+        {practiceGameId === 12 ? <div className="space-y-2">
+          <label htmlFor="practice-contribution" className="block font-semibold">Contribute {contributionAmount(practiceChoice) ?? 0} of 10 points</label>
+          <input id="practice-contribution" type="range" min="0" max="10" step="1" value={contributionAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Contribute ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
+          <p className="text-sm text-slate-300">You keep {10 - (contributionAmount(practiceChoice) ?? 0)} points before the group pool pays out.</p>
+        </div> : practiceGameId === 30 && practiceRole === 'first' ? <div className="space-y-2">
           <label htmlFor="practice-offer" className="block font-semibold">Offer to bot: {offerAmount(practiceChoice) ?? 0} of 10 points</label>
           <input id="practice-offer" type="range" min="0" max="10" step="0.5" value={offerAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Offer ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
           <p className="text-sm text-slate-300">If accepted, you keep {10 - (offerAmount(practiceChoice) ?? 0)} points.</p>
@@ -282,7 +301,9 @@ export function FirebaseLiveClass() {
           ))}
         </fieldset>}
         <button onClick={playBot} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">Play random bot</button>
-        {practiceResult && <p role="status">You chose {practiceResult.ownChoice}; the bot chose {practiceResult.botChoice}. You earned {practiceResult.points} points.</p>}
+        {practiceResult && <p role="status">{practiceGameId === 12
+          ? `You contributed ${contributionAmount(practiceResult.ownChoice) ?? 0}; the three bots contributed ${practiceResult.botContributions?.join(', ')}. The group pool was ${practiceResult.groupTotal}. You earned ${practiceResult.points} points.`
+          : `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} points.`}</p>}
       </div>}
 
       {!user && (
@@ -335,14 +356,17 @@ export function FirebaseLiveClass() {
                   {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
                 </select>
                 <p>{joinedStudents.length} students joined</p>
-                <p className="text-sm text-slate-300">Pairing is random each round. An odd student gets a bot; students who join later get a bot too.</p>
-                <button disabled={busy || joinedStudents.length === 0} onClick={startPairing} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Pair students and start round</button>
+                <p className="text-sm text-slate-300">{publicGoods
+                  ? 'Students are randomly grouped in fours. Bots fill empty seats, and late students play with three bots.'
+                  : 'Pairing is random each round. An odd student gets a bot; students who join later get a bot too.'}</p>
+                <button disabled={busy || joinedStudents.length === 0} onClick={startPairing} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">{publicGoods ? 'Make groups and start round' : 'Pair students and start round'}</button>
               </>}
               {config?.phase === 'playing' && <>
-                <p>{roundAssignments.filter(item => item.kind === 'student').length / 2} student pairs · {roundAssignments.filter(item => item.kind === 'bot').length} bot matches</p>
+                <p>{publicGoods ? `${groupSizes.size} groups of four · ${plannedBotSeats} planned bot seats`
+                  : `${roundAssignments.filter(item => item.kind === 'student').length / 2} student pairs · ${roundAssignments.filter(item => item.kind === 'bot').length} bot matches`}</p>
               <p role="status" className="font-semibold">{ultimatum ? `${stepSubmitted} of ${stepStudents.length} ${config.step === 'offer' ? 'proposers offered' : 'responders decided'}` : `${progress.submitted} of ${progress.joined} joined students submitted`}</p>
                 {(ultimatum ? stepStudents.length > 0 && stepSubmitted === stepStudents.length : progress.allSubmitted) ? <p className="rounded-lg border border-emerald-600 bg-emerald-950/50 p-3 text-emerald-200">Everyone in this step has submitted. {ultimatum && config.step === 'offer' ? 'Let responders see their offers.' : lastRound ? 'Finish the class to show the full report.' : 'Choose whether to reveal this round before continuing.'}</p>
-                  : <p className="text-sm text-slate-300">Choices stay hidden until you reveal them. You can end the round early; a bot will replace a missing partner in the results.</p>}
+                  : <p className="text-sm text-slate-300">Choices stay hidden until you reveal them. You can end the round early; a bot will fill {publicGoods ? 'each missing group seat' : 'a missing partner'} in the results.</p>}
                 {ultimatum && config.step === 'offer' ? <button disabled={busy} onClick={startResponses} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Show offers to responders</button>
                 : legacyClass ? <button disabled={busy || legacySummary.submitted === 0} onClick={revealLegacy} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Reveal results</button>
                   : lastRound ? <button disabled={busy} onClick={() => endRound(true)} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Finish class and show all results</button>
@@ -395,28 +419,39 @@ export function FirebaseLiveClass() {
               : <RoundAnalysis summary={currentSummary} personal={currentResult || undefined} studentView /> : <p>Loading round results…</p>
             : currentResult ? <div className="space-y-2" role="status">
               <p className="font-bold">Round {round} result</p>
-              <p>You chose {currentResult.ownChoice}; {currentResult.opponentAlias} chose {currentResult.opponentChoice}.</p>
-              <p>You earned {currentResult.ownPoints} points; your opponent earned {currentResult.opponentPoints}.</p>
-              {currentResult.fallback && <p className="text-amber-300">Your partner did not submit, so a random bot took their place.</p>}
+              {currentResult.group ? <p>You contributed {contributionAmount(currentResult.ownChoice)} points. Your group pool was {currentResult.group.totalContribution}, including {currentResult.group.bots} bot contributions. You earned {currentResult.ownPoints} points.</p> : <>
+                <p>You chose {currentResult.ownChoice}; {currentResult.opponentAlias} chose {currentResult.opponentChoice}.</p>
+                <p>You earned {currentResult.ownPoints} points; your opponent earned {currentResult.opponentPoints}.</p>
+              </>}
+              {currentResult.fallback && <p className="text-amber-300">{currentResult.group ? 'A random bot filled each missing group seat.' : 'Your partner did not submit, so a random bot took their place.'}</p>}
             </div> : <p>{currentSubmission ? 'Calculating your result…' : 'No choice submitted this round.'}</p>
           ) : !currentAssignment ? (
             <div className="space-y-2">
-              <p>{ultimatum && config.step === 'respond' ? 'Offers are already with responders. You can join the next round.' : 'Finding your match. If you joined after pairing, a bot will take the other seat.'}</p>
-              {!(ultimatum && config.step === 'respond') && <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/assignments/${user.uid}`), { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' }))} className="text-sm underline">Try bot fallback</button>}
+              <p>{ultimatum && config.step === 'respond' ? 'Offers are already with responders. You can join the next round.'
+                : publicGoods ? 'Finding your group. If you joined late, three random bots will fill the other seats.'
+                  : 'Finding your match. If you joined after pairing, a bot will take the other seat.'}</p>
+              {!(ultimatum && config.step === 'respond') && <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/assignments/${user.uid}`),
+                publicGoods ? { round, kind: 'group', groupId: user.uid, groupSize: 1, opponentAlias: 'Public goods group', role: 'first' }
+                  : { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first' }))} className="text-sm underline">Try bot fallback</button>}
             </div>
           ) : ultimatum && !isMyStep ? (
             <p>{currentSubmission ? `Your ${currentSubmission.choice} is locked. Waiting for the response step to finish.` : isResponder ? 'Waiting for the proposer to make an offer.' : 'Your turn has passed. Waiting for the responder.'}</p>
           ) : ultimatum && isResponder && (!visibleOffer || visibleOffer.round !== round) ? (
             <p>Loading your offer…</p>
           ) : currentSubmission ? (
-            <p>Your {currentSubmission.choice} choice is locked for round {round} against {currentAssignment.opponentAlias}. Waiting for the instructor to reveal results.</p>
+            <p>Your {currentSubmission.choice} choice is locked for round {round}{publicGoods ? ' in your group' : ` against ${currentAssignment.opponentAlias}`}. Waiting for the instructor to reveal results.</p>
           ) : (
             <div className="space-y-3">
-              <p className="font-bold">Round {round}{config.totalRounds ? ` of ${config.totalRounds}` : ''}: you play {currentAssignment.opponentAlias}</p>
+              <p className="font-bold">Round {round}{config.totalRounds ? ` of ${config.totalRounds}` : ''}: {publicGoods ? 'your group of four' : `you play ${currentAssignment.opponentAlias}`}</p>
+              {publicGoods && <p className="text-sm text-blue-200">{(currentAssignment.groupSize || 1) - 1} classmates and {PUBLIC_GOODS_GROUP_SIZE - (currentAssignment.groupSize || 1)} random bots share your pool. A bot fills any seat whose student does not contribute.</p>}
               {roleLabel && <p className="text-sm text-blue-200">Your role: {roleLabel}</p>}
               {ultimatum && isResponder && visibleOffer && <p className="rounded-lg bg-blue-950 p-3">{visibleOffer.fromBot ? 'Random bot' : currentAssignment.opponentAlias} offered you {visibleOffer.choice.slice(6)} of 10 points. Accept to take those points, or reject so both get 0.</p>}
               <p className="text-sm text-slate-300">{game.payoffs}</p>
-              {ultimatum && !isResponder ? <div className="space-y-2">
+              {publicGoods ? <div className="space-y-2">
+                <label htmlFor="live-contribution" className="block font-semibold">Contribute {contributionAmount(choice) ?? 0} of 10 points</label>
+                <input id="live-contribution" type="range" min="0" max="10" step="1" value={contributionAmount(choice) ?? 0} onChange={event => setChoice(`Contribute ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
+                <p className="text-sm text-slate-300">You keep {10 - (contributionAmount(choice) ?? 0)} points before the shared pool pays out.</p>
+              </div> : ultimatum && !isResponder ? <div className="space-y-2">
                 <label htmlFor="live-offer" className="block font-semibold">Offer to responder: {offerAmount(choice) ?? 5} of 10 points</label>
                 <input id="live-offer" type="range" min="0" max="10" step="0.5" value={offerAmount(choice) ?? 5} onChange={event => setChoice(`Offer ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
                 <p className="text-sm text-slate-300">If accepted, you keep {10 - (offerAmount(choice) ?? 5)} points.</p>
@@ -424,7 +459,7 @@ export function FirebaseLiveClass() {
                 <legend className="sr-only">Your class choice</legend>
                 {(ultimatum ? ['Accept', 'Reject'] as const : game.options).map(option => <label key={option} className="flex gap-2 items-center"><input type="radio" name="live-choice" checked={choice === option} onChange={() => setChoice(option)} />{option}</label>)}
               </fieldset>}
-              <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/choices/${user.uid}`), { choice: ultimatum ? isResponder ? choice === 'Reject' ? 'Reject' : 'Accept' : choice.startsWith('Offer ') ? choice : 'Offer 5' : choice, round }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Lock {ultimatum ? isResponder ? 'response' : 'offer' : 'choice'}</button>
+              <button disabled={busy} onClick={() => run(() => set(ref(db, `${ROOT}/choices/${user.uid}`), { choice: ultimatum ? isResponder ? choice === 'Reject' ? 'Reject' : 'Accept' : choice.startsWith('Offer ') ? choice : 'Offer 5' : choice, round }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Lock {publicGoods ? 'contribution' : ultimatum ? isResponder ? 'response' : 'offer' : 'choice'}</button>
             </div>
           )}
         </div>
