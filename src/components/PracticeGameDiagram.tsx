@@ -12,17 +12,18 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result }: Props) {
-  if (gameId === 2) {
+  if (gameId === 2 || gameId === 5) {
     const first = role === 'first' ? choice : botOffer;
     const second = role === 'second' ? choice : result?.botChoice;
+    const firstMoves = gameId === 2 ? ['Launch', 'Wait'] as const : ['Commit', 'Stay Flexible'] as const;
     return <div data-game-diagram="tree" className="space-y-2 border-t border-slate-700 pt-3">
       <h3 className="font-bold text-slate-100">Decision tree</h3>
-      <p>The First Mover chooses; the Second Mover sees that choice before deciding. Points are First / Second Mover.</p>
-      <div className="grid gap-3 sm:grid-cols-2">{(['Launch', 'Wait'] as const).map(firstMove => <div key={firstMove} className="rounded-lg border border-slate-700 p-3">
-        <p className="font-semibold">First: {firstMove}</p>
+      <p>The {gameId === 5 ? 'Incumbent' : 'First Mover'} chooses; the {gameId === 5 ? 'Rival' : 'Second Mover'} sees that choice before deciding. Points are {gameId === 5 ? 'Incumbent / Rival' : 'First / Second Mover'}.</p>
+      <div className="grid gap-3 sm:grid-cols-2">{firstMoves.map(firstMove => <div key={firstMove} className="rounded-lg border border-slate-700 p-3">
+        <p className="font-semibold">{gameId === 5 ? 'Incumbent' : 'First'}: {firstMove}</p>
         {(['Enter', 'Stay Out'] as const).map(secondMove => {
-          const [a, b] = pointsFor(2, firstMove, secondMove);
-          return <p key={secondMove} className={first === firstMove && second === secondMove ? 'font-bold text-emerald-300' : ''}>Second: {secondMove} → {a} / {b}</p>;
+          const [a, b] = pointsFor(gameId, firstMove, secondMove);
+          return <p key={secondMove} className={first === firstMove && second === secondMove ? 'font-bold text-emerald-300' : ''}>{gameId === 5 ? 'Rival' : 'Second'}: {secondMove} → {a} / {b}</p>;
         })}
       </div>)}</div>
     </div>;

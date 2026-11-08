@@ -1,5 +1,5 @@
-export type GameId = 1 | 2 | 4 | 12 | 13 | 15 | 17 | 18 | 19 | 23 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'Launch' | 'Wait' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Deploy ${number}/${number}/${number}`;
+export type GameId = 1 | 2 | 4 | 5 | 12 | 13 | 15 | 17 | 18 | 19 | 23 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -109,6 +109,7 @@ export const LIVE_GAMES: ReadonlyArray<{
 }> = [
   { id: 1, title: "Prisoner's Dilemma", options: ['Cooperate', 'Defect'], rules: 'You and the bot each choose Cooperate or Defect without seeing the other choice.', payoffs: 'Both Cooperate: 2 each · Both Defect: 1 each · Defect against Cooperate: 3–0' },
   { id: 2, title: 'Sequential Entry', options: ['Launch', 'Wait', 'Enter', 'Stay Out'], rules: 'The First Mover chooses Launch or Wait. The Second Mover sees that decision, then chooses Enter or Stay Out.', payoffs: 'Launch + Stay Out: 4 / 1 · Launch + Enter: 2 / 2 · Wait + Enter: 1 / 4 · Wait + Stay Out: 0 / 0 (First / Second Mover)', roles: ['First Mover', 'Second Mover'] },
+  { id: 5, title: 'Entry Deterrence', options: ['Commit', 'Stay Flexible', 'Enter', 'Stay Out'], rules: 'The Incumbent chooses whether to make an irreversible commitment. The Rival sees that choice, then decides whether to enter the market.', payoffs: 'Commit + Stay Out: 4 / 0 · Commit + Enter: −2 / −2 · Stay Flexible + Enter: 2 / 2 · Stay Flexible + Stay Out: 4 / 0 (Incumbent / Rival)', roles: ['Incumbent', 'Rival'] },
   { id: 4, title: 'Promotion Timing', options: ['Monday', 'Wednesday', 'Friday'], rules: 'You and your rival secretly choose a day to launch a promotion. A clash on the same day splits attention.', payoffs: 'Same day: 0 each · Different days: 1 each' },
   { id: 12, title: 'Public Goods Game', options: PUBLIC_GOODS_CONTRIBUTIONS, rules: 'Each of four players starts with 10 points and secretly contributes 0–10 to a shared pool. Random bots fill empty seats.', payoffs: 'The pool is multiplied by 1.6 and split equally. Your score = 10 − your contribution + 0.4 × total pool.' },
   { id: 13, title: 'Stag Hunt', options: ['Hunt Stag', 'Hunt Hare'], rules: 'You and the bot each choose a hunt. Stag pays most when you both choose it; Hare is the safer choice.', payoffs: 'Both Stag: 10 each · Both Hare: 4 each · Stag against Hare: 0–4' },
@@ -126,7 +127,7 @@ export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
 }
 
 export function randomChoice(gameId: GameId = 1): Choice {
-  const options = gameId === 30 ? ULTIMATUM_OFFERS : gameId === 2 ? (['Launch', 'Wait'] as const) : gameFor(gameId).options;
+  const options = gameId === 30 ? ULTIMATUM_OFFERS : gameId === 2 ? (['Launch', 'Wait'] as const) : gameId === 5 ? (['Commit', 'Stay Flexible'] as const) : gameFor(gameId).options;
   return options[randomIndex(options.length)];
 }
 
@@ -183,6 +184,13 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
       if ((first !== 'Launch' && first !== 'Wait') || (second !== 'Enter' && second !== 'Stay Out')) throw new Error('Invalid Sequential Entry choices.');
       const points: [number, number] = first === 'Launch' ? second === 'Enter' ? [2, 2] : [4, 1]
         : second === 'Enter' ? [1, 4] : [0, 0];
+      return role === 'first' ? points : [points[1], points[0]];
+    }
+    case 5: {
+      const incumbent = role === 'first' ? own : other;
+      const rival = role === 'first' ? other : own;
+      if ((incumbent !== 'Commit' && incumbent !== 'Stay Flexible') || (rival !== 'Enter' && rival !== 'Stay Out')) throw new Error('Invalid Entry Deterrence choices.');
+      const points: [number, number] = rival === 'Stay Out' ? [4, 0] : incumbent === 'Commit' ? [-2, -2] : [2, 2];
       return role === 'first' ? points : [points[1], points[0]];
     }
     case 12:
@@ -282,7 +290,7 @@ export function resolveResults(
   offers: Record<string, VisibleOffer> = {},
 ): Record<string, MatchResult> {
   if (gameId === 12) return resolvePublicGoodsResults(assignments, choices, round);
-  if (gameId === 2) return resolveSequentialResults(assignments, choices, offers, round);
+  if (gameId === 2 || gameId === 5) return resolveSequentialResults(assignments, choices, offers, round, gameId);
   if (gameId === 19) return resolveTrustResults(assignments, choices, offers, round);
   if (gameId === 30) return resolveUltimatumResults(assignments, choices, offers, round);
   const results: Record<string, MatchResult> = {};
@@ -348,30 +356,30 @@ export function prepareUltimatumResponses(assignments: Record<string, Assignment
   return offers;
 }
 
-export function prepareEntryResponses(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, VisibleOffer> {
+export function prepareEntryResponses(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number, gameId: 2 | 5 = 2): Record<string, VisibleOffer> {
   const offers: Record<string, VisibleOffer> = {};
   for (const [uid, assignment] of Object.entries(assignments)) {
     if (assignment.round !== round || assignment.role !== 'second') continue;
     const first = assignment.opponentUid && choices[assignment.opponentUid]?.round === round ? choices[assignment.opponentUid].choice : null;
-    const valid = first === 'Launch' || first === 'Wait';
-    offers[uid] = { round, choice: valid ? first : randomChoice(2), fromBot: !valid };
+    const valid = gameId === 2 ? first === 'Launch' || first === 'Wait' : first === 'Commit' || first === 'Stay Flexible';
+    offers[uid] = { round, choice: valid ? first! : randomChoice(gameId), fromBot: !valid };
   }
   return offers;
 }
 
-function resolveSequentialResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, offers: Record<string, VisibleOffer>, round: number): Record<string, MatchResult> {
+function resolveSequentialResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, offers: Record<string, VisibleOffer>, round: number, gameId: 2 | 5): Record<string, MatchResult> {
   const results: Record<string, MatchResult> = {};
   for (const [uid, assignment] of Object.entries(assignments)) {
     if (assignment.round !== round) continue;
     const own = choices[uid]?.round === round ? choices[uid].choice : null;
     const firstMover = assignment.role !== 'second';
-    if (!own || (firstMover ? own !== 'Launch' && own !== 'Wait' : own !== 'Enter' && own !== 'Stay Out')) continue;
+    if (!own || (firstMover ? gameId === 2 ? own !== 'Launch' && own !== 'Wait' : own !== 'Commit' && own !== 'Stay Flexible' : own !== 'Enter' && own !== 'Stay Out')) continue;
     const partner = assignment.opponentUid && choices[assignment.opponentUid]?.round === round ? choices[assignment.opponentUid].choice : null;
-    const validPartner = firstMover ? partner === 'Enter' || partner === 'Stay Out' : partner === 'Launch' || partner === 'Wait';
+    const validPartner = firstMover ? partner === 'Enter' || partner === 'Stay Out' : gameId === 2 ? partner === 'Launch' || partner === 'Wait' : partner === 'Commit' || partner === 'Stay Flexible';
     const counterpart = firstMover ? validPartner ? partner! : Math.random() < 0.5 ? 'Enter' : 'Stay Out'
-      : offers[uid]?.round === round ? offers[uid].choice : randomChoice(2);
+      : offers[uid]?.round === round ? offers[uid].choice : randomChoice(gameId);
     const fallback = assignment.kind === 'student' && (firstMover ? !validPartner : offers[uid]?.fromBot !== false);
-    const [ownPoints, opponentPoints] = pointsFor(2, own, counterpart, firstMover ? 'first' : 'second');
+    const [ownPoints, opponentPoints] = pointsFor(gameId, own, counterpart, firstMover ? 'first' : 'second');
     results[uid] = { round, ownChoice: own, opponentChoice: counterpart, ownPoints, opponentPoints,
       opponentAlias: fallback ? BOT_ALIAS : assignment.opponentAlias, opponentKind: fallback ? 'bot' : assignment.kind, fallback };
   }
@@ -468,6 +476,7 @@ export function summarizeRound(
 
   const outcomeNames = gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
     : gameId === 2 ? ['Launch + Enter', 'Launch + Stay Out', 'Wait + Enter', 'Wait + Stay Out']
+    : gameId === 5 ? ['Commit + Enter', 'Commit + Stay Out', 'Stay Flexible + Enter', 'Stay Flexible + Stay Out']
     : gameId === 30 ? ['Accepted', 'Rejected']
     : gameId === 23 ? ['One student wins', 'Tie']
     : gameId === 1 ? ['Both cooperate', 'Both defect', 'Different choices']
@@ -491,10 +500,10 @@ export function summarizeRound(
       const invested = investAmount(investor.ownChoice) || 0;
       const returned = returnAmount(trustee.ownChoice) || 0;
       return returned === 0 ? 0 : returned === invested * 3 ? 2 : 1;
-    })() : gameId === 2 ? (() => {
+    })() : gameId === 2 || gameId === 5 ? (() => {
       const first = assignment.role === 'first' ? own.ownChoice : other.ownChoice;
       const second = assignment.role === 'second' ? own.ownChoice : other.ownChoice;
-      return first === 'Launch' ? second === 'Enter' ? 0 : 1 : second === 'Enter' ? 2 : 3;
+      return (gameId === 2 ? first === 'Launch' : first === 'Commit') ? second === 'Enter' ? 0 : 1 : second === 'Enter' ? 2 : 3;
     })() : gameId === 30 ? (own.ownChoice === 'Reject' || other.ownChoice === 'Reject' ? 1 : 0)
       : gameId === 23 ? (own.ownPoints === 0 ? 1 : 0)
       : gameId === 29 ? rpsOutcomeIndex(own.ownChoice, other.ownChoice)
@@ -545,7 +554,7 @@ function summarizePublicGoodsRound(assignments: Record<string, Assignment>, choi
 export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null {
   const config = room.config;
   if (!config?.totalRounds || config.phase !== 'playing') return null;
-  if ((config.gameId === 2 || config.gameId === 30 || config.gameId === 19) && config.step !== 'respond') return null;
+  if ((config.gameId === 2 || config.gameId === 5 || config.gameId === 30 || config.gameId === 19) && config.step !== 'respond') return null;
   const round = config.round;
   const roundResults = resolveResults(room.assignments || {}, room.choices || {}, round, config.gameId, room.offers || {});
   const summary = summarizeRound(room.assignments || {}, room.choices || {}, roundResults, round, config.gameId);

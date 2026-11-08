@@ -38,6 +38,43 @@ test('Sequential Entry reveals the first move and scores both roles', () => {
   assert.equal(fallback.a, undefined);
 });
 
+test('Entry Deterrence uses observed commitments, scores both roles, and reports outcomes', () => {
+  const payoffs = [
+    ['Commit', 'Enter', -2, -2], ['Commit', 'Stay Out', 4, 0],
+    ['Stay Flexible', 'Enter', 2, 2], ['Stay Flexible', 'Stay Out', 4, 0],
+  ];
+  for (const [first, second, a, b] of payoffs) {
+    assert.deepEqual(pointsFor(5, first, second), [a, b]);
+    assert.deepEqual(pointsFor(5, second, first, 'second'), [b, a]);
+  }
+  assert.deepEqual(LIVE_GAMES.find(game => game.id === 5).roles, ['Incumbent', 'Rival']);
+  const assignments = {
+    a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    c: { round: 1, kind: 'student', opponentUid: 'd', opponentAlias: 'D', role: 'first' },
+    d: { round: 1, kind: 'student', opponentUid: 'c', opponentAlias: 'C', role: 'second' },
+  };
+  const choices = { a: { round: 1, choice: 'Commit' }, b: { round: 1, choice: 'Stay Out' },
+    c: { round: 1, choice: 'Stay Flexible' }, d: { round: 1, choice: 'Enter' } };
+  const offers = prepareEntryResponses(assignments, choices, 1, 5);
+  assert.deepEqual(offers.b, { round: 1, choice: 'Commit', fromBot: false });
+  assert.deepEqual(offers.d, { round: 1, choice: 'Stay Flexible', fromBot: false });
+  assert.equal(finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', step: 'offer', gameId: 5 }, assignments, choices, offers }, true), null);
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', step: 'respond', gameId: 5 },
+    participants: { a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' }, d: { alias: 'D' } }, assignments, choices, offers }, true);
+  assert.deepEqual(['a', 'b', 'c', 'd'].map(uid => finished.archive[1].results[uid].ownPoints), [4, 0, 2, 2]);
+  assert.deepEqual(finished.config.summaries[1].outcomes, [
+    { label: 'Commit + Enter', count: 0 }, { label: 'Commit + Stay Out', count: 1 },
+    { label: 'Stay Flexible + Enter', count: 1 }, { label: 'Stay Flexible + Stay Out', count: 0 },
+  ]);
+  const missing = prepareEntryResponses(assignments, { b: choices.b }, 1, 5);
+  assert.equal(missing.b.fromBot, true);
+  assert.equal(['Commit', 'Stay Flexible'].includes(missing.b.choice), true);
+  const fallback = resolveResults(assignments, { b: choices.b }, 1, 5, missing);
+  assert.equal(fallback.b.opponentKind, 'bot');
+  assert.equal(fallback.a, undefined);
+});
+
 test('Trust Game invests, triples, returns, and archives reciprocal results', () => {
   const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
     b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' } };
@@ -190,7 +227,7 @@ test('Colonel Blotto deployments score, pair, and summarize using Solo Lab rules
   const botResult = resolveResults({ solo: { round: 1, kind: 'bot', opponentAlias: 'Random bot', role: 'first' } },
     { solo: { round: 1, choice: BLOTTO_DEPLOYMENTS[0] } }, 1, 23).solo;
   assert.equal(BLOTTO_DEPLOYMENTS.includes(botResult.opponentChoice), true);
-  assert.equal(botResult.ownPoints, -botResult.opponentPoints);
+  assert.equal(botResult.ownPoints + botResult.opponentPoints, 0);
 });
 
 test('Rock–Paper–Scissors scores every move and the bot can choose all three', () => {
