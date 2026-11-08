@@ -422,4 +422,3 @@ export function summarizePeople(summaries: RoundSummary[], archives: Record<stri
     .map(person => ({ uid: person.uid, alias: person.alias, analysis: summarizePerson(summaries, person.results) }))
     .sort((a, b) => a.alias.localeCompare(b.alias) || a.uid.localeCompare(b.uid));
 }
-
