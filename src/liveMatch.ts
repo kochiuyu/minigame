@@ -1,4 +1,4 @@
-export type GameId = 1 | 2 | 4 | 5 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 29 | 30;
+export type GameId = 1 | 2 | 4 | 5 | 6 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 29 | 30;
 export type Choice = 'Cooperate' | 'Defect' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
@@ -7,6 +7,7 @@ export type RoomConfig = {
   gameId: GameId;
   step?: 'offer' | 'respond'; // Also used for Trust Game: invest, then return.
   centipedeNode?: number; // Current live decision, 1–6; 7 means all chains ended.
+  repeatedTurn?: number; // Current Prisoner's Dilemma turn, 1–5; 6 means complete.
   totalRounds?: number; // Absent in classes started before round limits were added.
   summaries?: Record<string, RoundSummary>; // Only rounds released to students.
 };
@@ -24,6 +25,8 @@ export type Submission = { round: number; choice: Choice };
 export type VisibleOffer = { round: number; choice: Choice; fromBot: boolean };
 export type CentipedeDecision = { round: number; choice: 'Take' | 'Pass' };
 export type CentipedePath = { round: number; moves: Record<string, 'Take' | 'Pass'>; exitNode?: number; fallback?: boolean };
+export type RepeatedTurn = { own: 'Cooperate' | 'Defect'; other: 'Cooperate' | 'Defect'; ownPoints: number; otherPoints: number; bot: boolean };
+export type RepeatedPath = { round: number; turns: Record<string, RepeatedTurn> };
 export type MatchResult = {
   round: number;
   ownChoice: Choice;
@@ -35,6 +38,7 @@ export type MatchResult = {
   fallback: boolean;
   exitNode?: number; // Centipede: 1–6 for a Take, 7 when both pass all nodes.
   centipedeMoves?: Record<string, 'Take' | 'Pass'>;
+  repeatedTurns?: Record<string, RepeatedTurn>;
   group?: { totalContribution: number; classmates: number; bots: number; missing: number };
 };
 export type RoundSummary = {
@@ -70,6 +74,8 @@ export type LiveRoom = {
   archive?: Record<string, RoundArchive>;
   centipedeDecisions?: Record<string, Record<string, CentipedeDecision>> | null;
   centipedePaths?: Record<string, CentipedePath> | null;
+  repeatedDecisions?: Record<string, Record<string, Submission>> | null;
+  repeatedPaths?: Record<string, RepeatedPath> | null;
 };
 
 export const BOT_ALIAS = 'Random bot';
@@ -119,6 +125,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 1, title: "Prisoner's Dilemma", options: ['Cooperate', 'Defect'], rules: 'You and the bot each choose Cooperate or Defect without seeing the other choice.', payoffs: 'Both Cooperate: 2 each · Both Defect: 1 each · Defect against Cooperate: 3–0' },
   { id: 2, title: 'Sequential Entry', options: ['Launch', 'Wait', 'Enter', 'Stay Out'], rules: 'The First Mover chooses Launch or Wait. The Second Mover sees that decision, then chooses Enter or Stay Out.', payoffs: 'Launch + Stay Out: 4 / 1 · Launch + Enter: 2 / 2 · Wait + Enter: 1 / 4 · Wait + Stay Out: 0 / 0 (First / Second Mover)', roles: ['First Mover', 'Second Mover'] },
   { id: 5, title: 'Entry Deterrence', options: ['Commit', 'Stay Flexible', 'Enter', 'Stay Out'], rules: 'The Incumbent chooses whether to make an irreversible commitment. The Rival sees that choice, then decides whether to enter the market.', payoffs: 'Commit + Stay Out: 4 / 0 · Commit + Enter: −2 / −2 · Stay Flexible + Enter: 2 / 2 · Stay Flexible + Stay Out: 4 / 0 (Incumbent / Rival)', roles: ['Incumbent', 'Rival'] },
+  { id: 6, title: "Repeated Prisoner's Dilemma", options: ['Cooperate', 'Defect'], rules: 'Play five turns with the same partner. Each turn, both choose Cooperate or Defect without seeing the other choice. After both decisions, you see what happened before choosing again.', payoffs: 'Each turn: Both Cooperate 2 each · Both Defect 1 each · Defect against Cooperate 3 / 0' },
   { id: 4, title: 'Promotion Timing', options: ['Monday', 'Wednesday', 'Friday'], rules: 'You and your rival secretly choose a day to launch a promotion. A clash on the same day splits attention.', payoffs: 'Same day: 0 each · Different days: 1 each' },
   { id: 12, title: 'Public Goods Game', options: PUBLIC_GOODS_CONTRIBUTIONS, rules: 'Each of four players starts with 10 points and secretly contributes 0–10 to a shared pool. Random bots fill empty seats.', payoffs: 'The pool is multiplied by 1.6 and split equally. Your score = 10 − your contribution + 0.4 × total pool.' },
   { id: 13, title: 'Stag Hunt', options: ['Hunt Stag', 'Hunt Hare'], rules: 'You and the bot each choose a hunt. Stag pays most when you both choose it; Hare is the safer choice.', payoffs: 'Both Stag: 10 each · Both Hare: 4 each · Stag against Hare: 0–4' },
@@ -257,6 +264,7 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
         || (own === 'Paper' && other === 'Rock')
         || (own === 'Scissors' && other === 'Paper') ? [2, 0] : [0, 2];
     case 1:
+    case 6:
       if (own === 'Cooperate' && other === 'Cooperate') return [2, 2];
       if (own === 'Defect' && other === 'Defect') return [1, 1];
       return own === 'Defect' ? [3, 0] : [0, 3];
@@ -409,6 +417,73 @@ export function centipedeTurnResults(room: LiveRoom): { choices: Record<string, 
       opponentAlias: opponentKind === 'student' ? assignment.opponentAlias : BOT_ALIAS, opponentKind, fallback: Boolean(path.fallback), exitNode: path.exitNode, centipedeMoves: path.moves };
   }
   return { choices, results };
+}
+
+export function advanceRepeated(room: LiveRoom, botMove: () => 'Cooperate' | 'Defect' = () => Math.random() < 0.5 ? 'Cooperate' : 'Defect'): LiveRoom | null {
+  const config = room.config;
+  if (!config || config.gameId !== 6 || config.phase !== 'playing') return null;
+  const turn = config.repeatedTurn || 1;
+  if (turn < 1 || turn > 5) return null;
+  const paths = { ...(room.repeatedPaths || {}) };
+  const decisions = room.repeatedDecisions || {};
+  for (const [uid, assignment] of Object.entries(room.assignments || {})) {
+    if (assignment.round !== config.round || assignment.role !== 'first') continue;
+    const partnerUid = assignment.kind === 'student' ? assignment.opponentUid : undefined;
+    const firstDecision = decisions[uid]?.[`t${turn}`];
+    const secondDecision = partnerUid ? decisions[partnerUid]?.[`t${turn}`] : undefined;
+    const valid = (item: Submission | undefined): item is Submission => item?.round === config.round && (item.choice === 'Cooperate' || item.choice === 'Defect');
+    const first = valid(firstDecision) ? firstDecision.choice as 'Cooperate' | 'Defect' : botMove();
+    const second = valid(secondDecision) ? secondDecision.choice as 'Cooperate' | 'Defect' : botMove();
+    const bot = !valid(firstDecision) || !valid(secondDecision);
+    const [firstPoints, secondPoints] = pointsFor(6, first, second);
+    const priorFirst = paths[uid]?.round === config.round ? paths[uid].turns : {};
+    paths[uid] = { round: config.round, turns: { ...priorFirst, [turn]: { own: first, other: second, ownPoints: firstPoints, otherPoints: secondPoints, bot } } };
+    if (partnerUid) {
+      const priorSecond = paths[partnerUid]?.round === config.round ? paths[partnerUid].turns : {};
+      paths[partnerUid] = { round: config.round, turns: { ...priorSecond, [turn]: { own: second, other: first, ownPoints: secondPoints, otherPoints: firstPoints, bot } } };
+    }
+  }
+  return { ...room, repeatedPaths: paths, config: { ...config, repeatedTurn: turn + 1 } };
+}
+
+export function repeatedTurnResults(room: LiveRoom): Record<string, MatchResult> {
+  const round = room.config?.round || 0;
+  const results: Record<string, MatchResult> = {};
+  for (const [uid, assignment] of Object.entries(room.assignments || {})) {
+    const path = room.repeatedPaths?.[uid];
+    if (assignment.round !== round || path?.round !== round || !path.turns[5]) continue;
+    const turns = Object.values(path.turns);
+    const last = path.turns[5];
+    const fallback = assignment.kind === 'student' && turns.some(item => item.bot);
+    const opponentKind = assignment.kind === 'bot' || fallback ? 'bot' : 'student';
+    results[uid] = { round, ownChoice: last.own, opponentChoice: last.other,
+      ownPoints: turns.reduce((sum, item) => sum + item.ownPoints, 0), opponentPoints: turns.reduce((sum, item) => sum + item.otherPoints, 0),
+      opponentAlias: opponentKind === 'bot' ? BOT_ALIAS : assignment.opponentAlias, opponentKind, fallback, repeatedTurns: path.turns };
+  }
+  return results;
+}
+
+export function summarizeRepeatedRound(room: LiveRoom, results: Record<string, MatchResult>): RoundSummary {
+  const round = room.config?.round || 0;
+  const assignments = room.assignments || {};
+  const decisions = room.repeatedDecisions || {};
+  const finished = Object.entries(results).filter(([, item]) => item.round === round);
+  const choiceCounts = (['Cooperate', 'Defect'] as const).map(label => ({ label, count: Object.entries(decisions).reduce((sum, [uid, turns]) =>
+    sum + (assignments[uid]?.round === round ? Object.values(turns).filter(item => item.round === round && item.choice === label).length : 0), 0) }));
+  const outcomes = ['Both cooperate', 'Both defect', 'Different choices'].map(label => ({ label, count: 0 }));
+  let studentPairs = 0;
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== round || assignment.kind !== 'student' || assignment.role !== 'first' || !assignment.opponentUid) continue;
+    const first = results[uid], second = results[assignment.opponentUid];
+    if (!first || !second || first.opponentKind !== 'student' || second.opponentKind !== 'student') continue;
+    studentPairs++;
+    for (const turn of Object.values(first.repeatedTurns || {})) outcomes[turn.own === turn.other ? turn.own === 'Cooperate' ? 0 : 1 : 2].count++;
+  }
+  const totalPoints = finished.reduce((sum, [, item]) => sum + item.ownPoints, 0);
+  return { round, gameId: 6, submitted: finished.length, choiceCounts, studentPairs, outcomes,
+    botMatches: finished.filter(([, item]) => item.opponentKind === 'bot').length,
+    fallbacks: finished.filter(([, item]) => item.fallback).length,
+    scoredStudents: finished.length, totalPoints, averagePoints: finished.length ? totalPoints / finished.length : null };
 }
 
 function resolvePublicGoodsResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, MatchResult> {
@@ -651,11 +726,13 @@ export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null
   if (!config?.totalRounds || config.phase !== 'playing') return null;
   if ((config.gameId === 2 || config.gameId === 5 || config.gameId === 30 || config.gameId === 19) && config.step !== 'respond') return null;
   if (config.gameId === 20 && config.centipedeNode && config.centipedeNode !== 7) return null;
+  if (config.gameId === 6 && config.repeatedTurn && config.repeatedTurn !== 6) return null;
   const round = config.round;
   const liveCentipede = config.gameId === 20 && config.centipedeNode === 7 ? centipedeTurnResults(room) : null;
   const roundChoices = liveCentipede?.choices || room.choices || {};
-  const roundResults = liveCentipede?.results || resolveResults(room.assignments || {}, roundChoices, round, config.gameId, room.offers || {});
-  const summary = summarizeRound(room.assignments || {}, roundChoices, roundResults, round, config.gameId);
+  const liveRepeated = config.gameId === 6 && config.repeatedTurn === 6 ? repeatedTurnResults(room) : null;
+  const roundResults = liveRepeated || liveCentipede?.results || resolveResults(room.assignments || {}, roundChoices, round, config.gameId, room.offers || {});
+  const summary = liveRepeated ? summarizeRepeatedRound(room, roundResults) : summarizeRound(room.assignments || {}, roundChoices, roundResults, round, config.gameId);
   const aliases = Object.fromEntries(Object.entries(room.participants || {}).map(([uid, participant]) => [uid, participant.alias]));
   const archive: Record<string, RoundArchive> = { ...(room.archive || {}), [round]: { summary, results: roundResults, aliases } };
   const isFinal = round >= config.totalRounds;
@@ -679,6 +756,8 @@ export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null
     offers: null,
     centipedeDecisions: null,
     centipedePaths: isFinal || !revealNow ? null : room.centipedePaths || null,
+    repeatedDecisions: null,
+    repeatedPaths: isFinal || !revealNow ? null : room.repeatedPaths || null,
     config: {
       ...config,
       summaries: publishedSummaries,
@@ -736,6 +815,11 @@ export function summarizePerson(summaries: RoundSummary[], results: Record<strin
       played: gameResults.length,
       averagePoints: gameResults.length ? totalPoints / gameResults.length : null,
       choices: (game.id === 19 ? ['Invested', 'Returned'] : game.options).map(option => {
+        if (game.id === 6) {
+          const turns = gameResults.flatMap(item => Object.values(item.repeatedTurns || {})).filter(item => item.own === option);
+          return { label: option, count: turns.length,
+            averagePoints: turns.length ? turns.reduce((total, item) => total + item.ownPoints, 0) / turns.length : null };
+        }
         const chosen = gameResults.filter(item => game.id === 19
           ? option === 'Invested' ? investAmount(item.ownChoice) !== null : returnAmount(item.ownChoice) !== null
           : item.ownChoice === option);
