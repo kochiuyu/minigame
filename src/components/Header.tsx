@@ -279,7 +279,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Zone 3: Profile & Sign-Out Actions or Join Live Class Button */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {!authSession || authSession.role === 'guest' ? (
+          {currentMode === 'live' ? null : !authSession || authSession.role === 'guest' ? (
             <button
               type="button"
               onClick={onOpenSignIn}
@@ -335,3 +335,4 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+

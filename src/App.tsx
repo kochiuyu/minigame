@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { SignInPortal } from './components/SignInPortal';
+import { FirebaseLiveClass } from './components/FirebaseLiveClass';
 import { StudentMobileView } from './components/StudentMobileView';
 import { InstructorDashboard } from './components/InstructorDashboard';
 import { SoloLabView } from './components/SoloLabView';
@@ -280,25 +281,19 @@ export default function App() {
     <div className={`bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden max-w-full ${platformMode === 'solo' ? 'lg:min-h-screen pb-0' : 'min-h-screen pb-16'}`}>
       {/* Global Header */}
       <Header
-        authSession={authSession}
+        authSession={platformMode === 'live' ? null : authSession}
         onSignOut={handleSignOut}
-        onOpenSignIn={() => setIsLiveSignInOpen(true)}
+        onOpenSignIn={() => setPlatformMode('live')}
         completedRoundsCount={completedRoundsCount}
         totalRounds={totalRounds}
-        currentWeek={currentWeek}
-        allWeeks={WEEKS}
+        currentWeek={platformMode === 'live' ? undefined : currentWeek}
+        allWeeks={platformMode === 'live' ? [] : WEEKS}
         onSelectWeek={(id) => {
           setActiveWeekId(id);
           setActiveRoundNum(1);
         }}
         currentMode={platformMode}
-        onSelectMode={(mode) => {
-          if (mode === 'live' && (!authSession || authSession.role === 'guest')) {
-            setIsLiveSignInOpen(true);
-            return;
-          }
-          setPlatformMode(mode);
-        }}
+        onSelectMode={setPlatformMode}
         soloModuleId={soloModuleId}
         soloNodeLabel={soloNodeLabel}
         soloGameIndex={soloGameIndex}
@@ -309,20 +304,16 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-2 sm:px-4 mt-1 sm:mt-1.5 max-w-full">
 
-        {platformMode === 'solo' ? (
+        {platformMode === 'live' ? (
+          <FirebaseLiveClass />
+        ) : platformMode === 'solo' ? (
           <SoloLabView
             allGames={WEEKS}
             onOpenWhatIfSandbox={(id) => {
               setSandboxGameId(id);
               setPlatformMode('sandbox');
             }}
-            onSwitchToLiveClass={() => {
-              if (!authSession || authSession.role === 'guest') {
-                setIsLiveSignInOpen(true);
-              } else {
-                setPlatformMode('live');
-              }
-            }}
+            onSwitchToLiveClass={() => setPlatformMode('live')}
             onModuleChange={(id, label, gameIndex, totalGames, completedCount) => {
               setSoloModuleId(id);
               if (label) setSoloNodeLabel(label);
@@ -484,3 +475,4 @@ export default function App() {
     </div>
   );
 }
+
