@@ -1,5 +1,5 @@
-export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Signal' | 'No Signal' | 'Trust' | 'Do Not Trust' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
+export type GameId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 17 | 18 | 19 | 20 | 23 | 27 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'High Price' | 'Low Price' | 'Launch' | 'Wait' | 'Commit' | 'Stay Flexible' | 'Enter' | 'Stay Out' | 'Signal' | 'No Signal' | 'Trust' | 'Do Not Trust' | 'Monday' | 'Wednesday' | 'Friday' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | 'Take at Node 1' | 'Take at Node 2' | 'Take at Node 3' | 'Take at Node 4' | 'Take at Node 5' | 'Take at Node 6' | 'Pass All' | `Bid ${number}` | `Guess ${number}` | `Demand ${number}` | `Price ${number}` | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}` | `Trawlers ${number}` | `Deploy ${number}/${number}/${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
@@ -149,6 +149,16 @@ export function firstPriceAuctionPayoff(ownBid: number, otherBid: number, valuat
 }
 export const PUBLIC_GOODS_CONTRIBUTIONS = Array.from({ length: 11 }, (_, index) => `Contribute ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const FISHERY_TRAWLERS = Array.from({ length: 11 }, (_, index) => `Trawlers ${index}` as Choice) as [Choice, Choice, ...Choice[]];
+export const BERTRAND_PRICES = Array.from({ length: 41 }, (_, index) => `Price ${index + 10}` as Choice) as [Choice, Choice, ...Choice[]];
+export function bertrandPrice(choice: Choice): number | null {
+  return /^Price (?:[1-4][0-9]|50)$/.test(choice) ? Number(choice.slice(6)) : null;
+}
+export function bertrandPoints(ownPrice: number, otherPrice: number): [number, number] {
+  if (![ownPrice, otherPrice].every(value => Number.isInteger(value) && value >= 10 && value <= 50)) throw new Error('Invalid Bertrand price.');
+  const profit = (price: number) => (price - 10) * (100 - price);
+  return ownPrice === otherPrice ? [profit(ownPrice) / 2, profit(otherPrice) / 2]
+    : ownPrice < otherPrice ? [profit(ownPrice), 0] : [0, profit(otherPrice)];
+}
 export const TRUST_INVESTMENTS = Array.from({ length: 11 }, (_, index) => `Invest ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const BLOTTO_DEPLOYMENTS = ['Deploy 34/33/33', 'Deploy 50/50/0', 'Deploy 50/0/50', 'Deploy 0/50/50', 'Deploy 60/0/40', 'Deploy 0/60/40'] as const;
 export const CENTIPEDE_FIRST = ['Take at Node 1', 'Take at Node 3', 'Take at Node 5', 'Pass All'] as const;
@@ -176,6 +186,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 4, title: 'Promotion Timing', options: ['Monday', 'Wednesday', 'Friday'], rules: 'You and your rival secretly choose a day to launch a promotion. A clash on the same day splits attention.', payoffs: 'Same day: 0 each · Different days: 1 each' },
   { id: 12, title: 'Public Goods Game', options: PUBLIC_GOODS_CONTRIBUTIONS, rules: 'Each of four players starts with 10 points and secretly contributes 0–10 to a shared pool. Random bots fill empty seats.', payoffs: 'The pool is multiplied by 1.6 and split equally. Your score = 10 − your contribution + 0.4 × total pool.' },
   { id: 13, title: 'Stag Hunt', options: ['Hunt Stag', 'Hunt Hare'], rules: 'You and the bot each choose a hunt. Stag pays most when you both choose it; Hare is the safer choice.', payoffs: 'Both Stag: 10 each · Both Hare: 4 each · Stag against Hare: 0–4' },
+  { id: 14, title: 'Bertrand Duopoly Price War', options: BERTRAND_PRICES, rules: 'You and a rival firm secretly choose whole-dollar prices from $10 to $50. Marginal cost is $10 and market demand is 100 minus the lowest price.', payoffs: 'The lower price sells to the whole market: profit = (price − 10) × (100 − price). Equal prices split that profit equally; the higher price earns 0.' },
   { id: 15, title: 'Hawk–Dove', options: ['Dove', 'Hawk'], rules: 'You and the bot each choose Dove or Hawk. Hawk gains against Dove, but two Hawks both lose points.', payoffs: 'Both Dove: 3 each · Both Hawk: −10 each · Hawk against Dove: 6–0' },
   { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], rules: 'Both choose Heads or Tails. The Matcher scores when the choices match; the Mismatcher scores when they differ.', payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
   { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], rules: 'Both choose Opera or Football. You score only if your choices match; each role prefers a different match.', payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
@@ -303,6 +314,12 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
     }
     case 12:
       throw new Error('Public Goods requires a four-player group pool.');
+    case 14: {
+      const ownPrice = bertrandPrice(own);
+      const otherPrice = bertrandPrice(other);
+      if (ownPrice === null || otherPrice === null) throw new Error('Invalid Bertrand choices.');
+      return bertrandPoints(ownPrice, otherPrice);
+    }
     case 27: {
       const ownBoats = trawlerAmount(own);
       const otherBoats = trawlerAmount(other);
@@ -847,6 +864,7 @@ export function summarizeRound(
   const outcomeNames = gameId === 7 || gameId === 8 ? ['Winner gains points', 'Winner breaks even', 'Winner loses points']
     : gameId === 10 ? ['Signal + Trust', 'Signal + No trust', 'No signal + Trust', 'No signal + No trust']
     : gameId === 9 ? ['Deal reached', 'Deal failed']
+    : gameId === 14 ? ['Same price: split market', 'Different prices: one firm wins']
     : gameId === 27 ? ['Healthy stock (0–8 boats)', 'Depleted stock (9–12 boats)', 'Overfished (13–20 boats)']
     : gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
     : gameId === 20 ? ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Both pass all nodes']
@@ -872,6 +890,7 @@ export function summarizeRound(
     studentPairs++;
     const index = gameId === 7 || gameId === 8 ? (() => { const winner = own.auction?.won ? own : other; return winner.ownPoints > 0 ? 0 : winner.ownPoints < 0 ? 2 : 1; })()
       : gameId === 9 ? ((demandAmount(own.ownChoice) || 0) + (demandAmount(other.ownChoice) || 0) <= 10 ? 0 : 1)
+      : gameId === 14 ? (own.ownChoice === other.ownChoice ? 0 : 1)
       : gameId === 10 ? (own.signaling?.signal ? own.signaling.trusted ? 0 : 1 : own.signaling?.trusted ? 2 : 3)
       : gameId === 27 ? (() => { const total = (trawlerAmount(own.ownChoice) || 0) + (trawlerAmount(other.ownChoice) || 0); return total > 12 ? 2 : total > 8 ? 1 : 0; })()
       : gameId === 20 ? (own.exitNode || 7) - 1 : gameId === 19 ? (() => {
