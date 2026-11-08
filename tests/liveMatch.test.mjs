@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advanceRepeated, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, fisheryPoints, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, fisheryPoints, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
 import { buildReportCsv } from '../src/reportExport.ts';
 
 test('Repeated Prisoner’s Dilemma keeps partners for five turns and reports the sequence', () => {
@@ -85,6 +85,23 @@ test('live Centipede substitutes a bot for a missed student turn', () => {
   const finished = finishRound(room, true);
   assert.deepEqual([finished.archive[1].results.a.ownPoints, finished.archive[1].results.b.ownPoints], [1, 4]);
   assert.equal(finished.archive[1].results.a.opponentKind, 'bot');
+});
+
+test('Centipede bot practice alternates moves and scores the reached branch', () => {
+  let path = { node: 1, moves: {} };
+  path = advancePracticeCentipede(path, 'first', 'Pass', () => 'Pass');
+  assert.deepEqual(path, { node: 3, moves: { 1: 'Pass', 2: 'Pass' } });
+  path = advancePracticeCentipede(path, 'first', 'Take', () => { throw Error('Bot should not move after Take'); });
+  assert.equal(path.exitNode, 3);
+  assert.deepEqual(practiceCentipedePoints(3, 'first'), [4, 2]);
+  assert.deepEqual(practiceCentipedePoints(3, 'second'), [2, 4]);
+  assert.deepEqual(advancePracticeCentipede(path, 'first', 'Pass'), path);
+
+  const secondStarts = advancePracticeCentipede({ node: 1, moves: {} }, 'second', undefined, () => 'Pass');
+  assert.deepEqual(secondStarts, { node: 2, moves: { 1: 'Pass' } });
+  const botTakes = advancePracticeCentipede({ node: 1, moves: {} }, 'second', undefined, () => 'Take');
+  assert.equal(botTakes.exitNode, 1);
+  assert.deepEqual(practiceCentipedePoints(1, 'second'), [0, 2]);
 });
 
 test('Centipede plans resolve the first Take, score both roles, and archive the exit', () => {

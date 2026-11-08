@@ -1,5 +1,5 @@
-import { blottoAllocation, centipedeExitNode, contributionAmount, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, trawlerAmount } from '../liveMatch';
-import type { Choice, GameId, Role } from '../liveMatch';
+import { blottoAllocation, contributionAmount, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, trawlerAmount } from '../liveMatch';
+import type { Choice, GameId, PracticeCentipedePath, Role } from '../liveMatch';
 import { CentipedeTree } from './CentipedeTree';
 
 type PracticeResult = { ownChoice: Choice; botChoice: Choice | null; groupTotal?: number } | null;
@@ -10,9 +10,10 @@ type Props = {
   role: Role;
   botOffer: Choice;
   result: PracticeResult;
+  centipedePath?: PracticeCentipedePath;
 };
 
-export function PracticeGameDiagram({ gameId, choice, role, botOffer, result }: Props) {
+export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, centipedePath }: Props) {
   if (gameId === 27) {
     const own = trawlerAmount(choice) ?? 0;
     const bot = result?.botChoice ? trawlerAmount(result.botChoice) : null;
@@ -27,12 +28,7 @@ export function PracticeGameDiagram({ gameId, choice, role, botOffer, result }: 
     </div>;
   }
   if (gameId === 20) {
-    const first = role === 'first' ? choice : result?.botChoice || botOffer;
-    const second = role === 'second' ? choice : result?.botChoice;
-    const exit = result?.botChoice ? centipedeExitNode(first, second!) : null;
-    const moves: Record<string, 'Take' | 'Pass'> = {};
-    if (exit) for (let node = 1; node <= Math.min(exit, 6); node++) moves[node] = node === exit ? 'Take' : 'Pass';
-    return <CentipedeTree currentNode={exit ? undefined : 1} moves={moves} exitNode={exit || undefined} />;
+    return <CentipedeTree currentNode={centipedePath?.exitNode ? undefined : centipedePath?.node || 1} moves={centipedePath?.moves} exitNode={centipedePath?.exitNode} />;
   }
   if (gameId === 2 || gameId === 5) {
     const first = role === 'first' ? choice : botOffer;

@@ -4,9 +4,9 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advanceRepeated, centipedeTurnResults, contributionAmount, finishRound, gameFor, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound, trawlerAmount,
+  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, centipedeTurnResults, contributionAmount, finishRound, gameFor, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound, trawlerAmount,
 } from '../liveMatch';
-import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, RepeatedPath, RepeatedTurn, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
+import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, PracticeCentipedePath, RepeatedPath, RepeatedTurn, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
 import { CentipedeTree } from './CentipedeTree';
 import { FinalAnalysis, RoundAnalysis } from './RoundAnalysis';
@@ -49,6 +49,7 @@ export function FirebaseLiveClass() {
   const [practiceBotOffer, setPracticeBotOffer] = useState<Choice>(() => randomChoice(30));
   const [practiceResult, setPracticeResult] = useState<{ ownChoice: Choice; botChoice: Choice | null; points: number; groupTotal?: number; botContributions?: number[] } | null>(null);
   const [practiceRepeatedTurns, setPracticeRepeatedTurns] = useState<RepeatedTurn[]>([]);
+  const [practiceCentipede, setPracticeCentipede] = useState<PracticeCentipedePath>({ node: 1, moves: {} });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
@@ -76,6 +77,7 @@ export function FirebaseLiveClass() {
     setPracticeBotOffer(randomChoice(config.gameId === 19 ? 19 : 30));
     setPracticeResult(null);
     setPracticeRepeatedTurns([]);
+    setPracticeCentipede({ node: 1, moves: {} });
   }, [config?.gameId]);
 
   useEffect(() => onAuthStateChanged(auth, next => {
@@ -276,12 +278,6 @@ export function FirebaseLiveClass() {
       setPracticeResult({ ownChoice: practiceChoice, botChoice, points });
       return;
     }
-    if (practiceGameId === 20) {
-      const botChoice = practiceRole === 'first' ? CENTIPEDE_SECOND[Math.floor(Math.random() * 4)] : practiceBotOffer;
-      const [points] = pointsFor(20, practiceChoice, botChoice, practiceRole);
-      setPracticeResult({ ownChoice: practiceChoice, botChoice, points });
-      return;
-    }
     if (practiceGameId === 12) {
       const botContributions = Array.from({ length: PUBLIC_GOODS_GROUP_SIZE - 1 }, () => contributionAmount(randomChoice(12)) ?? 0);
       const ownContribution = contributionAmount(practiceChoice) ?? 0;
@@ -385,6 +381,7 @@ export function FirebaseLiveClass() {
           setPracticeBotOffer(randomChoice(id === 2 || id === 5 || id === 20 ? id : id === 19 ? 19 : 30));
           setPracticeResult(null);
           setPracticeRepeatedTurns([]);
+          setPracticeCentipede({ node: 1, moves: {} });
         }} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
           {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
@@ -400,21 +397,29 @@ export function FirebaseLiveClass() {
               : practiceGameId === 30
               ? 'As Proposer, the bot accepts or rejects with equal chance. As Responder, it offers a random amount from 0 to 10 in half-point steps.'
               : practiceGameId === 20
-              ? 'The bot randomly chooses one of its four complete plans. The earliest Take ends the chain.'
+              ? 'The bot chooses Take or Pass at each of its turns, with equal chance. You see each move before your next turn.'
               : 'The bot picks each available choice with equal chance.'}</p>
-            <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} />
+            <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} centipedePath={practiceCentipede} />
           </div>
         </details>
         {([2, 5, 19, 20, 30] as number[]).includes(practiceGameId) ? <label className="block text-sm font-bold">Practice role
-          <select value={practiceRole} onChange={event => { const role = event.target.value as 'first' | 'second'; setPracticeRole(role); setPracticeChoice(practiceGameId === 2 ? role === 'first' ? 'Launch' : 'Enter' : practiceGameId === 5 ? role === 'first' ? 'Commit' : 'Enter' : practiceGameId === 19 ? role === 'first' ? 'Invest 5' : 'Return 0' : practiceGameId === 20 ? role === 'first' ? CENTIPEDE_FIRST[0] : CENTIPEDE_SECOND[0] : role === 'first' ? 'Offer 5' : 'Accept'); setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="mt-2 w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
+          <select value={practiceRole} onChange={event => { const role = event.target.value as 'first' | 'second'; setPracticeRole(role); setPracticeChoice(practiceGameId === 2 ? role === 'first' ? 'Launch' : 'Enter' : practiceGameId === 5 ? role === 'first' ? 'Commit' : 'Enter' : practiceGameId === 19 ? role === 'first' ? 'Invest 5' : 'Return 0' : practiceGameId === 20 ? role === 'first' ? CENTIPEDE_FIRST[0] : CENTIPEDE_SECOND[0] : role === 'first' ? 'Offer 5' : 'Accept'); setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); if (practiceGameId === 20) setPracticeCentipede(advancePracticeCentipede({ node: 1, moves: {} }, role)); }} className="mt-2 w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
             <option value="first">{practiceGameId === 2 ? 'First Mover' : practiceGameId === 5 ? 'Incumbent' : practiceGameId === 19 ? 'Investor' : practiceGameId === 20 ? 'Player 1' : 'Proposer'}</option><option value="second">{practiceGameId === 2 ? 'Second Mover' : practiceGameId === 5 ? 'Rival' : practiceGameId === 19 ? 'Trustee' : practiceGameId === 20 ? 'Player 2' : 'Responder'}</option>
           </select>
         </label> : practiceGame.roles && <p className="text-sm text-slate-300">Your role: {practiceGame.roles[0]}</p>}
         {practiceGameId === 30 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot offered you {practiceBotOffer.slice(6)} of 10 points. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(30)); setPracticeResult(null); }} className="ml-2 underline">New offer</button></p>}
         {(practiceGameId === 2 || practiceGameId === 5) && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot chose {practiceBotOffer}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); }} className="ml-2 underline">New first move</button></p>}
-        {practiceGameId === 20 && <p className="text-sm text-blue-200">Choose your complete plan. The bot's plan stays hidden until you play.</p>}
+        {practiceGameId === 20 && <p className="text-sm text-blue-200">Take ends the chain. Pass gives the next turn to the bot. Completed moves appear in the tree above.</p>}
         {practiceGameId === 19 && practiceRole === 'second' && <p className="rounded-lg bg-blue-950 p-3">The random bot invested {investAmount(practiceBotOffer)} points, tripled to {(investAmount(practiceBotOffer) ?? 0) * 3}. <button type="button" onClick={() => { setPracticeBotOffer(randomChoice(19)); setPracticeChoice('Return 0'); setPracticeResult(null); }} className="ml-2 underline">New investment</button></p>}
-        {practiceGameId === 27 ? <div className="space-y-2">
+        {practiceGameId === 20 ? <div className="space-y-3" role="status">
+          {practiceCentipede.exitNode ? <>
+            <p>The chain ended {practiceCentipede.exitNode === 7 ? 'after both players passed all six nodes' : `at Node ${practiceCentipede.exitNode}`}. Your score: {practiceCentipedePoints(practiceCentipede.exitNode, practiceRole)[0]} points; bot score: {practiceCentipedePoints(practiceCentipede.exitNode, practiceRole)[1]} points.</p>
+            <button type="button" onClick={() => setPracticeCentipede(advancePracticeCentipede({ node: 1, moves: {} }, practiceRole))} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">New Centipede match</button>
+          </> : <>
+            <p>Node {practiceCentipede.node}: your turn as Player {practiceRole === 'first' ? 1 : 2}.</p>
+            <div className="flex gap-3">{(['Take', 'Pass'] as const).map(move => <button key={move} type="button" onClick={() => setPracticeCentipede(advancePracticeCentipede(practiceCentipede, practiceRole, move))} className="rounded-lg bg-blue-600 px-4 py-2 font-bold">{move}</button>)}</div>
+          </>}
+        </div> : practiceGameId === 27 ? <div className="space-y-2">
           <label htmlFor="practice-trawlers" className="block font-semibold">Deploy {trawlerAmount(practiceChoice) ?? 0} trawlers</label>
           <input id="practice-trawlers" type="range" min="0" max="10" step="1" value={trawlerAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Trawlers ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
           <p className="text-sm text-slate-300">The bot also deploys 0–10 trawlers. Together, your fleets determine fishery health.</p>
@@ -431,7 +436,7 @@ export function FirebaseLiveClass() {
           <p className="text-sm text-slate-300">If accepted, you keep {10 - (offerAmount(practiceChoice) ?? 0)} points.</p>
         </div> : <fieldset className="flex flex-wrap gap-5">
           <legend className="sr-only">Practice choice</legend>
-          {(practiceGameId === 2 || practiceGameId === 5 ? practiceRole === 'first' ? practiceGameId === 2 ? ['Launch', 'Wait'] as const : ['Commit', 'Stay Flexible'] as const : ['Enter', 'Stay Out'] as const : practiceGameId === 20 ? practiceRole === 'first' ? CENTIPEDE_FIRST : CENTIPEDE_SECOND : practiceGameId === 30 ? ['Accept', 'Reject'] as const : practiceGame.options).map(option => (
+          {(practiceGameId === 2 || practiceGameId === 5 ? practiceRole === 'first' ? practiceGameId === 2 ? ['Launch', 'Wait'] as const : ['Commit', 'Stay Flexible'] as const : ['Enter', 'Stay Out'] as const : practiceGameId === 30 ? ['Accept', 'Reject'] as const : practiceGame.options).map(option => (
             <label key={option} className="flex gap-2 items-center">
               <input type="radio" name="practice-choice" checked={practiceChoice === option} onChange={() => setPracticeChoice(option)} />{option}
             </label>
@@ -439,7 +444,7 @@ export function FirebaseLiveClass() {
         </fieldset>}
         {practiceGameId === 6 && practiceRepeatedTurns.length > 0 && <div className="text-sm space-y-1"><p>Turn {practiceRepeatedTurns.length} of 5 · Your total {practiceRepeatedTurns.reduce((sum, item) => sum + item.ownPoints, 0)} · Bot total {practiceRepeatedTurns.reduce((sum, item) => sum + item.otherPoints, 0)}</p>
           <ol>{practiceRepeatedTurns.map((item, index) => <li key={index}>Turn {index + 1}: You {item.own}, bot {item.other} · {item.ownPoints} / {item.otherPoints}</li>)}</ol></div>}
-        {practiceGameId === 6 && practiceRepeatedTurns.length === 5 ? <button onClick={() => { setPracticeRepeatedTurns([]); setPracticeResult(null); }} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">New five-turn match</button>
+        {practiceGameId === 20 ? null : practiceGameId === 6 && practiceRepeatedTurns.length === 5 ? <button onClick={() => { setPracticeRepeatedTurns([]); setPracticeResult(null); }} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">New five-turn match</button>
           : <button onClick={playBot} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">{practiceGameId === 6 ? `Play turn ${practiceRepeatedTurns.length + 1} of 5` : 'Play random bot'}</button>}
         {practiceResult && <p role="status">{practiceGameId === 19
           ? `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} points.`
