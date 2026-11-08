@@ -4,21 +4,14 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, LIVE_GAMES, gameFor, pairParticipants, pointsFor, randomChoice, resolveResults, submissionProgress, summarizeRound,
+  BOT_ALIAS, LIVE_GAMES, finishRound, gameFor, pairParticipants, pointsFor, randomChoice, resolveResults, submissionProgress, summarizeRound,
 } from '../liveMatch';
-import type { Assignment, Choice, GameId, MatchResult, Participant, RoomConfig, Submission } from '../liveMatch';
+import type { Assignment, Choice, GameId, LiveRoom, MatchResult, Participant, RoomConfig, RoundArchive, Submission } from '../liveMatch';
+import { FinalAnalysis, RoundAnalysis } from './RoundAnalysis';
 
 const ROOM = 'DOTE-3090';
 const ROOT = `rooms/${ROOM}-pairs`;
 const INSTRUCTOR_EMAIL = 'kochiuyu@gmail.com';
-type RoomData = {
-  config?: RoomConfig;
-  participants?: Record<string, Participant>;
-  assignments?: Record<string, Assignment>;
-  choices?: Record<string, Submission>;
-  results?: Record<string, MatchResult>;
-};
-
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'Could not connect. Please try again.';
 }
@@ -34,9 +27,11 @@ export function FirebaseLiveClass() {
   const [assignments, setAssignments] = useState<Record<string, Assignment>>({});
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
-  const [result, setResult] = useState<MatchResult | null>(null);
-  const [results, setResults] = useState<Record<string, MatchResult>>({});
+  const [result, setResult] = useState<MatchResult | Record<string, MatchResult> | null>(null);
+  const [results, setResults] = useState<Record<string, MatchResult | Record<string, MatchResult>>>({});
+  const [archive, setArchive] = useState<Record<string, RoundArchive>>({});
   const [selectedGameId, setSelectedGameId] = useState<GameId>(1);
+  const [selectedTotalRounds, setSelectedTotalRounds] = useState(5);
   const [practiceGameId, setPracticeGameId] = useState<GameId>(1);
   const [choice, setChoice] = useState<Choice>('Cooperate');
   const [practiceChoice, setPracticeChoice] = useState<Choice>('Cooperate');
@@ -70,18 +65,20 @@ export function FirebaseLiveClass() {
     setSubmissions({});
     setResult(null);
     setResults({});
+    setArchive({});
     if (!user) return;
 
     const fail = (err: Error) => setError(errorText(err));
     const unsubs: Array<() => void> = [];
     if (instructor) {
       unsubs.push(onValue(ref(db, ROOT), snapshot => {
-        const room = snapshot.val() as RoomData | null;
+        const room = snapshot.val() as LiveRoom | null;
         setConfig(room?.config || null);
         setParticipants(room?.participants || {});
         setAssignments(room?.assignments || {});
         setSubmissions(room?.choices || {});
         setResults(room?.results || {});
+        setArchive(room?.archive || {});
       }, fail));
     } else {
       unsubs.push(onValue(ref(db, `${ROOT}/config`), snapshot => setConfig(snapshot.val()), fail));
@@ -96,7 +93,7 @@ export function FirebaseLiveClass() {
   }, [user, instructor]);
 
   useEffect(() => {
-    if (leavingRef.current || !user?.isAnonymous || !config || participant !== null || !alias.trim()) return;
+    if (leavingRef.current || !user?.isAnonymous || !config || config.phase === 'finished' || participant !== null || !alias.trim()) return;
     set(ref(db, `${ROOT}/participants/${user.uid}`), { alias: alias.trim() })
       .catch(err => setError(errorText(err)));
   }, [user, config, participant, alias]);
@@ -134,16 +131,16 @@ export function FirebaseLiveClass() {
     await run(() => update(ref(db, ROOT), {
       assignments: pairs,
       choices: null,
-      results: null,
+      ...(!config.totalRounds ? { results: null } : {}),
       'config/phase': 'playing',
     }));
   }
 
-  async function reveal() {
+  async function revealLegacy() {
     await run(async () => {
       const roomRef = ref(db, ROOT);
       await runTransaction(roomRef, current => {
-        const room = current as RoomData | null;
+        const room = current as LiveRoom | null;
         if (!room?.config || room.config.phase !== 'playing') return;
         return {
           ...room,
@@ -154,6 +151,26 @@ export function FirebaseLiveClass() {
     });
   }
 
+  async function endRound(revealNow: boolean) {
+    await run(async () => {
+      await runTransaction(ref(db, ROOT), current => {
+        if (!current) return;
+        return finishRound(current as LiveRoom, revealNow) || undefined;
+      }, { applyLocally: false });
+    });
+  }
+
+  async function startNextRound() {
+    if (!config || config.phase !== 'revealed') return;
+    await run(() => update(ref(db, ROOT), {
+      assignments: null,
+      choices: null,
+      ...(!config.totalRounds ? { results: null } : {}),
+      'config/round': config.round + 1,
+      'config/phase': 'lobby',
+    }));
+  }
+
   function playBot() {
     const botChoice = randomChoice(practiceGameId);
     const [points] = pointsFor(practiceGameId, practiceChoice, botChoice);
@@ -161,20 +178,27 @@ export function FirebaseLiveClass() {
   }
 
   const round = config?.round || 0;
+  const legacyClass = Boolean(config && !config.totalRounds);
   const currentAssignment = assignment?.round === round ? assignment : null;
   const currentSubmission = submission?.round === round ? submission : null;
-  const currentResult = result?.round === round ? result : null;
+  const personalResults = result && !('round' in result) ? result as Record<string, MatchResult> : {};
+  const legacyResult = result && 'round' in result ? result as MatchResult : null;
+  const currentResult = legacyClass ? legacyResult?.round === round ? legacyResult : null : personalResults[round] || null;
   const roundAssignments = Object.values(assignments).filter(item => item.round === round);
   const joinedStudents = Object.entries(participants).sort((a, b) => a[1].alias.localeCompare(b[1].alias));
   const progress = submissionProgress(participants, assignments, submissions, round);
-  const summary = summarizeRound(assignments, submissions, results, round, game.id);
+  const legacyResults = Object.fromEntries(Object.entries(results).filter(([, value]) => value && 'round' in value)) as Record<string, MatchResult>;
+  const legacySummary = summarizeRound(assignments, submissions, legacyResults, round, game.id);
+  const currentSummary = legacyClass ? config?.phase === 'revealed' ? legacySummary : null : config?.summaries?.[round] || null;
+  const publishedSummaries = Object.values(config?.summaries || {}).sort((a, b) => a.round - b.round);
+  const lastRound = Boolean(config?.totalRounds && round >= config.totalRounds);
   const roleLabel = currentAssignment && game.roles ? game.roles[currentAssignment.role === 'second' ? 1 : 0] : null;
 
   return (
     <section className="max-w-3xl mx-auto mt-6 space-y-5 text-slate-100">
       <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5 sm:p-7">
         <p className="text-sm font-bold text-blue-300">Live Class · Room {ROOM}</p>
-        <h1 className="text-2xl font-black mt-1">{config ? game.title : 'Live Class Games'}</h1>
+        <h1 className="text-2xl font-black mt-1">{config?.phase === 'finished' ? 'Class complete' : config ? game.title : 'Live Class Games'}</h1>
         <p className="text-sm text-slate-300 mt-2">Practice against a random bot, then join a class round. The instructor randomly pairs students; an odd or late student gets a bot. If a partner does not choose, a bot takes their place when results are revealed.</p>
         {config && <p className="text-sm text-blue-200 mt-2">{game.payoffs}</p>}
       </div>
@@ -233,13 +257,16 @@ export function FirebaseLiveClass() {
 
           {instructor ? (
             <>
-              <p className="font-semibold">{config ? `Round ${round} · ${config.phase === 'lobby' ? 'Waiting for students' : config.phase === 'playing' ? 'Collecting choices' : 'Results revealed'}` : 'No active class'}</p>
+              <p className="font-semibold">{config ? config.phase === 'finished' ? `All ${config.totalRounds} rounds complete` : `Round ${round}${config.totalRounds ? ` of ${config.totalRounds}` : ''} · ${config.phase === 'lobby' ? 'Waiting for students' : config.phase === 'playing' ? 'Collecting choices' : 'Results revealed'}` : 'No active class'}</p>
+              {legacyClass && <p className="text-sm text-amber-200">This class began before round limits were added. It can continue as before; start a new class to set a round limit and save a final report.</p>}
               {!config && <>
                 <label htmlFor="new-class-game" className="block text-sm font-bold">Class game</label>
                 <select id="new-class-game" value={selectedGameId} onChange={event => setSelectedGameId(Number(event.target.value) as GameId)} className="w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
                   {LIVE_GAMES.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
                 </select>
-                <button disabled={busy} onClick={() => run(() => set(ref(db, ROOT), { config: { round: 1, phase: 'lobby', gameId: selectedGameId } }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start class</button>
+                <label htmlFor="total-rounds" className="block text-sm font-bold">Total rounds (1–20)</label>
+                <input id="total-rounds" type="number" min="1" max="20" step="1" value={selectedTotalRounds} onChange={event => setSelectedTotalRounds(Number(event.target.value))} className="w-32 rounded-lg bg-slate-950 border border-slate-600 p-3 text-white" />
+                <button disabled={busy || !Number.isInteger(selectedTotalRounds) || selectedTotalRounds < 1 || selectedTotalRounds > 20} onClick={() => run(() => set(ref(db, ROOT), { config: { round: 1, totalRounds: selectedTotalRounds, phase: 'lobby', gameId: selectedGameId } }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start class</button>
               </>}
               {config?.phase === 'lobby' && <>
                 <label htmlFor="class-game" className="block text-sm font-bold">Class game</label>
@@ -253,27 +280,25 @@ export function FirebaseLiveClass() {
               {config?.phase === 'playing' && <>
                 <p>{roundAssignments.filter(item => item.kind === 'student').length / 2} student pairs · {roundAssignments.filter(item => item.kind === 'bot').length} bot matches</p>
                 <p role="status" className="font-semibold">{progress.submitted} of {progress.joined} joined students submitted</p>
-                {progress.allSubmitted ? <p className="rounded-lg border border-emerald-600 bg-emerald-950/50 p-3 text-emerald-200">Everyone has submitted. Reveal results, then start the next round.</p>
-                  : <p className="text-sm text-slate-300">Choices stay hidden until reveal. You can reveal early if someone cannot submit; a bot will replace a missing partner.</p>}
-                <button disabled={busy || summary.submitted === 0} onClick={reveal} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Reveal results</button>
+                {progress.allSubmitted ? <p className="rounded-lg border border-emerald-600 bg-emerald-950/50 p-3 text-emerald-200">Everyone has submitted. {lastRound ? 'Finish the class to show the full report.' : 'Choose whether to reveal this round before continuing.'}</p>
+                  : <p className="text-sm text-slate-300">Choices stay hidden until you reveal them. You can end the round early; a bot will replace a missing partner in the results.</p>}
+                {legacyClass ? <button disabled={busy || legacySummary.submitted === 0} onClick={revealLegacy} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Reveal results</button>
+                  : lastRound ? <button disabled={busy} onClick={() => endRound(true)} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Finish class and show all results</button>
+                  : <div className="flex flex-wrap gap-3">
+                    <button disabled={busy || !Object.values(submissions).some(item => item.round === round)} onClick={() => endRound(true)} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold disabled:opacity-50">Reveal this round</button>
+                    <button disabled={busy} onClick={() => endRound(false)} className="rounded-lg bg-slate-700 px-4 py-3 font-bold disabled:opacity-50">Continue without revealing</button>
+                  </div>}
               </>}
               {config?.phase === 'revealed' && <>
-                <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4 space-y-2">
-                  <h3 className="font-bold">Round {round} summary</h3>
-                  <p>{summary.submitted} students submitted · {summary.studentPairs} completed student pairs · {summary.botMatches} bot matches{summary.fallbacks > 0 ? ` (${summary.fallbacks} missing-partner fallbacks)` : ''}</p>
-                  <p>Choices: {summary.choiceCounts.map(item => `${item.label} ${item.count}`).join(' · ')}</p>
-                  <p>Student pair outcomes: {summary.outcomes.map(item => `${item.label} ${item.count}`).join(' · ')}</p>
-                  {summary.averagePoints !== null && <p>Average student score: {summary.averagePoints.toFixed(1)} points</p>}
-                  <p className="text-sm text-blue-200">{game.id === 1 ? 'Discuss how often pairs reached mutual cooperation.'
-                    : game.id === 13 ? 'Discuss whether pairs coordinated on Stag or chose the safer Hare.'
-                    : game.id === 15 ? 'Discuss how often two Hawks met and what that cost them.'
-                    : game.id === 17 ? 'Matching choices favor the Matcher; different choices favor the Mismatcher.'
-                    : 'Discuss how often pairs coordinated on Opera or Football.'}</p>
-                </div>
+                {currentSummary && <RoundAnalysis summary={currentSummary} archive={archive[round]} />}
                 <p className="font-semibold">Results are revealed. Start the next round when students have read them.</p>
-                <button disabled={busy} onClick={() => run(() => update(ref(db, ROOT), { assignments: null, choices: null, results: null, 'config/round': round + 1, 'config/phase': 'lobby' }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start next round</button>
+                <button disabled={busy} onClick={startNextRound} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start next round</button>
               </>}
-              {config && <div className="border-t border-slate-700 pt-4 space-y-2">
+              {config?.phase === 'finished' && <>
+                <FinalAnalysis summaries={publishedSummaries} archives={archive} />
+                <p className="text-sm text-slate-300">Students can view this report until you end the class and clear the room.</p>
+              </>}
+              {config && config.phase !== 'finished' && <div className="border-t border-slate-700 pt-4 space-y-2">
                 <h3 className="font-bold">Joined students ({joinedStudents.length})</h3>
                 {joinedStudents.length === 0 ? <p className="text-sm text-slate-300">No students have joined yet.</p> :
                   <ul className="grid gap-2 sm:grid-cols-2">
@@ -293,12 +318,19 @@ export function FirebaseLiveClass() {
             </>
           ) : !config ? (
             <p>Waiting for the instructor to start the class. You can practice with the bot above.</p>
+          ) : config.phase === 'finished' ? (
+            <FinalAnalysis summaries={publishedSummaries} personalResults={personalResults} studentView />
           ) : !participant ? (
             <p>{alias.trim() ? 'Joining classroom…' : 'Your alias is missing. Leave and rejoin with an alias.'}</p>
           ) : config.phase === 'lobby' ? (
-            <p>Waiting for the instructor to pair students in {game.title}. You can practice with the bot above.</p>
+            <div className="space-y-2">
+              <p>Waiting for the instructor to pair students in round {round}{config.totalRounds ? ` of ${config.totalRounds}` : ''} ({game.title}). You can practice with the bot above.</p>
+              {config.totalRounds && round > 1 && !config.summaries?.[round - 1] && <p className="text-sm text-blue-200">The previous round's results will appear when the class ends.</p>}
+            </div>
           ) : config.phase === 'revealed' ? (
-            currentResult ? <div className="space-y-2" role="status">
+            !legacyClass ? currentSummary ? currentSubmission && !currentResult ? <p>Loading your result…</p>
+              : <RoundAnalysis summary={currentSummary} personal={currentResult || undefined} studentView /> : <p>Loading round results…</p>
+            : currentResult ? <div className="space-y-2" role="status">
               <p className="font-bold">Round {round} result</p>
               <p>You chose {currentResult.ownChoice}; {currentResult.opponentAlias} chose {currentResult.opponentChoice}.</p>
               <p>You earned {currentResult.ownPoints} points; your opponent earned {currentResult.opponentPoints}.</p>
@@ -313,7 +345,7 @@ export function FirebaseLiveClass() {
             <p>Your {currentSubmission.choice} choice is locked for round {round} against {currentAssignment.opponentAlias}. Waiting for the instructor to reveal results.</p>
           ) : (
             <div className="space-y-3">
-              <p className="font-bold">Round {round}: you play {currentAssignment.opponentAlias}</p>
+              <p className="font-bold">Round {round}{config.totalRounds ? ` of ${config.totalRounds}` : ''}: you play {currentAssignment.opponentAlias}</p>
               {roleLabel && <p className="text-sm text-blue-200">Your role: {roleLabel}</p>}
               <p className="text-sm text-slate-300">{game.payoffs}</p>
               <fieldset className="flex gap-5">
@@ -325,6 +357,13 @@ export function FirebaseLiveClass() {
           )}
         </div>
       )}
+      {user && config?.totalRounds && config.phase !== 'finished' && publishedSummaries.some(item => item.round < round) &&
+        <details className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
+          <summary className="cursor-pointer font-bold">Earlier revealed rounds</summary>
+          <div className="mt-4 space-y-3">{publishedSummaries.filter(item => item.round < round).map(item =>
+            <RoundAnalysis key={item.round} summary={item} personal={personalResults[item.round]} archive={instructor ? archive[item.round] : undefined} studentView={!instructor} />
+          )}</div>
+        </details>}
       {error && <p role="alert" className="rounded-lg border border-red-600 bg-red-950 p-3 text-red-200">{error}</p>}
     </section>
   );
