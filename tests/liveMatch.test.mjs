@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, fisheryPoints, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, blottoAllocation, centipedeExitNode, contributionAmount, finishRound, fisheryPoints, groupParticipants, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
 import { buildReportCsv } from '../src/reportExport.ts';
 
 test('second-price auction uses private values, other bid as price, and reciprocal results', () => {
@@ -37,6 +37,39 @@ test('second-price auction uses private values, other bid as price, and reciproc
     const fallback = resolveResults({ a: assignments.a, b: assignments.b }, { a: { round: 1, choice: 'Bid 2' } }, 1, 7);
     assert.equal(fallback.a.fallback, true);
     assert.equal(fallback.a.opponentKind, 'bot');
+  } finally { Math.random = oldRandom; }
+});
+
+test('first-price auction charges the winner their own bid across pair, tie, bot, and report', () => {
+  assert.deepEqual(firstPriceAuctionPayoff(7, 6, 9), { points: 2, won: true, price: 7 });
+  assert.deepEqual(firstPriceAuctionPayoff(11, 9, 8), { points: -3, won: true, price: 11 });
+  assert.deepEqual(firstPriceAuctionPayoff(7, 7, 9, false), { points: 0, won: false, price: 0 });
+  assert.deepEqual(firstPriceAuctionPayoff(7, 7, 9, true), { points: 2, won: true, price: 7 });
+  const participants = { a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' } };
+  const oldRandom = Math.random; Math.random = () => 0;
+  try {
+    const drawn = pairParticipants(participants, 1, 8);
+    assert.deepEqual(Object.values(drawn).map(item => item.valuation), [1, 1, 1]);
+    const assignments = {
+      a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first', valuation: 9 },
+      b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second', valuation: 10 },
+      c: { round: 1, kind: 'bot', opponentAlias: 'Random bot', role: 'first', valuation: 8 },
+    };
+    const choices = { a: { round: 1, choice: 'Bid 7' }, b: { round: 1, choice: 'Bid 6' }, c: { round: 1, choice: 'Bid 2' } };
+    const results = resolveResults(assignments, choices, 1, 8);
+    assert.deepEqual([results.a.ownPoints, results.b.ownPoints, results.a.auction.price], [2, 0, 7]);
+    assert.equal(results.b.auction.price, 7);
+    assert.equal(results.c.opponentKind, 'bot');
+    const summary = summarizeRound(assignments, choices, results, 1, 8);
+    assert.equal(summary.outcomes.find(item => item.label === 'Winner gains points').count, 1);
+    const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 8 }, participants, assignments, choices }, true);
+    const csv = buildReportCsv(() => 'First-Price Auction', [finished.config.summaries[1]], finished.archive);
+    assert.match(csv, /"Student result","1","First-Price Auction","A".*"9","Yes","7","7"/);
+    const tied = resolveResults({ a: assignments.a, b: assignments.b }, { a: { round: 1, choice: 'Bid 7' }, b: { round: 1, choice: 'Bid 7' } }, 1, 8);
+    assert.deepEqual([tied.a.ownPoints, tied.b.ownPoints], [2, 0]);
+    const fallback = resolveResults({ a: assignments.a, b: assignments.b }, { a: { round: 1, choice: 'Bid 2' } }, 1, 8);
+    assert.equal(fallback.a.fallback, true);
+    assert.equal(fallback.a.auction.price, 2);
   } finally { Math.random = oldRandom; }
 });
 
@@ -769,4 +802,3 @@ test('students can generate a short emoji alias and change its icon before joini
   }
   assert.ok(shuffleAliasIcon('A'.repeat(30)).length <= 30);
 });
-
