@@ -47,7 +47,7 @@ export function FirebaseLiveClass() {
 
   useEffect(() => setChoice(game.options[0]), [game.id]);
   useEffect(() => {
-    if (game.id === 30 && assignment?.role === 'second') setChoice('Accept');
+    if (game.id === 30 && assignment?.role) setChoice(assignment.role === 'second' ? 'Accept' : 'Offer 5');
   }, [game.id, assignment?.role]);
   useEffect(() => {
     if (!config?.gameId) return;
