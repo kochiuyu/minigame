@@ -1,6 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, cournotPoints, cournotQuantity, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, contributionAmount, cournotPoints, cournotQuantity, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, trawlerAmount } from '../src/liveMatch.ts';
+
+test('Hotelling locations score pairs, bot fallbacks, outcomes, and CSV shares', () => {
+  assert.equal(LIVE_GAMES.find(game => game.id === 22)?.options.length, 101);
+  assert.equal(hotellingLocation('Location 0'), 0);
+  assert.equal(hotellingLocation('Location 100'), 100);
+  assert.equal(hotellingLocation('Location 101'), null);
+  assert.deepEqual(hotellingShares(0, 100), [50, 50]);
+  assert.deepEqual(hotellingShares(20, 60), [40, 60]);
+  assert.deepEqual(hotellingShares(60, 20), [60, 40]);
+  assert.deepEqual(hotellingShares(50, 50), [50, 50]);
+  assert.throws(() => pointsFor(22, 'Location 101', 'Location 50'));
+  const assignments = { a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' }, b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' } };
+  const choices = { a: { round: 1, choice: 'Location 20' }, b: { round: 1, choice: 'Location 60' } };
+  const results = resolveResults(assignments, choices, 1, 22);
+  assert.equal(results.a.ownPoints, 40);
+  assert.equal(results.b.ownPoints, 60);
+  const summary = summarizeRound(assignments, choices, results, 1, 22);
+  assert.equal(summary.outcomes[1].count, 1);
+  const csv = buildReportCsv(() => 'Hotelling Beach', [summary], { 1: { aliases: { a: 'A', b: 'B' }, results } });
+  assert.match(csv, /"Own beach location","Rival beach location","Beach market share"/);
+  assert.match(csv, /"Student result","1","Hotelling Beach","A".*"20","60","40"/);
+  assert.equal(randomChoice(22).startsWith('Location '), true);
+  const fallback = resolveResults(assignments, { a: choices.a }, 1, 22).a;
+  assert.equal(fallback.opponentKind, 'bot');
+  assert.equal(fallback.ownPoints + fallback.opponentPoints, 100);
+});
 
 test('Cournot quantities score paired and random bot rounds and export market data', () => {
   assert.equal(LIVE_GAMES.find(game => game.id === 21)?.options.length, 36);
@@ -935,3 +961,4 @@ test('students can generate a short emoji alias and change its icon before joini
   }
   assert.ok(shuffleAliasIcon('A'.repeat(30)).length <= 30);
 });
+
