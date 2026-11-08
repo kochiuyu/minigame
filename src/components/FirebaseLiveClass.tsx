@@ -7,6 +7,7 @@ import {
   BOT_ALIAS, LIVE_GAMES, finishRound, gameFor, offerAmount, pairParticipants, pointsFor, prepareUltimatumResponses, randomChoice, randomStudentAlias, resolveResults, shuffleAliasIcon, submissionProgress, summarizeRound,
 } from '../liveMatch';
 import type { Assignment, Choice, GameId, LiveRoom, MatchResult, Participant, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
+import { PracticeGameDiagram } from './PracticeGameDiagram';
 import { FinalAnalysis, RoundAnalysis } from './RoundAnalysis';
 
 const ROOM = 'DOTE-3090';
@@ -259,6 +260,7 @@ export function FirebaseLiveClass() {
             <p><strong className="text-slate-100">Random bot:</strong> {practiceGameId === 30
               ? 'As Proposer, the bot accepts or rejects with equal chance. As Responder, it offers a random amount from 0 to 10 in half-point steps.'
               : 'The bot picks each available choice with equal chance.'}</p>
+            <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} />
           </div>
         </details>
         {practiceGameId === 30 ? <label className="block text-sm font-bold">Practice role
