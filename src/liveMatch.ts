@@ -527,7 +527,7 @@ export function pairParticipants(participants: Record<string, Participant>, roun
     const first = uids[i];
     const second = uids[i + 1];
     if (!second) {
-      assignments[first] = { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...([10, 28].includes(gameId) ? { quality: randomLemonsQuality() } : {}) };
+      assignments[first] = { round, kind: 'bot', opponentAlias: BOT_ALIAS, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...(gameId === 10 ? { quality: randomLemonsQuality() } : {}) };
     } else {
       assignments[first] = { round, kind: 'student', opponentUid: second, opponentAlias: participants[second].alias, role: 'first', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...(gameId === 10 ? { quality: randomLemonsQuality() } : {}) };
       assignments[second] = { round, kind: 'student', opponentUid: first, opponentAlias: participants[first].alias, role: 'second', ...([7, 8].includes(gameId) ? { valuation: randomAuctionValue() } : {}), ...(gameId === 24 ? { valuation: randomSurveySignal() } : {}), ...(gameId === 28 ? { quality: randomLemonsQuality() } : {}) };
