@@ -6,6 +6,7 @@ export type RoomConfig = {
   phase: 'lobby' | 'playing' | 'revealed' | 'finished';
   gameId: GameId;
   step?: 'offer' | 'respond'; // Also used for Trust Game: invest, then return.
+  centipedeNode?: number; // Current live decision, 1–6; 7 means all chains ended.
   totalRounds?: number; // Absent in classes started before round limits were added.
   summaries?: Record<string, RoundSummary>; // Only rounds released to students.
 };
@@ -21,6 +22,8 @@ export type Assignment = {
 };
 export type Submission = { round: number; choice: Choice };
 export type VisibleOffer = { round: number; choice: Choice; fromBot: boolean };
+export type CentipedeDecision = { round: number; choice: 'Take' | 'Pass' };
+export type CentipedePath = { round: number; moves: Record<string, 'Take' | 'Pass'>; exitNode?: number; fallback?: boolean };
 export type MatchResult = {
   round: number;
   ownChoice: Choice;
@@ -31,6 +34,7 @@ export type MatchResult = {
   opponentKind: 'student' | 'bot' | 'group';
   fallback: boolean;
   exitNode?: number; // Centipede: 1–6 for a Take, 7 when both pass all nodes.
+  centipedeMoves?: Record<string, 'Take' | 'Pass'>;
   group?: { totalContribution: number; classmates: number; bots: number; missing: number };
 };
 export type RoundSummary = {
@@ -64,6 +68,8 @@ export type LiveRoom = {
   offers?: Record<string, VisibleOffer> | null;
   results?: Record<string, MatchResult | Record<string, MatchResult>>;
   archive?: Record<string, RoundArchive>;
+  centipedeDecisions?: Record<string, Record<string, CentipedeDecision>> | null;
+  centipedePaths?: Record<string, CentipedePath> | null;
 };
 
 export const BOT_ALIAS = 'Random bot';
@@ -120,7 +126,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], rules: 'Both choose Heads or Tails. The Matcher scores when the choices match; the Mismatcher scores when they differ.', payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
   { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], rules: 'Both choose Opera or Football. You score only if your choices match; each role prefers a different match.', payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
   { id: 19, title: 'Trust Game', options: TRUST_INVESTMENTS, rules: 'The Investor starts with 10 points and sends 0–10 to the Trustee. The amount sent triples. The Trustee then chooses how much of the tripled amount to return.', payoffs: 'Investor score = 10 − amount invested + amount returned. Trustee score = 3 × amount invested − amount returned.', roles: ['Investor', 'Trustee'] },
-  { id: 20, title: 'Centipede Game', options: ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Pass All'], rules: 'Choose a complete plan secretly before the chain starts. Player 1 moves at nodes 1, 3, and 5; Player 2 moves at nodes 2, 4, and 6. Your plan says when you would Take; before that node you Pass. If both pass all six nodes, both earn 8.', payoffs: 'Take at node 1: 2 / 0 · 2: 1 / 4 · 3: 4 / 2 · 4: 3 / 6 · 5: 6 / 4 · 6: 5 / 8 · Both Pass All: 8 / 8 (Player 1 / Player 2)', roles: ['Player 1', 'Player 2'] },
+  { id: 20, title: 'Centipede Game', options: ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Pass All'], rules: 'Player 1 moves at nodes 1, 3, and 5; Player 2 moves at nodes 2, 4, and 6. At each turn, Take ends the game and Pass gives the next turn to the other player. If both pass all six nodes, both earn 8.', payoffs: 'Take at node 1: 2 / 0 · 2: 1 / 4 · 3: 4 / 2 · 4: 3 / 6 · 5: 6 / 4 · 6: 5 / 8 · Both Pass All: 8 / 8 (Player 1 / Player 2)', roles: ['Player 1', 'Player 2'] },
   { id: 23, title: 'Colonel Blotto', options: BLOTTO_DEPLOYMENTS, rules: 'Choose how to deploy 100 troops across Fronts A, B, and C. Each number in a deployment plan is the troop count for one front. Your opponent chooses secretly.', payoffs: 'More troops wins a front. Win more fronts than your opponent: +1 point; lose more: −1 point; equal front wins: 0 points.' },
   { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], rules: 'You and the bot each choose one move without seeing the other choice. Each move beats one other move.', payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
   { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], rules: 'The Proposer offers part of a 10-point pot. The Responder sees the offer and accepts or rejects it.', payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
@@ -354,6 +360,55 @@ function resolveCentipedeResults(assignments: Record<string, Assignment>, choice
       fallback, exitNode: centipedeExitNode(first ? own : counterpart, first ? counterpart : own) };
   }
   return results;
+}
+
+// The instructor advances one node for every active pair in a single room transaction.
+// A missing student's decision is supplied by a random bot for that turn.
+export function advanceCentipede(room: LiveRoom, botMove: () => 'Take' | 'Pass' = () => Math.random() < 0.5 ? 'Take' : 'Pass'): LiveRoom | null {
+  const config = room.config;
+  if (!config || config.gameId !== 20 || config.phase !== 'playing') return null;
+  const node = config.centipedeNode || 1;
+  if (node < 1 || node > 6) return null;
+  const paths = { ...(room.centipedePaths || {}) };
+  const assignments = room.assignments || {};
+  const decisions = room.centipedeDecisions || {};
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== config.round || assignment.role !== 'first') continue;
+    const partnerUid = assignment.kind === 'student' ? assignment.opponentUid : undefined;
+    const prior = paths[uid]?.round === config.round ? paths[uid] : { round: config.round, moves: {} };
+    if (prior.exitNode) continue;
+    const actorUid = node % 2 === 1 ? uid : partnerUid;
+    const submitted = actorUid ? decisions[actorUid]?.[`n${node}`] : undefined;
+    const valid = submitted?.round === config.round && (submitted.choice === 'Take' || submitted.choice === 'Pass');
+    const move = valid ? submitted.choice : botMove();
+    const next: CentipedePath = { round: config.round, moves: { ...prior.moves, [node]: move },
+      ...(move === 'Take' || node === 6 ? { exitNode: move === 'Take' ? node : 7 } : {}),
+      ...((prior.fallback || (actorUid && !valid)) ? { fallback: true } : {}) };
+    paths[uid] = next;
+    if (partnerUid) paths[partnerUid] = next;
+  }
+  return { ...room, centipedePaths: paths, config: { ...config, centipedeNode: node + 1 } };
+}
+
+export function centipedeTurnResults(room: LiveRoom): { choices: Record<string, Submission>; results: Record<string, MatchResult> } {
+  const round = room.config?.round || 0;
+  const choices: Record<string, Submission> = {};
+  const results: Record<string, MatchResult> = {};
+  for (const [uid, assignment] of Object.entries(room.assignments || {})) {
+    const path = room.centipedePaths?.[uid];
+    if (assignment.round !== round || path?.round !== round || !path.exitNode) continue;
+    const first = assignment.role !== 'second';
+    const ownNode = Object.entries(path.moves).find(([node, move]) => Number(node) % 2 === (first ? 1 : 0) && move === 'Take')?.[0];
+    const otherNode = Object.entries(path.moves).find(([node, move]) => Number(node) % 2 === (first ? 0 : 1) && move === 'Take')?.[0];
+    const ownChoice = ownNode ? `Take at Node ${ownNode}` as Choice : 'Pass All';
+    const opponentChoice = otherNode ? `Take at Node ${otherNode}` as Choice : 'Pass All';
+    const payoffs = [[2, 0], [1, 4], [4, 2], [3, 6], [6, 4], [5, 8], [8, 8]][path.exitNode - 1];
+    const opponentKind = assignment.kind === 'student' && !path.fallback ? 'student' : 'bot';
+    choices[uid] = { round, choice: ownChoice };
+    results[uid] = { round, ownChoice, opponentChoice, ownPoints: payoffs[first ? 0 : 1], opponentPoints: payoffs[first ? 1 : 0],
+      opponentAlias: opponentKind === 'student' ? assignment.opponentAlias : BOT_ALIAS, opponentKind, fallback: Boolean(path.fallback), exitNode: path.exitNode, centipedeMoves: path.moves };
+  }
+  return { choices, results };
 }
 
 function resolvePublicGoodsResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, MatchResult> {
@@ -595,9 +650,12 @@ export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null
   const config = room.config;
   if (!config?.totalRounds || config.phase !== 'playing') return null;
   if ((config.gameId === 2 || config.gameId === 5 || config.gameId === 30 || config.gameId === 19) && config.step !== 'respond') return null;
+  if (config.gameId === 20 && config.centipedeNode && config.centipedeNode !== 7) return null;
   const round = config.round;
-  const roundResults = resolveResults(room.assignments || {}, room.choices || {}, round, config.gameId, room.offers || {});
-  const summary = summarizeRound(room.assignments || {}, room.choices || {}, roundResults, round, config.gameId);
+  const liveCentipede = config.gameId === 20 && config.centipedeNode === 7 ? centipedeTurnResults(room) : null;
+  const roundChoices = liveCentipede?.choices || room.choices || {};
+  const roundResults = liveCentipede?.results || resolveResults(room.assignments || {}, roundChoices, round, config.gameId, room.offers || {});
+  const summary = summarizeRound(room.assignments || {}, roundChoices, roundResults, round, config.gameId);
   const aliases = Object.fromEntries(Object.entries(room.participants || {}).map(([uid, participant]) => [uid, participant.alias]));
   const archive: Record<string, RoundArchive> = { ...(room.archive || {}), [round]: { summary, results: roundResults, aliases } };
   const isFinal = round >= config.totalRounds;
@@ -619,6 +677,8 @@ export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null
     assignments: isFinal || !revealNow ? null : room.assignments || null,
     choices: isFinal || !revealNow ? null : room.choices || null,
     offers: null,
+    centipedeDecisions: null,
+    centipedePaths: isFinal || !revealNow ? null : room.centipedePaths || null,
     config: {
       ...config,
       summaries: publishedSummaries,

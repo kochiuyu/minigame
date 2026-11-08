@@ -113,6 +113,31 @@
           "$uid": {
             ".read": "auth != null && auth.uid === $uid"
           }
+        },
+        "centipedePaths": {
+          ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid"
+          }
+        },
+        "centipedeDecisions": {
+          ".read": "auth != null && auth.token.email === 'kochiuyu@gmail.com' && auth.token.email_verified === true",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            "$node": {
+              ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('rooms/DOTE-3090-pairs/config/phase').val() === 'playing' && root.child('rooms/DOTE-3090-pairs/config/gameId').val() === 20 && root.child('rooms/DOTE-3090-pairs/assignments').child($uid).child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && !root.child('rooms/DOTE-3090-pairs/centipedePaths').child($uid).child('exitNode').exists() && (($node === 'n1' && root.child('rooms/DOTE-3090-pairs/config/centipedeNode').val() === 1) || ($node === 'n2' && root.child('rooms/DOTE-3090-pairs/config/centipedeNode').val() === 2) || ($node === 'n3' && root.child('rooms/DOTE-3090-pairs/config/centipedeNode').val() === 3) || ($node === 'n4' && root.child('rooms/DOTE-3090-pairs/config/centipedeNode').val() === 4) || ($node === 'n5' && root.child('rooms/DOTE-3090-pairs/config/centipedeNode').val() === 5) || ($node === 'n6' && root.child('rooms/DOTE-3090-pairs/config/centipedeNode').val() === 6)) && ((($node === 'n1' || $node === 'n3' || $node === 'n5') && root.child('rooms/DOTE-3090-pairs/assignments').child($uid).child('role').val() === 'first') || (($node === 'n2' || $node === 'n4' || $node === 'n6') && root.child('rooms/DOTE-3090-pairs/assignments').child($uid).child('role').val() === 'second'))",
+              ".validate": "newData.hasChildren(['round', 'choice']) && newData.child('round').val() === root.child('rooms/DOTE-3090-pairs/config/round').val() && (newData.child('choice').val() === 'Take' || newData.child('choice').val() === 'Pass')",
+              "round": {
+                ".validate": "newData.val() === root.child('rooms/DOTE-3090-pairs/config/round').val()"
+              },
+              "choice": {
+                ".validate": "newData.val() === 'Take' || newData.val() === 'Pass'"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
         }
       }
     }
