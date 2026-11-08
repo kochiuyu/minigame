@@ -249,7 +249,7 @@ export function FirebaseLiveClass() {
       <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5 sm:p-7">
         <p className="text-sm font-bold text-blue-300">Live Class · Room {ROOM}</p>
         <h1 className="text-2xl font-black mt-1">{config?.phase === 'finished' ? 'Class complete' : config ? game.title : 'Live Class Games'}</h1>
-        <p className="text-sm text-slate-300 mt-2">Practice against a random bot, then join a class round. The instructor randomly pairs students; an odd or late student gets a bot. If a partner does not choose, a bot takes their place when results are revealed.</p>
+        <p className="text-sm text-slate-300 mt-2">Practice against random bots, then join a class round. The instructor randomly pairs students in two-player games or makes groups of four for Public Goods. Bots fill any empty or missing seats.</p>
         {config && <p className="text-sm text-blue-200 mt-2">{game.payoffs}</p>}
       </div>
 
