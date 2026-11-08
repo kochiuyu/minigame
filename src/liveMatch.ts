@@ -1,11 +1,11 @@
-export type GameId = 1 | 12 | 13 | 15 | 17 | 18 | 29 | 30;
-export type Choice = 'Cooperate' | 'Defect' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}` | `Contribute ${number}`;
+export type GameId = 1 | 12 | 13 | 15 | 17 | 18 | 19 | 29 | 30;
+export type Choice = 'Cooperate' | 'Defect' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football' | 'Rock' | 'Paper' | 'Scissors' | 'Accept' | 'Reject' | `Offer ${number}` | `Contribute ${number}` | `Invest ${number}` | `Return ${number}`;
 export type Role = 'first' | 'second';
 export type RoomConfig = {
   round: number;
   phase: 'lobby' | 'playing' | 'revealed' | 'finished';
   gameId: GameId;
-  step?: 'offer' | 'respond';
+  step?: 'offer' | 'respond'; // Also used for Trust Game: invest, then return.
   totalRounds?: number; // Absent in classes started before round limits were added.
   summaries?: Record<string, RoundSummary>; // Only rounds released to students.
 };
@@ -45,6 +45,7 @@ export type RoundSummary = {
   fallbacks: number;
   averageContribution?: number | null;
   averagePool?: number | null;
+  averageReturn?: number | null;
   scoredStudents: number;
   totalPoints: number;
   averagePoints: number | null;
@@ -94,6 +95,7 @@ export function shuffleAliasIcon(alias: string): string {
 
 export const ULTIMATUM_OFFERS = Array.from({ length: 21 }, (_, index) => `Offer ${index / 2}` as Choice) as [Choice, Choice, ...Choice[]];
 export const PUBLIC_GOODS_CONTRIBUTIONS = Array.from({ length: 11 }, (_, index) => `Contribute ${index}` as Choice) as [Choice, Choice, ...Choice[]];
+export const TRUST_INVESTMENTS = Array.from({ length: 11 }, (_, index) => `Invest ${index}` as Choice) as [Choice, Choice, ...Choice[]];
 export const PUBLIC_GOODS_GROUP_SIZE = 4;
 
 export const LIVE_GAMES: ReadonlyArray<{
@@ -110,6 +112,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 15, title: 'Hawk–Dove', options: ['Dove', 'Hawk'], rules: 'You and the bot each choose Dove or Hawk. Hawk gains against Dove, but two Hawks both lose points.', payoffs: 'Both Dove: 3 each · Both Hawk: −10 each · Hawk against Dove: 6–0' },
   { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], rules: 'Both choose Heads or Tails. The Matcher scores when the choices match; the Mismatcher scores when they differ.', payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
   { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], rules: 'Both choose Opera or Football. You score only if your choices match; each role prefers a different match.', payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
+  { id: 19, title: 'Trust Game', options: TRUST_INVESTMENTS, rules: 'The Investor starts with 10 points and sends 0–10 to the Trustee. The amount sent triples. The Trustee then chooses how much of the tripled amount to return.', payoffs: 'Investor score = 10 − amount invested + amount returned. Trustee score = 3 × amount invested − amount returned.', roles: ['Investor', 'Trustee'] },
   { id: 29, title: 'Rock–Paper–Scissors', options: ['Rock', 'Paper', 'Scissors'], rules: 'You and the bot each choose one move without seeing the other choice. Each move beats one other move.', payoffs: 'Rock beats Scissors · Paper beats Rock · Scissors beats Paper · Winner: 2 points, loser: 0 · Tie: 1 point each' },
   { id: 30, title: 'Ultimatum Game', options: [...ULTIMATUM_OFFERS, 'Accept', 'Reject'], rules: 'The Proposer offers part of a 10-point pot. The Responder sees the offer and accepts or rejects it.', payoffs: 'Proposer offers 0–10 points from a pot of 10, in half-point steps. Responder accepts (split as offered) or rejects (both get 0).', roles: ['Proposer', 'Responder'] },
 ];
@@ -121,6 +124,22 @@ export function gameFor(id?: GameId): (typeof LIVE_GAMES)[number] {
 export function randomChoice(gameId: GameId = 1): Choice {
   const options = gameId === 30 ? ULTIMATUM_OFFERS : gameFor(gameId).options;
   return options[randomIndex(options.length)];
+}
+
+export function investAmount(choice: Choice): number | null {
+  return /^Invest (?:10|[0-9])$/.test(choice) ? Number(choice.slice(7)) : null;
+}
+
+export function returnAmount(choice: Choice): number | null {
+  return /^Return (?:30|[12][0-9]|[0-9])$/.test(choice) ? Number(choice.slice(7)) : null;
+}
+
+export function trustPoints(investment: number, returned: number): [number, number] {
+  return [10 - investment + returned, 3 * investment - returned];
+}
+
+export function randomReturn(investment: number): Choice {
+  return `Return ${randomIndex(3 * investment + 1)}`;
 }
 
 export function contributionAmount(choice: Choice): number | null {
@@ -148,6 +167,13 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
   switch (gameId) {
     case 12:
       throw new Error('Public Goods requires a four-player group pool.');
+    case 19: {
+      const investment = investAmount(role === 'first' ? own : other);
+      const returned = returnAmount(role === 'first' ? other : own);
+      if (investment === null || returned === null || returned > 3 * investment) throw new Error('Invalid Trust Game choices.');
+      const [investor, trustee] = trustPoints(investment, returned);
+      return role === 'first' ? [investor, trustee] : [trustee, investor];
+    }
     case 30: {
       const [proposer, responder] = role === 'first' ? ultimatumPoints(own, other) : ultimatumPoints(other, own);
       return role === 'first' ? [proposer, responder] : [responder, proposer];
@@ -226,6 +252,7 @@ export function resolveResults(
   offers: Record<string, VisibleOffer> = {},
 ): Record<string, MatchResult> {
   if (gameId === 12) return resolvePublicGoodsResults(assignments, choices, round);
+  if (gameId === 19) return resolveTrustResults(assignments, choices, offers, round);
   if (gameId === 30) return resolveUltimatumResults(assignments, choices, offers, round);
   const results: Record<string, MatchResult> = {};
   for (const [uid, assignment] of Object.entries(assignments)) {
@@ -290,6 +317,39 @@ export function prepareUltimatumResponses(assignments: Record<string, Assignment
   return offers;
 }
 
+export function prepareTrustResponses(assignments: Record<string, Assignment>, choices: Record<string, Submission>, round: number): Record<string, VisibleOffer> {
+  const offers: Record<string, VisibleOffer> = {};
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== round || assignment.role !== 'second') continue;
+    const investor = assignment.opponentUid && choices[assignment.opponentUid]?.round === round ? choices[assignment.opponentUid].choice : null;
+    offers[uid] = { round, choice: investor && investAmount(investor) !== null ? investor : randomChoice(19),
+      fromBot: !investor || investAmount(investor) === null };
+  }
+  return offers;
+}
+
+function resolveTrustResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, offers: Record<string, VisibleOffer>, round: number): Record<string, MatchResult> {
+  const results: Record<string, MatchResult> = {};
+  for (const [uid, assignment] of Object.entries(assignments)) {
+    if (assignment.round !== round) continue;
+    const own = choices[uid]?.round === round ? choices[uid].choice : null;
+    if (!own) continue;
+    const investor = assignment.role !== 'second';
+    const partner = assignment.opponentUid && choices[assignment.opponentUid]?.round === round ? choices[assignment.opponentUid].choice : null;
+    const investment = investor ? own : offers[uid]?.round === round ? offers[uid].choice : null;
+    if (!investment || investAmount(investment) === null) continue;
+    const validPartner = partner && returnAmount(partner) !== null && returnAmount(partner)! <= 3 * investAmount(investment)!;
+    const response = investor ? validPartner ? partner! : randomReturn(investAmount(investment)!) : own;
+    if (returnAmount(response) === null || returnAmount(response)! > 3 * investAmount(investment)!) continue;
+    const fallback = assignment.kind === 'bot' || (assignment.kind === 'student' && (investor ? !validPartner : offers[uid]?.fromBot !== false));
+    const [investorPoints, trusteePoints] = trustPoints(investAmount(investment)!, returnAmount(response)!);
+    results[uid] = { round, ownChoice: own, opponentChoice: investor ? response : investment,
+      ownPoints: investor ? investorPoints : trusteePoints, opponentPoints: investor ? trusteePoints : investorPoints,
+      opponentAlias: fallback ? BOT_ALIAS : assignment.opponentAlias, opponentKind: fallback ? 'bot' : assignment.kind, fallback };
+  }
+  return results;
+}
+
 function resolveUltimatumResults(assignments: Record<string, Assignment>, choices: Record<string, Submission>, offers: Record<string, VisibleOffer>, round: number): Record<string, MatchResult> {
   const results: Record<string, MatchResult> = {};
   for (const [uid, assignment] of Object.entries(assignments)) {
@@ -345,7 +405,8 @@ export function summarizeRound(
     count: submitted.filter(([, item]) => item.choice === option).length,
   }));
 
-  const outcomeNames = gameId === 30 ? ['Accepted', 'Rejected']
+  const outcomeNames = gameId === 19 ? ['Nothing returned', 'Some returned', 'All returned']
+    : gameId === 30 ? ['Accepted', 'Rejected']
     : gameId === 1 ? ['Both cooperate', 'Both defect', 'Different choices']
     : gameId === 13 ? ['Both hunt stag', 'Both hunt hare', 'Different choices']
     : gameId === 15 ? ['Both dove', 'Both hawk', 'Different choices']
@@ -360,7 +421,13 @@ export function summarizeRound(
     const other = results[assignment.opponentUid];
     if (own?.round !== round || other?.round !== round || own.opponentKind !== 'student' || other.opponentKind !== 'student') continue;
     studentPairs++;
-    const index = gameId === 30 ? (own.ownChoice === 'Reject' || other.ownChoice === 'Reject' ? 1 : 0)
+    const index = gameId === 19 ? (() => {
+      const investor = assignment.role === 'first' ? own : other;
+      const trustee = assignment.role === 'second' ? own : other;
+      const invested = investAmount(investor.ownChoice) || 0;
+      const returned = returnAmount(trustee.ownChoice) || 0;
+      return returned === 0 ? 0 : returned === invested * 3 ? 2 : 1;
+    })() : gameId === 30 ? (own.ownChoice === 'Reject' || other.ownChoice === 'Reject' ? 1 : 0)
       : gameId === 29 ? rpsOutcomeIndex(own.ownChoice, other.ownChoice)
       : gameId === 17 ? (own.ownChoice === other.ownChoice ? 0 : 1)
       : own.ownChoice === other.ownChoice ? (own.ownChoice === game.options[0] ? 0 : 1) : 2;
@@ -372,7 +439,9 @@ export function summarizeRound(
   const totalPoints = finished.reduce((total, [, item]) => total + item.ownPoints, 0);
   const scoredStudents = finished.length;
   const averagePoints = scoredStudents ? totalPoints / scoredStudents : null;
-  return { round, gameId, submitted: submitted.length, choiceCounts, studentPairs, outcomes, botMatches, fallbacks, scoredStudents, totalPoints, averagePoints };
+  const trustReturns = submitted.flatMap(([, item]) => returnAmount(item.choice) === null ? [] : [returnAmount(item.choice)!]);
+  return { round, gameId, submitted: submitted.length, choiceCounts, studentPairs, outcomes, botMatches, fallbacks, scoredStudents, totalPoints, averagePoints,
+    ...(gameId === 19 ? { averageReturn: trustReturns.length ? trustReturns.reduce((sum, value) => sum + value, 0) / trustReturns.length : null } : {}) };
 }
 
 function summarizePublicGoodsRound(assignments: Record<string, Assignment>, choices: Record<string, Submission>, results: Record<string, MatchResult>, round: number): RoundSummary {
@@ -406,7 +475,7 @@ function summarizePublicGoodsRound(assignments: Record<string, Assignment>, choi
 export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null {
   const config = room.config;
   if (!config?.totalRounds || config.phase !== 'playing') return null;
-  if (config.gameId === 30 && config.step !== 'respond') return null;
+  if ((config.gameId === 30 || config.gameId === 19) && config.step !== 'respond') return null;
   const round = config.round;
   const roundResults = resolveResults(room.assignments || {}, room.choices || {}, round, config.gameId, room.offers || {});
   const summary = summarizeRound(room.assignments || {}, room.choices || {}, roundResults, round, config.gameId);
@@ -487,8 +556,10 @@ export function summarizePerson(summaries: RoundSummary[], results: Record<strin
       rounds: gameRounds.length,
       played: gameResults.length,
       averagePoints: gameResults.length ? totalPoints / gameResults.length : null,
-      choices: game.options.map(option => {
-        const chosen = gameResults.filter(item => item.ownChoice === option);
+      choices: (game.id === 19 ? ['Invested', 'Returned'] : game.options).map(option => {
+        const chosen = gameResults.filter(item => game.id === 19
+          ? option === 'Invested' ? investAmount(item.ownChoice) !== null : returnAmount(item.ownChoice) !== null
+          : item.ownChoice === option);
         return {
           label: option,
           count: chosen.length,
