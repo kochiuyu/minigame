@@ -122,7 +122,7 @@ export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, ce
       <p>At return {returned}: Investor {10 - investment + returned} / Trustee {investment * 3 - returned}</p>
     </div>;
   }
-  if (gameId !== 30) {
+  if (gameId !== 16 && gameId !== 30) {
     const game = gameFor(gameId);
     return <div data-game-diagram="matrix" className="space-y-2 border-t border-slate-700 pt-3">
       <h3 className="font-bold text-slate-100">Payoff matrix</h3>
@@ -180,4 +180,3 @@ export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, ce
     </div>
   </div>;
 }
-
