@@ -1,7 +1,13 @@
 export type GameId = 1 | 13 | 15 | 17 | 18;
 export type Choice = 'Cooperate' | 'Defect' | 'Hunt Stag' | 'Hunt Hare' | 'Dove' | 'Hawk' | 'Heads' | 'Tails' | 'Opera' | 'Football';
 export type Role = 'first' | 'second';
-export type RoomConfig = { round: number; phase: 'lobby' | 'playing' | 'revealed'; gameId: GameId };
+export type RoomConfig = {
+  round: number;
+  phase: 'lobby' | 'playing' | 'revealed' | 'finished';
+  gameId: GameId;
+  totalRounds?: number; // Absent in classes started before round limits were added.
+  summaries?: Record<string, RoundSummary>; // Only rounds released to students.
+};
 export type Participant = { alias: string };
 export type Assignment = {
   round: number;
@@ -20,6 +26,32 @@ export type MatchResult = {
   opponentAlias: string;
   opponentKind: 'student' | 'bot';
   fallback: boolean;
+};
+export type RoundSummary = {
+  round: number;
+  gameId: GameId;
+  submitted: number;
+  choiceCounts: Array<{ label: Choice; count: number }>;
+  studentPairs: number;
+  outcomes: Array<{ label: string; count: number }>;
+  botMatches: number;
+  fallbacks: number;
+  scoredStudents: number;
+  totalPoints: number;
+  averagePoints: number | null;
+};
+export type RoundArchive = {
+  summary: RoundSummary;
+  results: Record<string, MatchResult>;
+  aliases: Record<string, string>;
+};
+export type LiveRoom = {
+  config?: RoomConfig;
+  participants?: Record<string, Participant>;
+  assignments?: Record<string, Assignment> | null;
+  choices?: Record<string, Submission> | null;
+  results?: Record<string, MatchResult | Record<string, MatchResult>>;
+  archive?: Record<string, RoundArchive>;
 };
 
 export const BOT_ALIAS = 'Random bot';
@@ -170,8 +202,70 @@ export function summarizeRound(
 
   const botMatches = finished.filter(([, item]) => item.opponentKind === 'bot').length;
   const fallbacks = finished.filter(([, item]) => item.fallback).length;
-  const averagePoints = finished.length
-    ? finished.reduce((total, [, item]) => total + item.ownPoints, 0) / finished.length
-    : null;
-  return { submitted: submitted.length, choiceCounts, studentPairs, outcomes, botMatches, fallbacks, averagePoints };
+  const totalPoints = finished.reduce((total, [, item]) => total + item.ownPoints, 0);
+  const scoredStudents = finished.length;
+  const averagePoints = scoredStudents ? totalPoints / scoredStudents : null;
+  return { round, gameId, submitted: submitted.length, choiceCounts, studentPairs, outcomes, botMatches, fallbacks, scoredStudents, totalPoints, averagePoints };
+}
+
+export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null {
+  const config = room.config;
+  if (!config?.totalRounds || config.phase !== 'playing') return null;
+  const round = config.round;
+  const roundResults = resolveResults(room.assignments || {}, room.choices || {}, round, config.gameId);
+  const summary = summarizeRound(room.assignments || {}, room.choices || {}, roundResults, round, config.gameId);
+  const aliases = Object.fromEntries(Object.entries(room.participants || {}).map(([uid, participant]) => [uid, participant.alias]));
+  const archive: Record<string, RoundArchive> = { ...(room.archive || {}), [round]: { summary, results: roundResults, aliases } };
+  const isFinal = round >= config.totalRounds;
+  const publishedResults = { ...(room.results || {}) } as Record<string, Record<string, MatchResult>>;
+  const publishedSummaries = { ...(config.summaries || {}) };
+
+  for (const [number, saved] of Object.entries(archive)) {
+    if (!isFinal && (!revealNow || number !== String(round))) continue;
+    publishedSummaries[number] = saved.summary;
+    for (const [uid, result] of Object.entries(saved.results || {})) {
+      publishedResults[uid] = { ...(publishedResults[uid] || {}), [number]: result };
+    }
+  }
+
+  return {
+    ...room,
+    archive,
+    results: publishedResults,
+    assignments: isFinal || !revealNow ? null : room.assignments || null,
+    choices: isFinal || !revealNow ? null : room.choices || null,
+    config: {
+      ...config,
+      summaries: publishedSummaries,
+      phase: isFinal ? 'finished' : revealNow ? 'revealed' : 'lobby',
+      round: isFinal || revealNow ? round : round + 1,
+    },
+  };
+}
+
+export function summarizeClass(summaries: RoundSummary[]) {
+  const byGame = LIVE_GAMES.map(game => {
+    const rounds = summaries.filter(item => item.gameId === game.id);
+    const scoredStudents = rounds.reduce((total, item) => total + item.scoredStudents, 0);
+    const totalPoints = rounds.reduce((total, item) => total + item.totalPoints, 0);
+    return {
+      gameId: game.id,
+      rounds: rounds.length,
+      submitted: rounds.reduce((total, item) => total + item.submitted, 0),
+      studentPairs: rounds.reduce((total, item) => total + item.studentPairs, 0),
+      botMatches: rounds.reduce((total, item) => total + item.botMatches, 0),
+      choiceCounts: game.options.map(option => ({
+        label: option,
+        count: rounds.reduce((total, item) => total + (item.choiceCounts.find(choice => choice.label === option)?.count || 0), 0),
+      })),
+      averagePoints: scoredStudents ? totalPoints / scoredStudents : null,
+    };
+  }).filter(item => item.rounds > 0);
+  return {
+    rounds: summaries.length,
+    submitted: summaries.reduce((total, item) => total + item.submitted, 0),
+    studentPairs: summaries.reduce((total, item) => total + item.studentPairs, 0),
+    botMatches: summaries.reduce((total, item) => total + item.botMatches, 0),
+    byGame,
+  };
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LIVE_GAMES, pairParticipants, pointsFor, randomChoice, resolveResults, submissionProgress, summarizeRound } from '../src/liveMatch.ts';
+import { LIVE_GAMES, finishRound, pairParticipants, pointsFor, randomChoice, resolveResults, submissionProgress, summarizeClass, summarizeRound } from '../src/liveMatch.ts';
 
 const cases = [
   [1, [[2, 2], [0, 3], [3, 0], [1, 1]]],
@@ -105,4 +105,93 @@ test('post-reveal summary counts student pairs once and separates bot fallbacks'
   const pennies = summarizeRound(assignments, { a: { round: 1, choice: 'Heads' }, b: { round: 1, choice: 'Tails' } },
     { a: { round: 1, ownChoice: 'Heads', ownPoints: 0, opponentKind: 'student' }, b: { round: 1, ownChoice: 'Tails', ownPoints: 2, opponentKind: 'student' } }, 1, 17);
   assert.deepEqual(pennies.outcomes, [{ label: 'Matching choices', count: 0 }, { label: 'Different choices', count: 1 }]);
+});
+
+test('hidden rounds stay private until the final round publishes every result', () => {
+  const students = { a: { alias: 'A' }, b: { alias: 'B' } };
+  const first = {
+    config: { round: 1, totalRounds: 2, phase: 'playing', gameId: 1 },
+    participants: students,
+    assignments: {
+      a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+      b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    },
+    choices: { a: { round: 1, choice: 'Cooperate' }, b: { round: 1, choice: 'Defect' } },
+  };
+  const hidden = finishRound(first, false);
+  assert.equal(hidden.config.phase, 'lobby');
+  assert.equal(hidden.config.round, 2);
+  assert.equal(hidden.config.summaries[1], undefined);
+  assert.equal(hidden.results.a, undefined);
+  assert.equal(hidden.archive[1].summary.submitted, 2);
+  assert.equal(hidden.assignments, null);
+  assert.equal(hidden.choices, null);
+
+  const second = finishRound({ ...hidden,
+    config: { ...hidden.config, phase: 'playing', gameId: 13 },
+    assignments: {
+      a: { round: 2, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+      b: { round: 2, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    },
+    choices: { a: { round: 2, choice: 'Hunt Stag' }, b: { round: 2, choice: 'Hunt Stag' } },
+  }, false);
+  assert.equal(second.config.phase, 'finished');
+  assert.deepEqual(Object.keys(second.config.summaries).sort(), ['1', '2']);
+  assert.deepEqual(Object.keys(second.results.a).sort(), ['1', '2']);
+  assert.equal(second.results.a[1].ownPoints, 0);
+  assert.equal(second.results.a[2].ownPoints, 10);
+  assert.equal(second.archive[1].aliases.a, 'A');
+});
+
+test('a revealed round publishes only that round before class completion', () => {
+  const room = {
+    config: { round: 1, totalRounds: 3, phase: 'playing', gameId: 17 },
+    participants: { a: { alias: 'A' }, b: { alias: 'B' } },
+    assignments: {
+      a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+      b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+    },
+    choices: { a: { round: 1, choice: 'Heads' }, b: { round: 1, choice: 'Tails' } },
+  };
+  const revealed = finishRound(room, true);
+  assert.equal(revealed.config.phase, 'revealed');
+  assert.equal(revealed.config.round, 1);
+  assert.equal(revealed.config.summaries[1].outcomes[1].count, 1);
+  assert.equal(revealed.results.a[1].ownPoints, 0);
+  assert.equal(revealed.results.b[1].ownPoints, 2);
+  assert.equal(finishRound(revealed, true), null);
+  assert.equal(finishRound({ ...room, config: { round: 1, phase: 'playing', gameId: 17 } }, true), null);
+});
+
+test('final analysis groups games and weights scores by submitted results', () => {
+  const rounds = [
+    { gameId: 1, submitted: 2, studentPairs: 1, botMatches: 0, scoredStudents: 2, totalPoints: 4, choiceCounts: [{ label: 'Cooperate', count: 2 }, { label: 'Defect', count: 0 }] },
+    { gameId: 1, submitted: 1, studentPairs: 0, botMatches: 1, scoredStudents: 1, totalPoints: 3, choiceCounts: [{ label: 'Cooperate', count: 0 }, { label: 'Defect', count: 1 }] },
+    { gameId: 13, submitted: 2, studentPairs: 1, botMatches: 0, scoredStudents: 2, totalPoints: 20, choiceCounts: [{ label: 'Hunt Stag', count: 2 }, { label: 'Hunt Hare', count: 0 }] },
+  ];
+  const total = summarizeClass(rounds);
+  assert.deepEqual([total.rounds, total.submitted, total.studentPairs, total.botMatches], [3, 5, 2, 1]);
+  assert.deepEqual(total.byGame.map(item => [item.gameId, item.averagePoints]), [[1, 7 / 3], [13, 10]]);
+  assert.deepEqual(total.byGame[0].choiceCounts, [{ label: 'Cooperate', count: 2 }, { label: 'Defect', count: 1 }]);
+});
+
+test('a round with no choices can be skipped and does not break final release', () => {
+  const empty = finishRound({
+    config: { round: 1, totalRounds: 2, phase: 'playing', gameId: 1 },
+    participants: { a: { alias: 'A' } },
+    assignments: { a: { round: 1, kind: 'bot', opponentAlias: 'Random bot', role: 'first' } },
+  }, false);
+  assert.equal(empty.archive[1].summary.averagePoints, null);
+  const saved = { ...empty.archive[1] };
+  delete saved.results; // Empty objects are omitted when Firebase reads the archive back.
+  const done = finishRound({
+    ...empty,
+    archive: { 1: saved },
+    config: { ...empty.config, phase: 'playing' },
+    assignments: { a: { round: 2, kind: 'bot', opponentAlias: 'Random bot', role: 'first' } },
+    choices: { a: { round: 2, choice: 'Defect' } },
+  }, true);
+  assert.equal(done.config.phase, 'finished');
+  assert.equal(done.config.summaries[1].submitted, 0);
+  assert.equal(done.results.a[2].round, 2);
 });
