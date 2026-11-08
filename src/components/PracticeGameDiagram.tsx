@@ -1,8 +1,8 @@
-import { auctionBid, auctionPayoff, firstPriceAuctionPayoff, blottoAllocation, contributionAmount, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, trawlerAmount } from '../liveMatch';
+import { auctionBid, auctionPayoff, firstPriceAuctionPayoff, blottoAllocation, contributionAmount, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, signalingPoints, trawlerAmount } from '../liveMatch';
 import type { Choice, GameId, PracticeCentipedePath, Role } from '../liveMatch';
 import { CentipedeTree } from './CentipedeTree';
 
-type PracticeResult = { ownChoice: Choice; botChoice: Choice | null; groupTotal?: number } | null;
+type PracticeResult = { ownChoice: Choice; botChoice: Choice | null; groupTotal?: number; signaling?: { quality: 'High' | 'Low'; signal: boolean; trusted: boolean } } | null;
 
 type Props = {
   gameId: GameId;
@@ -47,6 +47,17 @@ export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, ce
   if (gameId === 20) {
     return <CentipedeTree currentNode={centipedePath?.exitNode ? undefined : centipedePath?.node || 1} moves={centipedePath?.moves} exitNode={centipedePath?.exitNode} />;
   }
+  if (gameId === 10) return <div data-game-diagram="signaling" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
+    <h3 className="font-bold text-slate-100">How signaling scores</h3>
+    <p>Quality is private to the seller. A signal costs 1 point for High quality and 3 for Low quality. The buyer sees the signal, then decides whether to trust.</p>
+    <div className="overflow-x-auto"><table className="w-full text-left"><thead><tr><th>Quality</th><th>Signal</th><th>Buyer</th><th>Seller / Buyer</th></tr></thead><tbody>
+      {(['High', 'Low'] as const).flatMap(quality => (['Signal', 'No Signal'] as const).flatMap(signal => (['Trust', 'Do Not Trust'] as const).map(response => {
+        const [seller, buyer] = signalingPoints(quality, signal, response);
+        const played = result?.signaling?.quality === quality && result.signaling.signal === (signal === 'Signal') && result.signaling.trusted === (response === 'Trust');
+        return <tr key={`${quality}-${signal}-${response}`} className={played ? 'font-bold text-emerald-300' : ''}><td>{quality}</td><td>{signal}</td><td>{response}</td><td>{seller} / {buyer}</td></tr>;
+      }))) }
+    </tbody></table></div>
+  </div>;
   if (gameId === 2 || gameId === 5) {
     const first = role === 'first' ? choice : botOffer;
     const second = role === 'second' ? choice : result?.botChoice;
@@ -160,3 +171,4 @@ export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, ce
     </div>
   </div>;
 }
+
