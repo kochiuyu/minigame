@@ -21,6 +21,7 @@ function errorText(error: unknown): string {
 
 export function FirebaseLiveClass() {
   const leavingRef = useRef(false);
+  const practiceResultRef = useRef<HTMLDivElement>(null);
   const [user, setUser] = useState<User | null>(null);
   const [alias, setAlias] = useState(() => sessionStorage.getItem('liveAlias') || '');
   const [config, setConfig] = useState<RoomConfig | null>(null);
@@ -61,6 +62,10 @@ export function FirebaseLiveClass() {
   const game = gameFor(config?.gameId);
   const practiceGame = gameFor(practiceGameId);
   const practiceCentipedeScore = practiceCentipede.exitNode ? practiceCentipedePoints(practiceCentipede.exitNode, practiceRole) : null;
+
+  useEffect(() => {
+    if (practiceResult) practiceResultRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+  }, [practiceResult]);
 
   useEffect(() => setChoice(game.options[0]), [game.id]);
   useEffect(() => {
@@ -703,8 +708,10 @@ export function FirebaseLiveClass() {
         </details>}
       {!instructor && <details className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
         <summary className="cursor-pointer text-lg font-bold">Practice with a random bot <span className="ml-2 text-sm font-normal text-slate-300">Private · does not count toward class</span></summary>
-        <div className="mt-4 space-y-3">
-        <LiveGamePicker id="practice-game" label="Practice game" value={practiceGameId} onChange={id => {
+        <div className="mt-5 space-y-4">
+        <div className="space-y-3">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-blue-300">1 · Choose a game</h3>
+        <LiveGamePicker id="practice-game" label="Practice game" value={practiceGameId} searchable onChange={id => {
           setPracticeGameId(id);
           setPracticeChoice(gameFor(id).options[0]);
           setPracticeRole('first');
@@ -733,6 +740,9 @@ export function FirebaseLiveClass() {
             {practiceGameId !== 20 && <PracticeGameDiagram gameId={practiceGameId} choice={practiceChoice} role={practiceRole} botOffer={practiceBotOffer} result={practiceResult} centipedePath={practiceCentipede} valuation={practiceValuation} />}
           </div>
         </details>
+        </div>
+        <div className="space-y-4 rounded-xl border border-slate-700 bg-slate-950/50 p-4">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-blue-300">2 · Make your move</h3>
         {([2, 5, 10, 16, 19, 20, 28, 30] as number[]).includes(practiceGameId) ? <label className="block text-sm font-bold">Practice role
           <select value={practiceRole} onChange={event => { const role = event.target.value as 'first' | 'second'; setPracticeRole(role); setPracticeChoice(practiceGameId === 2 ? role === 'first' ? 'Launch' : 'Enter' : practiceGameId === 5 ? role === 'first' ? 'Commit' : 'Enter' : practiceGameId === 10 ? role === 'first' ? 'Signal' : 'Trust' : practiceGameId === 28 ? role === 'first' ? 'Offer 5000' : 'Reject' : practiceGameId === 19 ? role === 'first' ? 'Invest 5' : 'Return 0' : practiceGameId === 20 ? role === 'first' ? CENTIPEDE_FIRST[0] : CENTIPEDE_SECOND[0] : role === 'first' ? 'Offer 5' : 'Accept'); setPracticeBotOffer(randomChoice(practiceGameId)); setPracticeResult(null); if (practiceGameId === 20) setPracticeCentipede(advancePracticeCentipede({ node: 1, moves: {} }, role)); }} className="mt-2 w-full rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
             <option value="first">{practiceGameId === 28 ? 'Buyer' : practiceGameId === 2 ? 'First Mover' : practiceGameId === 5 ? 'Incumbent' : practiceGameId === 10 ? 'Seller' : practiceGameId === 19 ? 'Investor' : practiceGameId === 20 ? 'Player 1' : 'Proposer'}</option><option value="second">{practiceGameId === 28 ? 'Seller' : practiceGameId === 2 ? 'Second Mover' : practiceGameId === 5 ? 'Rival' : practiceGameId === 10 ? 'Buyer' : practiceGameId === 19 ? 'Trustee' : practiceGameId === 20 ? 'Player 2' : 'Responder'}</option>
@@ -809,25 +819,28 @@ export function FirebaseLiveClass() {
           <label htmlFor="practice-offer" className="block font-semibold">Offer to bot: {offerAmount(practiceChoice) ?? 0} of 10 points</label>
           <input id="practice-offer" type="range" min="0" max="10" step="0.5" value={offerAmount(practiceChoice) ?? 0} onChange={event => { setPracticeChoice(`Offer ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
           <p className="text-sm text-slate-300">If accepted, you keep {10 - (offerAmount(practiceChoice) ?? 0)} points.</p>
-        </div> : <fieldset className="flex flex-wrap gap-5">
-          <legend className="sr-only">Practice choice</legend>
+        </div> : <fieldset className="grid gap-2 sm:grid-cols-2">
+          <legend className="mb-2 text-sm font-semibold">Your choice</legend>
           {(practiceGameId === 2 || practiceGameId === 5 ? practiceRole === 'first' ? practiceGameId === 2 ? ['Launch', 'Wait'] as const : ['Commit', 'Stay Flexible'] as const : ['Enter', 'Stay Out'] as const : practiceGameId === 10 ? practiceRole === 'first' ? ['Signal', 'No Signal'] as const : ['Trust', 'Do Not Trust'] as const : (practiceGameId === 16 || practiceGameId === 30 || practiceGameId === 28) ? ['Accept', 'Reject'] as const : practiceGame.options).map(option => (
-            <label key={option} className="flex gap-2 items-center">
-              <input type="radio" name="practice-choice" checked={practiceChoice === option} onChange={() => setPracticeChoice(option)} />{option}
+            <label key={option} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 font-semibold transition-colors ${practiceChoice === option ? 'border-blue-400 bg-blue-950/70 text-white' : 'border-slate-600 bg-slate-900 text-slate-200 hover:border-slate-400'}`}>
+              <input type="radio" name="practice-choice" checked={practiceChoice === option} onChange={() => { setPracticeChoice(option); setPracticeResult(null); }} className="accent-blue-500" />{option}
             </label>
           ))}
         </fieldset>}
         {practiceGameId === 6 && practiceRepeatedTurns.length > 0 && <div className="text-sm space-y-1"><p>Turn {practiceRepeatedTurns.length} of 5 · Your total {practiceRepeatedTurns.reduce((sum, item) => sum + item.ownPoints, 0)} · Bot total {practiceRepeatedTurns.reduce((sum, item) => sum + item.otherPoints, 0)}</p>
           <ol>{practiceRepeatedTurns.map((item, index) => <li key={index}>Turn {index + 1}: You {item.own}, bot {item.other} · {item.ownPoints} / {item.otherPoints}</li>)}</ol></div>}
-        {practiceGameId === 20 ? null : practiceGameId === 6 && practiceRepeatedTurns.length === 5 ? <button onClick={() => { setPracticeRepeatedTurns([]); setPracticeResult(null); }} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">New five-turn match</button>
-          : <button onClick={playBot} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">{practiceGameId === 6 ? `Play turn ${practiceRepeatedTurns.length + 1} of 5` : 'Play random bot'}</button>}
-        {practiceResult && (practiceGameId === 7 || practiceGameId === 8) && <p role="status">You bid {auctionBid(practiceResult.ownChoice)}; the bot bid {auctionBid(practiceResult.botChoice || 'Bid 0')}. {((practiceGameId === 8 ? firstPriceAuctionPayoff : auctionPayoff)(auctionBid(practiceResult.ownChoice) ?? 0, auctionBid(practiceResult.botChoice || 'Bid 0') ?? 0, practiceValuation, true)).won ? `You won and paid ${practiceGameId === 8 ? auctionBid(practiceResult.ownChoice) : auctionBid(practiceResult.botChoice || 'Bid 0')}.` : 'The bot won.'} Your score: {practiceResult.points} {practiceResult.points === 1 ? 'point' : 'points'}.</p>}
-        {practiceResult?.commonValue && <p role="status">Your signal was {practiceResult.commonValue.signal}; the bot's signal was {practiceResult.commonValue.otherSignal}. You bid {commonValueBid(practiceResult.ownChoice)}; the bot bid {commonValueBid(practiceResult.botChoice || 'Bid 10')}. True value was {practiceResult.commonValue.trueValue}. {practiceResult.commonValue.won ? 'You won.' : 'The bot won.'} Your profit: ${practiceResult.points}.</p>}
-        {practiceResult && practiceGameId === 25 && <p role="status">You bid ${(dollarAuctionBid(practiceResult.ownChoice) ?? 0).toFixed(2)}; the bot bid ${(dollarAuctionBid(practiceResult.botChoice || 'Bid 0.1') ?? 0).toFixed(2)}. {dollarAuctionBid(practiceResult.ownChoice)! >= dollarAuctionBid(practiceResult.botChoice || 'Bid 0.1')! ? 'You won the $1 bill.' : 'The bot won the $1 bill.'} Your net score: ${practiceResult.points.toFixed(2)}.</p>}
-        {practiceResult && practiceGameId === 26 && <p role="status">You claimed ${travelerClaim(practiceResult.ownChoice)}; the bot claimed ${travelerClaim(practiceResult.botChoice || 'Claim 2')}. {practiceResult.ownChoice === practiceResult.botChoice ? 'Claims matched.' : (travelerClaim(practiceResult.ownChoice) ?? 2) < (travelerClaim(practiceResult.botChoice || 'Claim 2') ?? 2) ? 'Your lower claim earned the $2 bonus.' : 'Your higher claim incurred the $2 penalty.'} You received ${practiceResult.points}.</p>}
-        {practiceResult?.lemons && <p role="status">{practiceRole === 'first' ? `You offered $${practiceResult.lemons.offer}; the bot seller's car was ${practiceResult.lemons.quality} quality.` : `The bot offered $${practiceResult.lemons.offer} for your ${practiceResult.lemons.quality}-quality car.`} {practiceResult.lemons.accepted ? 'Sale accepted.' : 'No sale.'} Your profit: ${practiceResult.points}.</p>}
-        {practiceResult?.beauty && <p role="status">You guessed {guessAmount(practiceResult.ownChoice)}; bots guessed {practiceResult.beauty.botGuesses.join(', ')}. Class average {practiceResult.beauty.average.toFixed(2)}; target {practiceResult.beauty.target.toFixed(2)}. You were {practiceResult.beauty.winner ? 'closest' : 'not closest'} and earned {practiceResult.points} {practiceResult.points === 1 ? 'point' : 'points'}.</p>}
-        {practiceResult && practiceGameId !== 7 && practiceGameId !== 8 && practiceGameId !== 11 && practiceGameId !== 24 && practiceGameId !== 25 && practiceGameId !== 26 && practiceGameId !== 28 && <p role="status">{practiceGameId === 10
+        {practiceGameId === 20 ? null : practiceGameId === 6 && practiceRepeatedTurns.length === 5 ? <button onClick={() => { setPracticeRepeatedTurns([]); setPracticeResult(null); }} className="w-full rounded-lg bg-blue-600 px-4 py-3 font-bold hover:bg-blue-500 sm:w-auto">New five-turn match</button>
+          : <button onClick={playBot} className="w-full rounded-lg bg-blue-600 px-4 py-3 font-bold hover:bg-blue-500 sm:w-auto">{practiceGameId === 6 ? `Play turn ${practiceRepeatedTurns.length + 1} of 5` : practiceResult ? 'Play another bot round' : 'Play bot round'}</button>}
+        </div>
+        {practiceResult && <div id="practice-result" ref={practiceResultRef} role="status" className="space-y-2 rounded-xl border border-emerald-700 bg-emerald-950/40 p-4">
+          <h3 className="font-bold text-emerald-200">3 · {practiceGameId === 6 ? 'Turn result' : 'Practice result'}</h3>
+        {practiceResult && (practiceGameId === 7 || practiceGameId === 8) && <p>You bid {auctionBid(practiceResult.ownChoice)}; the bot bid {auctionBid(practiceResult.botChoice || 'Bid 0')}. {((practiceGameId === 8 ? firstPriceAuctionPayoff : auctionPayoff)(auctionBid(practiceResult.ownChoice) ?? 0, auctionBid(practiceResult.botChoice || 'Bid 0') ?? 0, practiceValuation, true)).won ? `You won and paid ${practiceGameId === 8 ? auctionBid(practiceResult.ownChoice) : auctionBid(practiceResult.botChoice || 'Bid 0')}.` : 'The bot won.'} Your score: {practiceResult.points} {practiceResult.points === 1 ? 'point' : 'points'}.</p>}
+        {practiceResult?.commonValue && <p>Your signal was {practiceResult.commonValue.signal}; the bot's signal was {practiceResult.commonValue.otherSignal}. You bid {commonValueBid(practiceResult.ownChoice)}; the bot bid {commonValueBid(practiceResult.botChoice || 'Bid 10')}. True value was {practiceResult.commonValue.trueValue}. {practiceResult.commonValue.won ? 'You won.' : 'The bot won.'} Your profit: ${practiceResult.points}.</p>}
+        {practiceResult && practiceGameId === 25 && <p>You bid ${(dollarAuctionBid(practiceResult.ownChoice) ?? 0).toFixed(2)}; the bot bid ${(dollarAuctionBid(practiceResult.botChoice || 'Bid 0.1') ?? 0).toFixed(2)}. {dollarAuctionBid(practiceResult.ownChoice)! >= dollarAuctionBid(practiceResult.botChoice || 'Bid 0.1')! ? 'You won the $1 bill.' : 'The bot won the $1 bill.'} Your net score: ${practiceResult.points.toFixed(2)}.</p>}
+        {practiceResult && practiceGameId === 26 && <p>You claimed ${travelerClaim(practiceResult.ownChoice)}; the bot claimed ${travelerClaim(practiceResult.botChoice || 'Claim 2')}. {practiceResult.ownChoice === practiceResult.botChoice ? 'Claims matched.' : (travelerClaim(practiceResult.ownChoice) ?? 2) < (travelerClaim(practiceResult.botChoice || 'Claim 2') ?? 2) ? 'Your lower claim earned the $2 bonus.' : 'Your higher claim incurred the $2 penalty.'} You received ${practiceResult.points}.</p>}
+        {practiceResult?.lemons && <p>{practiceRole === 'first' ? `You offered $${practiceResult.lemons.offer}; the bot seller's car was ${practiceResult.lemons.quality} quality.` : `The bot offered $${practiceResult.lemons.offer} for your ${practiceResult.lemons.quality}-quality car.`} {practiceResult.lemons.accepted ? 'Sale accepted.' : 'No sale.'} Your profit: ${practiceResult.points}.</p>}
+        {practiceResult?.beauty && <p>You guessed {guessAmount(practiceResult.ownChoice)}; bots guessed {practiceResult.beauty.botGuesses.join(', ')}. Class average {practiceResult.beauty.average.toFixed(2)}; target {practiceResult.beauty.target.toFixed(2)}. You were {practiceResult.beauty.winner ? 'closest' : 'not closest'} and earned {practiceResult.points} {practiceResult.points === 1 ? 'point' : 'points'}.</p>}
+        {practiceResult && practiceGameId !== 7 && practiceGameId !== 8 && practiceGameId !== 11 && practiceGameId !== 24 && practiceGameId !== 25 && practiceGameId !== 26 && practiceGameId !== 28 && <p>{practiceGameId === 10
           ? `Product quality was ${practiceResult.signaling?.quality}. Seller chose ${practiceResult.signaling?.signal ? 'Signal' : 'No Signal'}; buyer chose ${practiceResult.signaling?.trusted ? 'Trust' : 'Do Not Trust'}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
           : practiceGameId === 9
           ? `You demanded ${demandAmount(practiceResult.ownChoice)}; the bot demanded ${demandAmount(practiceResult.botChoice || 'Demand 0')}. ${((demandAmount(practiceResult.ownChoice) ?? 0) + (demandAmount(practiceResult.botChoice || 'Demand 0') ?? 0)) <= 10 ? 'Deal reached.' : 'Deal failed; both take the 1-point outside option.'} You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
@@ -842,6 +855,7 @@ export function FirebaseLiveClass() {
           : practiceGameId === 12
           ? `You contributed ${contributionAmount(practiceResult.ownChoice) ?? 0}; the three bots contributed ${practiceResult.botContributions?.join(', ')}. The group pool was ${practiceResult.groupTotal}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
           : `You chose ${practiceResult.ownChoice}; the bot chose ${practiceResult.botChoice}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`}</p>}
+        </div>}
         </div>
       </details>}
 
