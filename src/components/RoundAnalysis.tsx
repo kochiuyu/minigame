@@ -54,6 +54,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
         </tbody>
       </table> : <p className="text-sm text-slate-300">No personal result is available for this round.</p>}
       {personal?.exitNode && <p className="mt-2 text-sm text-blue-200">{personal.exitNode === 7 ? 'Both players passed all six nodes.' : `The chain ended with Take at Node ${personal.exitNode}.`}</p>}
+      {personal?.auction && <p className="mt-2 text-sm text-blue-200">Your private value: {personal.auction.valuation}. {personal.auction.won ? `You won at the second price of ${personal.auction.price}.` : `${personal.opponentAlias} won at the second price of ${personal.auction.price}.`} Your profit: {personal.ownPoints}.</p>}
       {personal?.centipedeMoves && <div className="mt-3"><CentipedeTree moves={personal.centipedeMoves} exitNode={personal.exitNode} /></div>}
       {personal?.centipedeMoves && <p className="mt-2 text-sm text-slate-300">“Pass All” in the table means this player did not Take before the chain ended.</p>}
       {personal?.repeatedTurns && <div className="mt-3 overflow-x-auto"><table className="w-full text-sm text-left"><caption className="text-left font-semibold mb-1">Your five turns</caption><thead><tr><th>Turn</th><th>You</th><th>Opponent</th><th>Points</th></tr></thead><tbody>{Object.entries(personal.repeatedTurns).map(([turn, item]) => <tr key={turn}><td>{turn}</td><td>{item.own}</td><td>{item.other}{item.bot ? ' (bot filled a choice)' : ''}</td><td>{item.ownPoints} / {item.otherPoints}</td></tr>)}</tbody></table></div>}
@@ -69,7 +70,7 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
           .map(uid => [uid, archive.aliases?.[uid] || 'Student who left'] as const)
           .sort((a, b) => a[1].localeCompare(b[1])).map(([uid, alias]) => {
           const result = archive.results?.[uid];
-          return <tr key={uid} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{alias}</th><td className="pr-2">{result?.repeatedTurns ? Object.entries(result.repeatedTurns).map(([turn, item]) => `${turn}: ${item.own}`).join(' · ') : result?.ownChoice || 'No choice'}</td><td className="pr-2">{summary.gameId === 12 ? result?.group?.totalContribution ?? '—' : result?.opponentAlias || '—'}</td><td>{result?.ownPoints ?? '—'}</td></tr>;
+          return <tr key={uid} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{alias}</th><td className="pr-2">{result?.repeatedTurns ? Object.entries(result.repeatedTurns).map(([turn, item]) => `${turn}: ${item.own}`).join(' · ') : result?.ownChoice || 'No choice'}{result?.auction ? ` (value ${result.auction.valuation}; ${result.auction.won ? `won, paid ${result.auction.price}` : 'lost'})` : ''}</td><td className="pr-2">{summary.gameId === 12 ? result?.group?.totalContribution ?? '—' : result?.opponentAlias || '—'}</td><td>{result?.ownPoints ?? '—'}</td></tr>;
         })}</tbody>
       </table>
     </div>}
@@ -124,7 +125,7 @@ function PersonAnalysis({ analysis, title }: { analysis: ReturnType<typeof summa
         <tbody>{analysis.rounds.map(item => <tr key={item.round} className="border-b border-slate-800">
           <th scope="row" className="py-2 pr-2 font-normal">{item.round}</th>
           <td className="pr-2">{gameFor(item.gameId).title}</td>
-          <td className="pr-2">{item.result?.repeatedTurns ? Object.entries(item.result.repeatedTurns).map(([turn, move]) => `${turn}: ${move.own}`).join(' · ') : item.result?.ownChoice || 'No choice'}</td>
+          <td className="pr-2">{item.result?.repeatedTurns ? Object.entries(item.result.repeatedTurns).map(([turn, move]) => `${turn}: ${move.own}`).join(' · ') : item.result?.ownChoice || 'No choice'}{item.result?.auction ? ` (value ${item.result.auction.valuation}; ${item.result.auction.won ? `won, paid ${item.result.auction.price}` : 'lost'})` : ''}</td>
           <td className="pr-2">{item.result?.group ? `Group pool ${item.result.group.totalContribution} (${item.result.group.bots} bots)`
             : item.result ? `${item.result.opponentAlias} (${item.result.opponentChoice})${item.result.exitNode ? ` · ${item.result.exitNode === 7 ? 'Both passed' : `Ended at Node ${item.result.exitNode}`}` : ''}` : '—'}</td>
           <td>{item.result?.ownPoints ?? '—'}</td>
