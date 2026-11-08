@@ -1,4 +1,4 @@
-import { auctionBid, auctionPayoff, firstPriceAuctionPayoff, bertrandPrice, blottoAllocation, contributionAmount, cournotQuantity, hotellingLocation, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, signalingPoints, trawlerAmount } from '../liveMatch';
+import { auctionBid, auctionPayoff, firstPriceAuctionPayoff, bertrandPrice, blottoAllocation, contributionAmount, cournotQuantity, dollarAuctionBid, hotellingLocation, fisheryPoints, gameFor, investAmount, offerAmount, pointsFor, publicGoodsPoints, returnAmount, signalingPoints, trawlerAmount } from '../liveMatch';
 import type { Choice, GameId, PracticeCentipedePath, Role } from '../liveMatch';
 import { CentipedeTree } from './CentipedeTree';
 
@@ -15,6 +15,16 @@ type Props = {
 };
 
 export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, centipedePath, valuation }: Props) {
+  if (gameId === 25) {
+    const own = dollarAuctionBid(result?.ownChoice || choice);
+    const bot = result?.botChoice ? dollarAuctionBid(result.botChoice) : null;
+    return <div data-game-diagram="dollar-auction" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
+      <h3 className="font-bold text-slate-100">How the dollar auction scores</h3>
+      <p>The higher bid wins a $1 bill, but both bidders pay their bids. A tie goes to you in bot practice.</p>
+      <p>Winner profit = $1 minus winning bid; loser profit = negative losing bid. Bidding above $1 can make even the winner lose money.</p>
+      {own !== null && bot !== null && <p>You bid ${own.toFixed(2)}; the bot bid ${bot.toFixed(2)}. Your net profit: ${pointsFor(25, result!.ownChoice, result!.botChoice!, 'first')[0].toFixed(2)}.</p>}
+    </div>;
+  }
   if (gameId === 24) return <div data-game-diagram="common-value" className="space-y-2 border-t border-slate-700 pt-3 text-sm">
     <h3 className="font-bold text-slate-100">How the oil lease auction scores</h3>
     <p>Your survey and the rival's survey are private estimates of one shared lease value. Their average becomes the true value after bidding. The highest bidder pays their own bid; a tied bid goes to the first bidder.</p>
@@ -204,4 +214,3 @@ export function PracticeGameDiagram({ gameId, choice, role, botOffer, result, ce
     </div>
   </div>;
 }
-
