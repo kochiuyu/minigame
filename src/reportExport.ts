@@ -11,6 +11,7 @@ const HEADER = [
   'Product quality', 'Seller signaled', 'Buyer trusted',
   'Market price', 'Combined output', 'Own beach location', 'Rival beach location', 'Beach market share',
   'Private survey signal', 'Rival survey signal', 'Common true value', 'Won common-value auction',
+  'Own dollar bid', 'Rival dollar bid', 'Won dollar auction',
 ];
 
 function csvCell(value: ReportRow[number]): string {
@@ -42,6 +43,10 @@ function resultRow(round: number, game: string, alias: string, result?: MatchRes
     result?.ownChoice.startsWith('Location ') ? result.ownPoints : '',
     result?.commonValue?.signal, result?.commonValue?.otherSignal, result?.commonValue?.trueValue,
     result?.commonValue ? (result.commonValue.won ? 'Yes' : 'No') : '',
+    game === 'Escalating Dollar Auction' && result?.ownChoice ? Number(result.ownChoice.slice(4)) : '',
+    game === 'Escalating Dollar Auction' && result?.opponentChoice ? Number(result.opponentChoice.slice(4)) : '',
+    game === 'Escalating Dollar Auction' && result?.opponentChoice
+      ? result.ownPoints + Number(result.ownChoice.slice(4)) > 0 ? 'Yes' : 'No' : '',
   ];
 }
 
@@ -79,4 +84,3 @@ export function buildReportCsv(gameTitle: (id: GameId) => string, summaries: Rou
   }
   return '\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
-

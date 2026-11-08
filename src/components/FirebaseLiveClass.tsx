@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPrice, commonValueBid, commonValueOutcome, cournotQuantity, hotellingLocation, centipedeTurnResults, classParticipants, contributionAmount, demandAmount, finishRound, gameFor, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomAuctionValue, randomSurveySignal, randomBeautyGuess, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeRound, trawlerAmount,
+  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPrice, commonValueBid, commonValueOutcome, dollarAuctionBid, cournotQuantity, hotellingLocation, centipedeTurnResults, classParticipants, contributionAmount, demandAmount, finishRound, gameFor, groupParticipants, guessAmount, investAmount, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomAuctionValue, randomSurveySignal, randomBeautyGuess, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeRound, trawlerAmount,
 } from '../liveMatch';
 import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, PracticeCentipedePath, RepeatedPath, RepeatedTurn, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
@@ -488,6 +488,10 @@ export function FirebaseLiveClass() {
         </div> : practiceGameId === 24 ? <div className="space-y-2">
           <label htmlFor="practice-common-bid" className="block font-semibold">Your sealed bid: ${commonValueBid(practiceChoice) ?? 10}</label>
           <input id="practice-common-bid" type="range" min="10" max="90" step="1" value={commonValueBid(practiceChoice) ?? 10} onChange={event => { setPracticeChoice(`Bid ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
+        </div> : practiceGameId === 25 ? <div className="space-y-2">
+          <label htmlFor="practice-dollar-bid" className="block font-semibold">Your sealed bid: ${(dollarAuctionBid(practiceChoice) ?? 0.1).toFixed(2)}</label>
+          <input id="practice-dollar-bid" type="range" min="1" max="25" step="1" value={Math.round((dollarAuctionBid(practiceChoice) ?? 0.1) * 10)} onChange={event => { setPracticeChoice(`Bid ${(Number(event.target.value) / 10).toFixed(1)}` as Choice); setPracticeResult(null); }} className="w-full accent-blue-500" />
+          <p className="text-sm text-slate-300">Both bidders pay their bids, including the loser.</p>
         </div> : practiceGameId === 14 ? <div className="space-y-2">
           <label htmlFor="practice-price" className="block font-semibold">Your price: ${bertrandPrice(practiceChoice) ?? 10}</label>
           <input id="practice-price" type="range" min="10" max="50" step="1" value={bertrandPrice(practiceChoice) ?? 10} onChange={event => { setPracticeChoice(`Price ${Number(event.target.value)}`); setPracticeResult(null); }} className="w-full accent-blue-500" />
@@ -529,8 +533,9 @@ export function FirebaseLiveClass() {
           : <button onClick={playBot} className="rounded-lg bg-slate-700 px-4 py-2 font-bold">{practiceGameId === 6 ? `Play turn ${practiceRepeatedTurns.length + 1} of 5` : 'Play random bot'}</button>}
         {practiceResult && (practiceGameId === 7 || practiceGameId === 8) && <p role="status">You bid {auctionBid(practiceResult.ownChoice)}; the bot bid {auctionBid(practiceResult.botChoice || 'Bid 0')}. {((practiceGameId === 8 ? firstPriceAuctionPayoff : auctionPayoff)(auctionBid(practiceResult.ownChoice) ?? 0, auctionBid(practiceResult.botChoice || 'Bid 0') ?? 0, practiceValuation, true)).won ? `You won and paid ${practiceGameId === 8 ? auctionBid(practiceResult.ownChoice) : auctionBid(practiceResult.botChoice || 'Bid 0')}.` : 'The bot won.'} Your score: {practiceResult.points} {practiceResult.points === 1 ? 'point' : 'points'}.</p>}
         {practiceResult?.commonValue && <p role="status">Your signal was {practiceResult.commonValue.signal}; the bot's signal was {practiceResult.commonValue.otherSignal}. You bid {commonValueBid(practiceResult.ownChoice)}; the bot bid {commonValueBid(practiceResult.botChoice || 'Bid 10')}. True value was {practiceResult.commonValue.trueValue}. {practiceResult.commonValue.won ? 'You won.' : 'The bot won.'} Your profit: ${practiceResult.points}.</p>}
+        {practiceResult && practiceGameId === 25 && <p role="status">You bid ${(dollarAuctionBid(practiceResult.ownChoice) ?? 0).toFixed(2)}; the bot bid ${(dollarAuctionBid(practiceResult.botChoice || 'Bid 0.1') ?? 0).toFixed(2)}. {dollarAuctionBid(practiceResult.ownChoice)! >= dollarAuctionBid(practiceResult.botChoice || 'Bid 0.1')! ? 'You won the $1 bill.' : 'The bot won the $1 bill.'} Your net score: ${practiceResult.points.toFixed(2)}.</p>}
         {practiceResult?.beauty && <p role="status">You guessed {guessAmount(practiceResult.ownChoice)}; bots guessed {practiceResult.beauty.botGuesses.join(', ')}. Class average {practiceResult.beauty.average.toFixed(2)}; target {practiceResult.beauty.target.toFixed(2)}. You were {practiceResult.beauty.winner ? 'closest' : 'not closest'} and earned {practiceResult.points} {practiceResult.points === 1 ? 'point' : 'points'}.</p>}
-        {practiceResult && practiceGameId !== 7 && practiceGameId !== 8 && practiceGameId !== 11 && practiceGameId !== 24 && <p role="status">{practiceGameId === 10
+        {practiceResult && practiceGameId !== 7 && practiceGameId !== 8 && practiceGameId !== 11 && practiceGameId !== 24 && practiceGameId !== 25 && <p role="status">{practiceGameId === 10
           ? `Product quality was ${practiceResult.signaling?.quality}. Seller chose ${practiceResult.signaling?.signal ? 'Signal' : 'No Signal'}; buyer chose ${practiceResult.signaling?.trusted ? 'Trust' : 'Do Not Trust'}. You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
           : practiceGameId === 9
           ? `You demanded ${demandAmount(practiceResult.ownChoice)}; the bot demanded ${demandAmount(practiceResult.botChoice || 'Demand 0')}. ${((demandAmount(practiceResult.ownChoice) ?? 0) + (demandAmount(practiceResult.botChoice || 'Demand 0') ?? 0)) <= 10 ? 'Deal reached.' : 'Deal failed; both take the 1-point outside option.'} You earned ${practiceResult.points} ${practiceResult.points === 1 ? 'point' : 'points'}.`
@@ -754,6 +759,10 @@ export function FirebaseLiveClass() {
               </div> : game.id === 24 ? <div className="space-y-2">
                 <label htmlFor="live-common-bid" className="block font-semibold">Your private bid: ${commonValueBid(choice) ?? 10}</label>
                 <input id="live-common-bid" type="range" min="10" max="90" step="1" value={commonValueBid(choice) ?? 10} onChange={event => setChoice(`Bid ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
+              </div> : game.id === 25 ? <div className="space-y-2">
+                <label htmlFor="live-dollar-bid" className="block font-semibold">Your private bid: ${(dollarAuctionBid(choice) ?? 0.1).toFixed(2)}</label>
+                <input id="live-dollar-bid" type="range" min="1" max="25" step="1" value={Math.round((dollarAuctionBid(choice) ?? 0.1) * 10)} onChange={event => setChoice(`Bid ${(Number(event.target.value) / 10).toFixed(1)}` as Choice)} className="w-full accent-blue-500" />
+                <p className="text-sm text-slate-300">Your rival's bid stays hidden. Both bidders pay their bids.</p>
               </div> : game.id === 14 ? <div className="space-y-2">
                 <label htmlFor="live-price" className="block font-semibold">Your private price: ${bertrandPrice(choice) ?? 10}</label>
                 <input id="live-price" type="range" min="10" max="50" step="1" value={bertrandPrice(choice) ?? 10} onChange={event => setChoice(`Price ${Number(event.target.value)}`)} className="w-full accent-blue-500" />
@@ -801,4 +810,3 @@ export function FirebaseLiveClass() {
     </section>
   );
 }
-
