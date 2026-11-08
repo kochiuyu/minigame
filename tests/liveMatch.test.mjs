@@ -473,6 +473,24 @@ test('ultimatum response step shares the offer, handles missing players, and arc
   assert.equal(finished.results.b[1].ownPoints, 3);
 });
 
+test('Ultimatum Bargaining follows curriculum rules for both roles and reports', () => {
+  const game = LIVE_GAMES.find(item => item.id === 16);
+  assert.equal(game.title, 'Ultimatum Bargaining');
+  assert.equal(randomChoice(16).startsWith('Offer '), true);
+  assert.deepEqual(pointsFor(16, 'Offer 2.5', 'Accept', 'first'), [7.5, 2.5]);
+  assert.deepEqual(pointsFor(16, 'Reject', 'Offer 2.5', 'second'), [0, 0]);
+  const assignments = {
+    a: { round: 1, kind: 'student', opponentUid: 'b', opponentAlias: 'B', role: 'first' },
+    b: { round: 1, kind: 'student', opponentUid: 'a', opponentAlias: 'A', role: 'second' },
+  };
+  const choices = { a: { round: 1, choice: 'Offer 2.5' }, b: { round: 1, choice: 'Accept' } };
+  const offers = prepareUltimatumResponses(assignments, choices, 1);
+  const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', step: 'respond', gameId: 16 },
+    participants: { a: { alias: 'A' }, b: { alias: 'B' } }, assignments, choices, offers }, true);
+  assert.deepEqual([finished.results.a[1].ownPoints, finished.results.b[1].ownPoints], [7.5, 2.5]);
+  assert.deepEqual(finished.config.summaries[1].outcomes, [{ label: 'Accepted', count: 1 }, { label: 'Rejected', count: 0 }]);
+});
+
 const cases = [
   [1, [[2, 2], [0, 3], [3, 0], [1, 1]]],
   [13, [[10, 10], [0, 4], [4, 0], [4, 4]]],
@@ -896,4 +914,3 @@ test('students can generate a short emoji alias and change its icon before joini
   }
   assert.ok(shuffleAliasIcon('A'.repeat(30)).length <= 30);
 });
-
