@@ -1784,21 +1784,25 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       );
 
       const isBest = counterfactual.isBestResponse;
-      const nextStreak = isBest ? masteryStreak + 1 : 0;
-      saveMasteryStreak(nextStreak);
+      if (!counterfactual.comparisonAvailable) {
+        setGameCompletionToast({ visible: false, message: '', isBestResponse: false, streak: masteryStreak });
+      } else {
+        const nextStreak = isBest ? masteryStreak + 1 : 0;
+        saveMasteryStreak(nextStreak);
 
-      const toastMessage = isBest
-        ? (nextStreak > 1
-            ? `Streak ${nextStreak}: you found the best response!`
-            : `Streak 1: you found the best response!`)
-        : `Streak reset: you scored ${formatSignedPayoffShort(playerPayoff, isDollarGame)} · Best response was ${counterfactual.bestActionLabel}`;
+        const toastMessage = isBest
+          ? (nextStreak > 1
+              ? `Streak ${nextStreak}: you found the best response!`
+              : `Streak 1: you found the best response!`)
+          : `Streak reset: you scored ${formatSignedPayoffShort(playerPayoff, isDollarGame)} · Best response was ${counterfactual.bestActionLabel}`;
 
-      setGameCompletionToast({
-        visible: true,
-        message: toastMessage,
-        isBestResponse: isBest,
-        streak: nextStreak
-      });
+        setGameCompletionToast({
+          visible: true,
+          message: toastMessage,
+          isBestResponse: isBest,
+          streak: nextStreak
+        });
+      }
     }
 
     // Automatically transition to Step 3: Result & Key Takeaway
@@ -5592,7 +5596,12 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                         </div>
 
                         {/* 3. The Counterfactual Comparison Card */}
-                        <div
+                        {!counterfactual.comparisonAvailable ? (
+                          <div className="rounded-2xl border border-sky-500/40 bg-sky-950/30 p-4 text-sky-100">
+                            <p className="font-bold">Why no alternative score?</p>
+                            <p className="mt-1 text-sm">{counterfactual.takeaway}</p>
+                          </div>
+                        ) : <div
                           className={`p-4 sm:p-5 rounded-2xl border transition-all shadow-md space-y-3 ${
                             counterfactual.isBestResponse
                               ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-100'
@@ -5685,7 +5694,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                             <span className="shrink-0 text-base sm:text-lg mt-0.5">💬</span>
                             <p>{counterfactual.takeaway}</p>
                           </div>
-                        </div>
+                        </div>}
 
                         {/* Primary Large Action Buttons */}
                         <div className="pt-1 space-y-3">
