@@ -15,7 +15,6 @@ import { SequentialVisualizer } from './SequentialVisualizer';
 import { getGameStory, getGameQuickChips } from '../data/gameStories';
 import { computeWhatYouCouldHaveGot } from '../utils/counterfactualEngine';
 import { getGameTakeawaySentence } from '../data/curriculumOrder';
-import { SoloRpsChallenge } from './SoloRpsChallenge';
 
 export interface SoloLabRoundHistoryEntry extends RoundHistoryEntry {
   botRationale: string;
@@ -3376,8 +3375,6 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
           )}
         </div>
       )}
-
-      <SoloRpsChallenge />
 
       {/* Main Game Arena / Debrief Section */}
       <div ref={arenaRef} className="scroll-mt-4">
