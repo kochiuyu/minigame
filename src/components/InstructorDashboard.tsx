@@ -25,7 +25,7 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({
   onSetTotalRounds
 }) => {
   const [activeTab, setActiveTab] = useState<InstructorTab>('results');
-  const [roomCode] = useState('DOTE-3090');
+  const [roomCode] = useState('CLASSROOM');
   const [isSessionActive, setIsSessionActive] = useState(true);
   const [instructorTrueValue, setInstructorTrueValue] = useState('14');
   const [broadcastMessage, setBroadcastMessage] = useState('');
@@ -311,7 +311,7 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `DOTE3090_Trial${trialSeed}_Auction_Round${currentRound}.csv`);
+      link.setAttribute("download", `GameTheory_Trial${trialSeed}_Auction_Round${currentRound}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -326,7 +326,7 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `DOTE3090_Gradebook_Trial${trialSeed}_Round${currentRound}.csv`);
+      link.setAttribute("download", `GameTheory_Gradebook_Trial${trialSeed}_Round${currentRound}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -641,7 +641,7 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({
                 ● Live Classroom Projector
               </span>
               <span>·</span>
-              <span>DOTE 3090 Game Theory</span>
+              <span>Game Theory Lab</span>
               <span>·</span>
               <span className="text-slate-300 font-bold">Room: {roomCode}</span>
               <span>·</span>
@@ -846,7 +846,7 @@ export const InstructorDashboard: React.FC<InstructorDashboardProps> = ({
 
         {/* Projector Footer Strip */}
         <div className="pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-          <span>DOTE 3090 Classroom Economics Laboratory · Live Debrief Mode</span>
+          <span>Game Theory Lab · Live Debrief Mode</span>
           <span className="font-mono text-slate-400">Trial #{trialSeed} · Room PIN: {roomCode}</span>
         </div>
       </div>
