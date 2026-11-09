@@ -31,7 +31,7 @@ export function SoloRpsChallenge() {
       <button type="button" onClick={play} className="w-full rounded-lg bg-blue-600 px-4 py-3 font-bold hover:bg-blue-500 sm:w-auto">Play bot round</button>
       {latest && <div role="status" className="space-y-1 rounded-xl border border-emerald-700 bg-emerald-950/40 p-4">
         <p className="font-bold">{latest.ownPoints === latest.botPoints ? 'Tie' : latest.ownPoints > latest.botPoints ? 'You win' : 'Bot wins'}</p>
-        <p>You chose {latest.own}; the bot chose {latest.bot}. You earned {latest.ownPoints} points; the bot earned {latest.botPoints}.</p>
+        <p>You chose {latest.own}; the bot chose {latest.bot}. You earned {latest.ownPoints} {latest.ownPoints === 1 ? 'point' : 'points'}; the bot earned {latest.botPoints} {latest.botPoints === 1 ? 'point' : 'points'}.</p>
         <p className="text-sm text-slate-300">After {rounds.length} {rounds.length === 1 ? 'round' : 'rounds'}: you {ownTotal} · bot {botTotal} points.</p>
       </div>}
       <p className="text-sm text-slate-300">Strategy: mix your three moves so another player cannot predict you. Against this random bot, each move has the same expected score.</p>
