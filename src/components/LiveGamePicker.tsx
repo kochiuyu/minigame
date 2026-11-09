@@ -18,7 +18,7 @@ const sections: ReadonlyArray<{ label: string; ids: readonly GameId[] }> = CURRI
   ids: tier.entries.map(entry => entry.internalId as GameId),
 }));
 const groupedIds = new Set(sections.flatMap(section => section.ids));
-const otherGames = LIVE_GAMES.filter(game => !groupedIds.has(game.id));
+const otherGames = LIVE_GAMES.filter(game => !groupedIds.has(game.id) && game.id !== 30);
 
 function formatFor(id: GameId): string {
   if (id === 11) return 'Whole class · one private guess each';
@@ -31,7 +31,7 @@ function formatFor(id: GameId): string {
 
 export function LiveGamePicker({ id, label, value, onChange, disabled = false, showFormat = false, searchable = false }: LiveGamePickerProps) {
   const [query, setQuery] = useState('');
-  const matches = query.trim() ? LIVE_GAMES.filter(game => game.title.toLowerCase().includes(query.trim().toLowerCase()))
+  const matches = query.trim() ? LIVE_GAMES.filter(game => game.id !== 30 && game.title.toLowerCase().includes(query.trim().toLowerCase()))
     .sort((a, b) => a.title.localeCompare(b.title)).slice(0, 8) : [];
   return <div className="space-y-2">
     <label htmlFor={id} className="block text-sm font-bold">{label}</label>
@@ -56,6 +56,7 @@ export function LiveGamePicker({ id, label, value, onChange, disabled = false, s
       {otherGames.length > 0 && <optgroup label="Additional Live Class games">
         {otherGames.sort((a, b) => a.title.localeCompare(b.title)).map(game => <option key={game.id} value={game.id}>{game.title}</option>)}
       </optgroup>}
+      {value === 30 && <option value={30}>Ultimatum Game (previous class)</option>}
     </select>
     {showFormat && <p className="text-sm text-slate-300">{formatFor(value)}</p>}
   </div>;
