@@ -1938,10 +1938,10 @@ export const CENTIPEDE_BOTS: GameSpecificBot[] = [
   {
     id: 'always_defect_centipede',
     gameId: 20,
-    name: 'Zero (Always Defect)',
+    name: 'Zero (Always Takes)',
     avatar: '🛑',
-    title: 'Subgame Perfect Defector',
-    tagline: 'Always takes at the very first opportunity. Pure backward induction with zero trust.',
+    title: 'Takes at First Chance',
+    tagline: 'Zero chooses Take whenever it gets a turn, ending the game.',
     strategySummary: 'Always takes the pot at the first opportunity (Node 2, 4, or 6). Executes strict backward induction (SPNE) with zero trust extended.',
     backstory: 'Guided by textbook non-cooperative game theory. Zero assumes that in the subgame perfect Nash equilibrium (SPNE), any rational opponent will eventually Take. Therefore, Zero preemptively Takes at Node 2 (or any node he reaches) to lock in the larger payoff before you can defect.',
     color: 'text-rose-400',
@@ -1954,9 +1954,9 @@ export const CENTIPEDE_BOTS: GameSpecificBot[] = [
     ],
     getAnticipationThought: (_round, history) => {
       if (history.length > 0 && history[history.length - 1].playerAction === 'Take') {
-        return "You took early last match. My backward induction logic was fully vindicated: taking immediately is the only rational choice.";
+        return "You took early last match. I will Take as soon as I get a turn.";
       }
-      return "Subgame Perfect Nash Equilibrium (SPNE) mandates taking at my very first node. I will never pass control to you.";
+      return "If the turn reaches me, I will Take and end the game.";
     },
     decide: ({ currentNode = 2 }) => {
       const node = currentNode || 2;
