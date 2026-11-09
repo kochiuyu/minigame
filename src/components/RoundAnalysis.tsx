@@ -25,6 +25,9 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
         ? `${summary.submitted} contributed · ${summary.studentGroups || 0} groups · ${summary.botSeats || 0} bot seats${summary.fallbacks ? ` (${summary.fallbacks} filled for missing students)` : ''} · Average contribution ${score(summary.averageContribution)} · Average pool ${score(summary.averagePool)}`
         : `${summary.submitted} ${summary.gameId === 20 || summary.gameId === 6 ? 'played' : 'submitted'} · ${summary.studentPairs} completed student pairs · ${summary.botMatches} bot matches${summary.fallbacks ? ` · ${summary.fallbacks} bot fallbacks` : ''}${summary.gameId === 19 ? ` · Average return ${score(summary.averageReturn)}` : ''}`} · Average student score {score(summary.averagePoints)}</p>
     </div>
+    <details className="rounded-lg border border-slate-700">
+      <summary className="cursor-pointer px-3 py-2 font-semibold">Choice chart and outcomes</summary>
+      <div className="space-y-4 border-t border-slate-700 p-3">
     <div>
       <h4 className="font-semibold mb-2">{summary.gameId === 11 ? 'Guess distribution' : summary.gameId === 26 ? 'Claim distribution ($)' : summary.gameId === 28 ? 'Offers and seller responses' : summary.gameId === 12 ? 'Student contributions' : summary.gameId === 19 ? 'Student investments' : 'Student choices'}</h4>
       <div className="space-y-2" role="img" aria-label={summary.choiceCounts.map(item => `${item.label}: ${item.count}`).join(', ')}>
@@ -43,6 +46,8 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
       </table>
       <p className="mt-2 text-xs text-slate-400">{summary.gameId === 11 ? 'Only submitted guesses determine the average and target.' : summary.gameId === 12 ? 'Each group has four seats; bots fill unoccupied or missing seats.' : summary.gameId === 6 ? 'Outcomes count each of the five turns in completed student pairs; bot matches are separate.' : 'Bot matches are counted separately from student pairs.'}</p>
     </div>
+      </div>
+    </details>
     {studentView && <div className="border-t border-slate-700 pt-3">
       <h4 className="font-semibold">Your result</h4>
       {personal?.beauty ? <div className="mt-2 space-y-1 text-sm text-slate-300">
@@ -71,7 +76,9 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
         ? `${personal.group.missing} group member${personal.group.missing === 1 ? '' : 's'} did not contribute, so random bots filled those seats.`
         : summary.gameId === 20 || summary.gameId === 6 ? 'A random bot filled a missed turn.' : 'Your partner did not submit, so a random bot took their place.'}</p>}
     </div>}
-    {archive && <div className="border-t border-slate-700 pt-3 overflow-x-auto">
+    {archive && <details className="rounded-lg border border-slate-700">
+      <summary className="cursor-pointer px-3 py-2 font-semibold">Student results · {Object.keys(archive.aliases || {}).length} students</summary>
+      <div className="border-t border-slate-700 p-3 overflow-x-auto">
       <table className="w-full text-left text-sm">
         <caption className="text-left font-semibold mb-2">Student results</caption>
         <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-2">Alias</th><th scope="col" className="py-2 pr-2">Choice</th><th scope="col" className="py-2 pr-2">{summary.gameId === 11 ? 'Distance to target' : summary.gameId === 12 ? 'Group pool' : 'Opponent'}</th><th scope="col" className="py-2">Points</th></tr></thead>
@@ -82,7 +89,8 @@ export function RoundAnalysis({ summary, personal, archive, studentView = false 
           return <tr key={uid} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{alias}</th><td className="pr-2">{result?.repeatedTurns ? Object.entries(result.repeatedTurns).map(([turn, item]) => `${turn}: ${item.own}`).join(' · ') : result?.ownChoice || 'No choice'}{result?.auction ? ` (value ${result.auction.valuation}; ${result.auction.won ? `won, paid ${result.auction.price}` : 'lost'})` : ''}{result?.commonValue ? ` (survey ${result.commonValue.signal}; true value ${result.commonValue.trueValue}; ${result.commonValue.won ? 'won' : 'lost'})` : ''}{result?.signaling ? ` (quality ${result.signaling.quality})` : ''}{result?.lemons ? ` (${result.lemons.quality} quality; ${result.lemons.accepted ? 'sold' : 'no sale'})` : ''}</td><td className="pr-2">{summary.gameId === 11 ? score(result?.beauty?.distance) : summary.gameId === 12 ? result?.group?.totalContribution ?? '—' : result?.opponentAlias || '—'}</td><td>{result?.ownPoints ?? '—'}</td></tr>;
         })}</tbody>
       </table>
-    </div>}
+      </div>
+    </details>}
   </div>;
 }
 
@@ -154,6 +162,8 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
   const reportRef = useRef<HTMLDivElement>(null);
   const classSummary = summarizeClass(summaries);
   const people = archives ? summarizePeople(summaries, archives) : [];
+  const ownAnalysis = studentView ? summarizePerson(summaries, personalResults) : null;
+  const latestOwnResult = ownAnalysis?.rounds.slice().reverse().find(item => item.result);
   const maximumSubmitted = Math.max(1, ...summaries.map(item => item.submitted));
   function downloadCsv() {
     const content = buildReportCsv(id => gameFor(id).title, summaries, studentView ? undefined : archives,
@@ -175,19 +185,27 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
     window.print();
   }
   return <div id="live-final-report" ref={reportRef} className="space-y-4">
+    <div className="rounded-xl border border-blue-700 bg-blue-950/30 p-4 space-y-2">
+      <h2 className="text-xl font-bold">{studentView ? 'Your class report' : 'Class report'}</h2>
+      <p className="text-sm text-slate-300">{classSummary.rounds} rounds · {classSummary.byGame.length} games · {classSummary.submitted} submissions</p>
+      <div className="grid grid-cols-3 gap-2">
+        <p className="rounded-lg bg-slate-950/50 p-2"><strong className="block text-xl">{classSummary.studentPairs}</strong><span className="text-xs">Student pairs</span></p>
+        <p className="rounded-lg bg-slate-950/50 p-2"><strong className="block text-xl">{classSummary.botMatches}</strong><span className="text-xs">Bot matches</span></p>
+        <p className="rounded-lg bg-slate-950/50 p-2"><strong className="block text-xl">{classSummary.studentGroups}</strong><span className="text-xs">Groups</span></p>
+      </div>
+      <p className="text-xs text-slate-400">Scores are compared within each game because games use different point scales.</p>
+    </div>
+    {ownAnalysis && <details className="rounded-xl border border-blue-700 bg-blue-950/20">
+      <summary className="cursor-pointer p-4 font-semibold">Your results · {ownAnalysis.played}/{summaries.length} rounds{latestOwnResult?.result ? ` · Latest: ${latestOwnResult.result.ownPoints} points (round ${latestOwnResult.round})` : ''}</summary>
+      <div className="border-t border-blue-700 p-4"><PersonAnalysis analysis={ownAnalysis} title="Your analysis across all rounds" /></div>
+    </details>}
     <div className="report-export-controls flex flex-wrap gap-3 rounded-xl border border-blue-700 bg-blue-950/30 p-4">
       <button type="button" onClick={printReport} className="rounded-lg bg-blue-600 px-4 py-2 font-bold">Print / Save PDF</button>
       <button type="button" onClick={downloadCsv} className="rounded-lg border border-blue-400 px-4 py-2 font-bold">Download results CSV</button>
-      <p className="w-full text-sm text-slate-300">Save a PDF with charts or a spreadsheet with round results before the class data is cleared.</p>
     </div>
-    <div className="rounded-xl border border-blue-700 bg-blue-950/30 p-4 space-y-2">
-      <h2 className="text-xl font-bold">{studentView ? 'Class results and your analysis' : 'Class results and analysis'}</h2>
-      <p>{classSummary.rounds} rounds · {classSummary.submitted} submissions · {classSummary.studentPairs} completed student pairs{classSummary.studentGroups ? ` · ${classSummary.studentGroups} groups` : ''}{summaries.some(item => item.gameId === 11) ? ` · ${summaries.filter(item => item.gameId === 11).length} classwide rounds` : ''} · {classSummary.botMatches} bot matches{classSummary.botSeats ? ` · ${classSummary.botSeats} bot seats` : ''}</p>
-      <p className="text-sm text-slate-300">The full class report is available now that all rounds are over. Scores are averaged within each game because games use different payoff scales.</p>
-    </div>
-    {studentView && <div className="rounded-xl border border-blue-700 bg-blue-950/20 p-4">
-      <PersonAnalysis analysis={summarizePerson(summaries, personalResults)} title="Your analysis across all rounds" />
-    </div>}
+    <details className="rounded-xl border border-slate-700 bg-slate-950/70">
+      <summary className="cursor-pointer p-4 font-semibold">Participation and choice charts</summary>
+      <div className="border-t border-slate-700 p-4 space-y-4">
     <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4 space-y-4">
       <div>
         <h3 className="font-semibold mb-2">All-round participation</h3>
@@ -219,30 +237,45 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
         </div>
       </div>
     </div>
-    <div className="overflow-x-auto">
+      </div>
+    </details>
+    <details className="rounded-xl border border-slate-700 bg-slate-950/70">
+      <summary className="cursor-pointer p-4 font-semibold">Results by game · {classSummary.byGame.length} games</summary>
+      <div className="border-t border-slate-700 p-4 overflow-x-auto">
       <table className="w-full text-left text-sm">
         <caption className="text-left font-semibold mb-2">Results by game</caption>
         <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-2">Game</th><th scope="col" className="py-2 pr-2">Rounds</th><th scope="col" className="py-2 pr-2">Choices</th><th scope="col" className="py-2 pr-2">Pairs / groups</th><th scope="col" className="py-2 pr-2">Bots</th><th scope="col" className="py-2">Average score</th></tr></thead>
         <tbody>{classSummary.byGame.map(item => <tr key={item.gameId} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{gameFor(item.gameId).title}</th><td className="pr-2">{item.rounds}</td><td className="pr-2">{item.choiceCounts.map(choice => `${choice.label} ${choice.count}`).join(' · ')}</td><td className="pr-2">{item.gameId === 11 ? 'Classwide' : item.gameId === 12 ? `${item.studentGroups} groups` : `${item.studentPairs} pairs`}</td><td className="pr-2">{item.gameId === 11 ? '—' : item.gameId === 12 ? `${item.botSeats} seats` : `${item.botMatches} matches`}</td><td>{score(item.averagePoints)}</td></tr>)}</tbody>
       </table>
-    </div>
-    <div className="overflow-x-auto">
+      </div>
+    </details>
+    <details className="rounded-xl border border-slate-700 bg-slate-950/70">
+      <summary className="cursor-pointer p-4 font-semibold">All rounds at a glance · {summaries.length} rounds</summary>
+      <div className="border-t border-slate-700 p-4 overflow-x-auto">
       <table className="w-full text-left text-sm">
         <caption className="text-left font-semibold mb-2">All rounds at a glance</caption>
         <thead><tr className="border-b border-slate-700"><th scope="col" className="py-2 pr-2">Round</th><th scope="col" className="py-2 pr-2">Game</th><th scope="col" className="py-2 pr-2">Choices</th><th scope="col" className="py-2 pr-2">Pairs / groups</th><th scope="col" className="py-2 pr-2">Bots</th><th scope="col" className="py-2">Average score</th></tr></thead>
         <tbody>{summaries.map(item => <tr key={item.round} className="border-b border-slate-800"><th scope="row" className="py-2 pr-2 font-normal">{item.round}</th><td className="pr-2">{gameFor(item.gameId).title}</td><td className="pr-2">{item.choiceCounts.map(choice => `${choice.label} ${choice.count}`).join(' · ')}</td><td className="pr-2">{item.gameId === 11 ? 'Classwide' : item.gameId === 12 ? `${item.studentGroups || 0} groups` : `${item.studentPairs} pairs`}</td><td className="pr-2">{item.gameId === 11 ? '—' : item.gameId === 12 ? `${item.botSeats || 0} seats` : `${item.botMatches} matches`}</td><td>{score(item.averagePoints)}</td></tr>)}</tbody>
       </table>
-    </div>
-    {archives && <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4 space-y-3">
-      <h3 className="text-lg font-bold">Individual student analysis</h3>
+      </div>
+    </details>
+    {archives && <details className="rounded-xl border border-slate-700 bg-slate-950/70">
+      <summary className="cursor-pointer p-4 font-semibold">Individual student analysis · {people.length} students</summary>
+      <div className="border-t border-slate-700 p-4 space-y-3">
       {people.length === 0 ? <p className="text-sm text-slate-300">No student records are available.</p> : people.map(person => <details key={person.uid} className="rounded-lg border border-slate-700 bg-slate-900">
         <summary className="cursor-pointer px-4 py-3 font-semibold">{person.alias} · {person.analysis.played} of {summaries.length} rounds played</summary>
         <div className="border-t border-slate-700 p-4"><PersonAnalysis analysis={person.analysis} title={`${person.alias}'s analysis`} /></div>
       </details>)}
-    </div>}
-    {summaries.map(item => <details key={item.round} className="group" open={item.round === 1}>
+      </div>
+    </details>}
+    <details className="rounded-xl border border-slate-700 bg-slate-950/70">
+      <summary className="cursor-pointer p-4 font-semibold">Detailed round reports · {summaries.length} rounds</summary>
+      <div className="border-t border-slate-700 p-4 space-y-2">
+    {summaries.map(item => <details key={item.round} className="group">
       <summary className="cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 font-semibold">Round {item.round}: {gameFor(item.gameId).title} · View chart and results</summary>
       <div className="mt-2"><RoundAnalysis summary={item} personal={personalResults?.[item.round]} archive={archives?.[item.round]} studentView={studentView} /></div>
     </details>)}
+      </div>
+    </details>
   </div>;
 }
