@@ -3272,7 +3272,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUpOrLeave}
             onMouseLeave={handleMouseUpOrLeave}
-            className="overflow-x-auto flex gap-4 lg:gap-5 p-1 px-3 sm:px-4 pb-4 touch-pan-x snap-x snap-mandatory scroll-smooth scroll-pl-3 sm:scroll-pl-4 cursor-grab active:cursor-grabbing select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="overflow-x-auto flex gap-4 lg:gap-5 p-1 px-3 sm:px-4 pb-4 touch-auto snap-x snap-mandatory scroll-smooth scroll-pl-3 sm:scroll-pl-4 cursor-grab active:cursor-grabbing select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {availableModules.map((mod, idx) => {
@@ -3416,7 +3416,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="flex items-start overflow-x-auto snap-x snap-mandatory scroll-smooth w-full touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="flex items-start overflow-x-auto snap-x snap-mandatory scroll-smooth w-full touch-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {/* ========================================================================= */}
