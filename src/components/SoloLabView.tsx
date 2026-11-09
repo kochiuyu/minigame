@@ -4361,6 +4361,9 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                   {selectedModuleId === 20 && (
                     <div className="space-y-3">
                       <div className="text-base font-bold text-white">Your turn at Node {centipedeNode}:</div>
+                      <p className="rounded-xl border border-sky-800/60 bg-sky-950/30 p-3 text-sm text-sky-100 leading-relaxed">
+                        <strong>Why these points?</strong> They are fixed example scores, not a pot calculated each turn. Take ends the game with the scores shown. Pass can lead to more points, but lets the bot decide next. For example, Take at Node 1 gives you 2 and the bot 0; if you Pass and the bot Takes at Node 2, you get 1 and the bot gets 4.
+                      </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <button
                           type="button"
@@ -4395,7 +4398,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                             <div>
                               <div className="font-black text-lg sm:text-xl">Take (End Match)</div>
                               <div className="text-xs sm:text-sm text-rose-300 font-semibold">
-                                Lock in +{centipedeNode === 1 ? 2 : centipedeNode === 3 ? 4 : 6} pts for you
+                                Take now: You {centipedeNode === 1 ? 2 : centipedeNode === 3 ? 4 : 6} · Bot {centipedeNode === 1 ? 0 : centipedeNode === 3 ? 2 : 4}
                               </div>
                             </div>
                           </div>
