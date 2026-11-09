@@ -21,7 +21,7 @@ export const SignInPortal: React.FC<SignInPortalProps> = ({
   const [activeTab, setActiveTab] = useState<'student' | 'instructor'>('student');
 
   // Student Form State
-  const [roomCode, setRoomCode] = useState('DOTE-3090');
+  const [roomCode, setRoomCode] = useState('CLASSROOM');
   const [studentName, setStudentName] = useState(initialStudentInfo.name || '');
   const [studentId, setStudentId] = useState(initialStudentInfo.id || '');
   const [studentAlias, setStudentAlias] = useState(() => initialStudentInfo.alias || generateNickname());
@@ -29,7 +29,7 @@ export const SignInPortal: React.FC<SignInPortalProps> = ({
 
   // Instructor Form State
   const [instructorName, setInstructorName] = useState('Prof. Chiu');
-  const [instructorCode, setInstructorCode] = useState('DOTE-3090');
+  const [instructorCode, setInstructorCode] = useState('CLASSROOM');
   const [passcode, setPasscode] = useState('3090');
   const [instructorError, setInstructorError] = useState('');
 
@@ -137,7 +137,7 @@ export const SignInPortal: React.FC<SignInPortalProps> = ({
             </label>
             <input
               type="text"
-              placeholder="e.g. DOTE-3090"
+              placeholder="e.g. CLASSROOM"
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm font-mono font-bold tracking-wider text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 uppercase placeholder-slate-500"
@@ -248,7 +248,7 @@ export const SignInPortal: React.FC<SignInPortalProps> = ({
             </label>
             <input
               type="text"
-              placeholder="e.g. DOTE-3090"
+              placeholder="e.g. CLASSROOM"
               value={instructorCode}
               onChange={(e) => setInstructorCode(e.target.value.toUpperCase())}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm font-mono font-bold tracking-wider text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 uppercase placeholder-slate-500"
@@ -344,7 +344,7 @@ export const SignInPortal: React.FC<SignInPortalProps> = ({
           </div>
           <div>
             <span className="font-extrabold text-lg tracking-tight block leading-none">
-              DOTE 3090
+              Game Theory Lab
             </span>
             <span className="text-xs text-slate-400 font-medium tracking-wide">
               Game Theory Experiment Lab
