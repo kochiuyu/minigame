@@ -223,13 +223,13 @@ export const GAME_STORIES: Record<number, GameStory> = {
   20: {
     moduleId: 20,
     title: "The Escalating Mountain of Gold",
-    hook: "You and a counterpart walk along an alternating 6-step treasure path. On your turn, choosing to Pass doubles the gold in the shared chest and passes the decision. But choosing to Take ends the game immediately, letting you seize the lion's share before the other person can.",
-    setup: "Two explorers walk along a 6-stage treasure corridor with a steadily multiplying gold chest.",
-    choices: "Choose Pass to double the chest for the next node, or Take to seize the current majority.",
-    stakesDetail: "Passing through all 6 nodes reaches maximum wealth (+8 pts each); taking on Node 1 locks in (+2, 0) pts out of fear.",
-    yourRole: "Treasure Explorer (Turns 1, 3, 5)",
-    counterpartRole: "Expedition Partner (Turns 2, 4, 6)",
-    stakes: "Social Optimum (+8 pts) vs. Early Betrayal (+2 pts)"
+    hook: "You and a bot take turns. Take ends the game and pays the points shown. Pass gives the bot the next turn. If you both keep passing, you can both earn more.",
+    setup: "There are up to six turns. You play turns 1, 3, and 5; the bot plays turns 2, 4, and 6.",
+    choices: "Take ends the game. Pass lets the next player decide.",
+    stakesDetail: "If you both Pass on all six turns, each gets 8 points. Taking earlier ends the game with the points shown.",
+    yourRole: "Player 1 (turns 1, 3, and 5)",
+    counterpartRole: "Bot (turns 2, 4, and 6)",
+    stakes: "Take now or Pass for a chance at more points"
   },
   21: {
     moduleId: 21,
@@ -438,9 +438,9 @@ export const GAME_QUICK_CHIPS: Record<number, GameQuickChips> = {
     howYouWin: "Invest in trustworthy partner to maximize returned payout"
   },
   20: {
-    role: "Sequential player along 6-node decision chain",
-    choices: "Pass (grow pot) or Take (exit)",
-    howYouWin: "Pass to expand pot to 8 pts; take before betrayal"
+    role: "You and the bot take turns",
+    choices: "Take ends the game; Pass gives the bot a turn",
+    howYouWin: "If you both pass every turn, you each get 8 points"
   },
   21: {
     role: "Crude oil refinery operations manager",
