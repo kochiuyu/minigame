@@ -351,25 +351,26 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
   // Game 20: Centipede Sequential Node Tree
   if (gameId === 20) {
     const nodes = [
-      { n: 1, mover: 'You', take: '(+2, 0)', pass: 'Pass to 2' },
-      { n: 2, mover: botName, take: '(+1, +4)', pass: 'Pass to 3' },
-      { n: 3, mover: 'You', take: '(+4, +2)', pass: 'Pass to 4' },
-      { n: 4, mover: botName, take: '(+3, +6)', pass: 'Pass to 5' },
-      { n: 5, mover: 'You', take: '(+6, +4)', pass: 'Pass to 6' },
-      { n: 6, mover: botName, take: '(+5, +8)', pass: 'Optimum (+8, +8)' }
+      { n: 1, mover: 'You', take: 'You 2 · Bot 0' },
+      { n: 2, mover: botName, take: 'You 1 · Bot 4' },
+      { n: 3, mover: 'You', take: 'You 4 · Bot 2' },
+      { n: 4, mover: botName, take: 'You 3 · Bot 6' },
+      { n: 5, mover: 'You', take: 'You 6 · Bot 4' },
+      { n: 6, mover: botName, take: 'You 5 · Bot 8' }
     ];
 
     const activeNode = playedOutcome ? (playedOutcome.playerAction.includes('Node') ? parseInt(playedOutcome.playerAction.replace(/\D/g, '')) || centipedeNode : centipedeNode) : centipedeNode;
 
     return (
       <div className="w-full bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3.5 shadow-lg select-none">
-        <div className="flex items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-800/80 pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-1 text-xs font-mono text-slate-400 border-b border-slate-800/80 pb-2">
           <span className="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
             <span>🐛</span>
-            <span>Centipede Extensive-Form Chain Path</span>
+            <span>Centipede payoffs</span>
           </span>
-          <span className="text-amber-400 font-bold">SPNE: Node 1 Take</span>
+          <span className="text-amber-400 font-bold">Scores: You · Bot</span>
         </div>
+        <p className="text-xs text-slate-300">These are fixed example scores if someone Takes at that turn. Pass moves to the next turn, where the other player may Take.</p>
 
         {/* 6-Node Horizontal Chain Flow */}
         <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
@@ -394,7 +395,7 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
                   {node.mover}
                 </div>
                 <div className="text-[11px] font-mono text-rose-300 font-bold">
-                  {node.take}
+                  Take: {node.take}
                 </div>
                 {isExitNode && (
                   <div className="text-[9px] font-mono bg-amber-400 text-slate-950 font-black rounded px-1 mt-1">
@@ -405,6 +406,7 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
             );
           })}
         </div>
+        <p className="text-xs font-bold text-emerald-300">If both Pass all six turns: You 8 · Bot 8.</p>
       </div>
     );
   }

@@ -12,6 +12,7 @@ export function CentipedeTree({ currentNode, moves = {}, exitNode }: {
       <h3 className="font-bold text-slate-100">Centipede tree</h3>
       <p className="text-xs text-slate-300">Take ends · Pass advances · points: Player 1 / Player 2</p>
     </div>
+    <p className="mb-2 text-xs text-slate-300">These are fixed example scores. Later turns offer more total points, but passing lets the other player choose next.</p>
     <ol className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-6" aria-label="Six-node Centipede game tree">
       {TAKE_PAYOFFS.map((payoff, index) => {
         const node = index + 1;
