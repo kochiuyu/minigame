@@ -242,7 +242,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       icon: "🐛",
       category: "Extensive Form & Backward Induction",
       difficulty: 'Hard',
-      description: "Pass to double the collective pot or Take to grab the larger share. Backward induction predicts taking on Node 1!"
+      description: "Take turns with the bot. Take ends the game for the points shown; Pass lets the bot play next."
     },
 
     // TIER 5: Repeated Games & Trust
@@ -2055,8 +2055,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         };
       case 20:
         return {
-          action: "On your sequential turns (Nodes 1, 3, 5), choose Pass to double the pot or Take to end the match.",
-          payoff: "Passing all 6 nodes reaches the maximum +8 pts each; taking immediately at Node 1 locks in (+2, 0) pts."
+          action: "On your turn, Take ends the game. Pass gives the bot the next turn.",
+          payoff: "Passing can lead to higher scores if the bot also passes. If both players pass all six turns, each earns 8 points."
         };
       case 21:
         return {
@@ -4375,7 +4375,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                             <span className="text-3xl">🤝</span>
                             <div>
                               <div className="font-black text-lg sm:text-xl">Pass (Continue)</div>
-                              <div className="text-xs sm:text-sm text-emerald-300 font-semibold">Double pot and hand turn to Bot</div>
+                              <div className="text-xs sm:text-sm text-emerald-300 font-semibold">Let the bot play next</div>
                             </div>
                           </div>
                           {centipedeChoice === 'Pass' && <span className="text-emerald-400 font-bold text-sm">✓ Selected</span>}
