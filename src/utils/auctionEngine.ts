@@ -1,4 +1,4 @@
-// Auction Game Engine for DOTE 3090 / MobLab Experiments
+// Auction game engine for classroom experiments
 // Simulates private value draws and sealed-bid auction market dynamics
 
 export type AuctionType = 'second_price' | 'first_price';
