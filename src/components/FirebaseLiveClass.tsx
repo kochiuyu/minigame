@@ -436,6 +436,8 @@ export function FirebaseLiveClass() {
     ? Math.max(0, Math.ceil((config.timerStartedAt + (config.timerMinutes * 60 + (config.timerExtraSeconds || 0)) * 1000 - clockNow - serverTimeOffset) / 1000))
     : null;
   const timerLabel = timerSeconds === null ? '' : `${Math.floor(timerSeconds / 60)}:${String(timerSeconds % 60).padStart(2, '0')}`;
+  const timerTotalSeconds = (config?.timerMinutes || 0) * 60 + (config?.timerExtraSeconds || 0);
+  const timerPercent = timerSeconds === null || timerTotalSeconds === 0 ? 0 : Math.min(100, timerSeconds / timerTotalSeconds * 100);
   const clearControls = config && <div className="rounded-xl border border-red-800 bg-red-950/30 p-4 space-y-3">
     <h3 className="font-bold">Clear class data</h3>
     <p className="text-sm text-slate-300">This erases the class report, student aliases, choices, and scores from Firebase. Students will lose access to their reports. You can then start a new class.</p>
@@ -463,8 +465,10 @@ export function FirebaseLiveClass() {
 
       {error && <p role="alert" className="rounded-lg border border-red-600 bg-red-950 p-3 text-red-200">{error}</p>}
 
-      {user?.isAnonymous && config?.phase === 'playing' && timerSeconds !== null && <div className={`rounded-xl border p-4 ${timerSeconds === 0 ? 'border-amber-500 bg-amber-950/40 text-amber-100' : 'border-blue-700 bg-blue-950/40 text-blue-100'}`} role="timer">
-        <p className="text-lg font-bold">{timerSeconds === 0 ? 'Time is up' : `Time left ${timerLabel}`}</p>
+      {user?.isAnonymous && config?.phase === 'playing' && timerSeconds !== null && <div className={`space-y-2 rounded-xl border p-4 ${timerSeconds === 0 ? 'border-amber-500 bg-amber-950/40 text-amber-100' : 'border-blue-700 bg-blue-950/40 text-blue-100'}`} role="timer">
+        <p className="text-sm font-semibold">Time remaining</p>
+        <p className="text-3xl font-black tabular-nums">{timerLabel}{timerSeconds === 0 ? ' · Time is up' : ''}</p>
+        <div className="h-2 overflow-hidden rounded-full bg-slate-700" aria-hidden="true"><div className="h-full bg-current transition-[width] duration-1000" style={{ width: `${timerPercent}%` }} /></div>
         <p className="text-sm">The instructor decides when to advance or reveal. You can still submit while this round is open.</p>
       </div>}
 
@@ -527,8 +531,10 @@ export function FirebaseLiveClass() {
                 <button disabled={busy || joinedStudents.length === 0} onClick={startPairing} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">{classwide ? 'Start classwide round' : publicGoods ? 'Make groups and start round' : 'Pair students and start round'}</button>
               </>}
               {config?.phase === 'playing' && <>
-                {timerSeconds !== null && <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 ${timerSeconds === 0 ? 'border-amber-500 bg-amber-950/40 text-amber-100' : 'border-blue-700 bg-blue-950/40 text-blue-100'}`}>
-                  <p className="font-bold" role="timer">{timerSeconds === 0 ? 'Time is up' : `Time left ${timerLabel}`}</p>
+                {timerSeconds !== null && <div className={`space-y-2 rounded-xl border p-3 ${timerSeconds === 0 ? 'border-amber-500 bg-amber-950/40 text-amber-100' : 'border-blue-700 bg-blue-950/40 text-blue-100'}`}>
+                  <p className="text-sm font-semibold">Time remaining</p>
+                  <p className="text-3xl font-black tabular-nums" role="timer">{timerLabel}{timerSeconds === 0 ? ' · Time is up' : ''}</p>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-700" aria-hidden="true"><div className="h-full bg-current transition-[width] duration-1000" style={{ width: `${timerPercent}%` }} /></div>
                   <button type="button" disabled={busy} onClick={() => run(() => update(ref(db, `${ROOT}/config`), { timerExtraSeconds: (config.timerExtraSeconds || 0) + 60 }))} className="rounded-lg border border-current px-3 py-2 text-sm font-semibold disabled:opacity-50">Add 1 minute</button>
                 </div>}
                 <p>{classwide ? `${roundAssignments.length} students in the classwide contest` : publicGoods ? `${groupSizes.size} groups of four · ${plannedBotSeats} planned bot seats`
