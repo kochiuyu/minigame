@@ -1557,6 +1557,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         botDecision.action = 'Passed previously';
         setCentipedeExitNode(myNode);
         setCentipedeExitAction('Take (Player)');
+      } else {
         // Player Passed, now Bot's turn at Node + 1
         const botNode = myNode + 1;
         let botTakes = false;
