@@ -225,10 +225,9 @@ export default function App() {
       }
     }
 
-    let text = `DOTE 3090 - Classroom Game Theory Lab Submission\n`;
+    let text = `Game Theory Lab Submission\n`;
     text += `Student: ${studentInfo.name || authSession?.name || "Unknown"} (${studentInfo.id || authSession?.id || "No ID"})\n`;
     text += `Alias: ${studentInfo.alias || authSession?.alias || "None"}\n`;
-    text += `Room: ${authSession?.roomCode || "DOTE-3090"}\n`;
     text += `Game: ${currentWeek.title}\n`;
     text += `Total Score: ${totalScore} points across ${completedCount} of ${totalRounds} rounds\n\n`;
     text += `--- ROUND DATA ---\n`;
@@ -475,4 +474,3 @@ export default function App() {
     </div>
   );
 }
-

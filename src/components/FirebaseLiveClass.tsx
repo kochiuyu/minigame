@@ -433,7 +433,7 @@ export function FirebaseLiveClass() {
   return (
     <section className="mx-auto mt-6 max-w-4xl space-y-5 text-slate-100">
       <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5 sm:p-7">
-        <p className="text-sm font-bold text-blue-300">Live Class · Room {ROOM}</p>
+        <p className="text-sm font-bold text-blue-300">Live Class</p>
         <h1 className="mt-1 text-2xl font-black">{config?.phase === 'finished' ? 'Class complete' : config ? game.title : 'Live Class'}</h1>
         <p className="mt-2 text-sm text-slate-300">{config ? `Round ${round}${config.totalRounds ? ` of ${config.totalRounds}` : ''} · ${config.phase === 'lobby' ? 'Waiting for students' : config.phase === 'playing' ? 'In progress' : config.phase === 'revealed' ? 'Results ready' : 'Final report ready'}` : 'Join a class round or practice privately against a random bot.'}</p>
         {config && <details className="mt-3 rounded-lg border border-slate-700 bg-slate-950/50 px-3 py-2 text-sm">

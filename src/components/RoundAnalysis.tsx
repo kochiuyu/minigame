@@ -161,7 +161,7 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
     const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `DOTE3090-${studentView ? 'my' : 'class'}-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `GameTheory-${studentView ? 'my' : 'class'}-report-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
