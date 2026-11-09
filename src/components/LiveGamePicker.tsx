@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CURRICULUM_TIERS } from '../data/curriculumOrder';
 import { LIVE_GAMES } from '../liveMatch';
 import type { GameId } from '../liveMatch';
 
@@ -12,13 +13,10 @@ type LiveGamePickerProps = {
   searchable?: boolean;
 };
 
-const sections: ReadonlyArray<{ label: string; ids: readonly GameId[] }> = [
-  { label: 'Cooperation & resources', ids: [1, 6, 12, 13, 15, 27] },
-  { label: 'Bargaining & trust', ids: [9, 16, 19, 26, 30] },
-  { label: 'Markets & auctions', ids: [3, 7, 8, 14, 21, 22, 24, 25, 28] },
-  { label: 'Coordination & conflict', ids: [4, 17, 18, 23, 29] },
-  { label: 'Sequential & information games', ids: [2, 5, 10, 11, 20] },
-];
+const sections: ReadonlyArray<{ label: string; ids: readonly GameId[] }> = CURRICULUM_TIERS.map(tier => ({
+  label: tier.tierTitle,
+  ids: tier.entries.map(entry => entry.internalId as GameId),
+}));
 const groupedIds = new Set(sections.flatMap(section => section.ids));
 const otherGames = LIVE_GAMES.filter(game => !groupedIds.has(game.id));
 
@@ -53,10 +51,9 @@ export function LiveGamePicker({ id, label, value, onChange, disabled = false, s
       className="w-full rounded-lg border border-slate-600 bg-slate-950 p-3 text-white disabled:opacity-50">
       {sections.map(section => <optgroup key={section.label} label={section.label}>
         {section.ids.map(gameId => LIVE_GAMES.find(game => game.id === gameId)).filter((game): game is (typeof LIVE_GAMES)[number] => Boolean(game))
-          .sort((a, b) => a.title.localeCompare(b.title))
           .map(game => <option key={game.id} value={game.id}>{game.title}</option>)}
       </optgroup>)}
-      {otherGames.length > 0 && <optgroup label="More games">
+      {otherGames.length > 0 && <optgroup label="Additional Live Class games">
         {otherGames.sort((a, b) => a.title.localeCompare(b.title)).map(game => <option key={game.id} value={game.id}>{game.title}</option>)}
       </optgroup>}
     </select>
