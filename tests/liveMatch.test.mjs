@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, classParticipants, commonValueBid, commonValueOutcome, contributionAmount, cournotPoints, cournotQuantity, dollarAuctionBid, dollarAuctionPoints, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, lemonsOffer, lemonsPayoff, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareLemonsResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, travelerClaim, travelerPoints, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, centipedePayoff, classParticipants, commonValueBid, commonValueOutcome, contributionAmount, cournotPoints, cournotQuantity, dollarAuctionBid, dollarAuctionPoints, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, lemonsOffer, lemonsPayoff, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareLemonsResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, travelerClaim, travelerPoints, trawlerAmount } from '../src/liveMatch.ts';
 
 test('Lemons Market gives the seller private quality and sequential sale choices', () => {
   assert.equal(lemonsOffer('Offer 1000'), 1000);
@@ -425,7 +425,7 @@ test('live Centipede substitutes a bot for a missed student turn', () => {
   assert.equal(room.centipedePaths.a.fallback, true);
   for (let node = 3; node <= 6; node++) room = advanceCentipede(room, () => 'Pass');
   const finished = finishRound(room, true);
-  assert.deepEqual([finished.archive[1].results.a.ownPoints, finished.archive[1].results.b.ownPoints], [1, 4]);
+  assert.deepEqual([finished.archive[1].results.a.ownPoints, finished.archive[1].results.b.ownPoints], [1, 3]);
   assert.equal(finished.archive[1].results.a.opponentKind, 'bot');
 });
 
@@ -447,7 +447,16 @@ test('Centipede bot practice alternates moves and scores the reached branch', ()
 });
 
 test('Centipede plans resolve the first Take, score both roles, and archive the exit', () => {
-  const payoffs = [[2, 0], [1, 4], [4, 2], [3, 6], [6, 4], [5, 8], [8, 8]];
+  const payoffs = [[2, 0], [1, 3], [4, 2], [3, 5], [6, 4], [5, 7], [6, 6]];
+  for (let node = 1; node <= 6; node++) {
+    const earned = node - 1;
+    const score = centipedePayoff(node);
+    assert.equal(score[node % 2 ? 0 : 1], earned + 2);
+    assert.equal(score[node % 2 ? 1 : 0], earned);
+    assert.ok(score[node % 2 ? 0 : 1] > centipedePayoff(node + 1)[node % 2 ? 0 : 1]);
+  }
+  assert.deepEqual(centipedePayoff(7), [6, 6]);
+  assert.throws(() => centipedePayoff(0));
   for (const first of CENTIPEDE_FIRST) for (const second of CENTIPEDE_SECOND) {
     const node = centipedeExitNode(first, second);
     assert.deepEqual(pointsFor(20, first, second), payoffs[node - 1]);
@@ -464,7 +473,7 @@ test('Centipede plans resolve the first Take, score both roles, and archive the 
     c: { round: 1, choice: 'Pass All' } };
   const finished = finishRound({ config: { round: 1, totalRounds: 1, phase: 'playing', gameId: 20 },
     participants: { a: { alias: 'A' }, b: { alias: 'B' }, c: { alias: 'C' } }, assignments, choices }, true);
-  assert.deepEqual([finished.archive[1].results.a.ownPoints, finished.archive[1].results.b.ownPoints], [3, 6]);
+  assert.deepEqual([finished.archive[1].results.a.ownPoints, finished.archive[1].results.b.ownPoints], [3, 5]);
   assert.deepEqual([finished.archive[1].results.a.exitNode, finished.archive[1].results.b.exitNode], [4, 4]);
   assert.equal(finished.config.summaries[1].outcomes[3].count, 1);
   assert.equal(finished.config.summaries[1].botMatches, 1);

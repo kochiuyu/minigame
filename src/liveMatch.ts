@@ -260,7 +260,7 @@ export const LIVE_GAMES: ReadonlyArray<{
   { id: 17, title: 'Matching Pennies', options: ['Heads', 'Tails'], rules: 'Both choose Heads or Tails. The Matcher scores when the choices match; the Mismatcher scores when they differ.', payoffs: 'Same choices: Matcher 2, Mismatcher 0 · Different choices: Matcher 0, Mismatcher 2', roles: ['Matcher', 'Mismatcher'] },
   { id: 18, title: 'Battle of the Sexes', options: ['Opera', 'Football'], rules: 'Both choose Opera or Football. You score only if your choices match; each role prefers a different match.', payoffs: 'Both Opera: Opera fan 3, Football fan 2 · Both Football: Opera fan 2, Football fan 3 · Different choices: 0 each', roles: ['Opera fan', 'Football fan'] },
   { id: 19, title: 'Trust Game', options: TRUST_INVESTMENTS, rules: 'The Investor starts with 10 points and sends 0–10 to the Trustee. The amount sent triples. The Trustee then chooses how much of the tripled amount to return.', payoffs: 'Investor score = 10 − amount invested + amount returned. Trustee score = 3 × amount invested − amount returned.', roles: ['Investor', 'Trustee'] },
-  { id: 20, title: 'Centipede Game', options: ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Pass All'], rules: 'Player 1 moves at nodes 1, 3, and 5; Player 2 moves at nodes 2, 4, and 6. At each turn, Take ends the game and Pass gives the next turn to the other player. If both pass all six nodes, both earn 8.', payoffs: 'Take at node 1: 2 / 0 · 2: 1 / 4 · 3: 4 / 2 · 4: 3 / 6 · 5: 6 / 4 · 6: 5 / 8 · Both Pass All: 8 / 8 (Player 1 / Player 2)', roles: ['Player 1', 'Player 2'] },
+  { id: 20, title: 'Centipede Game', options: ['Take at Node 1', 'Take at Node 2', 'Take at Node 3', 'Take at Node 4', 'Take at Node 5', 'Take at Node 6', 'Pass All'], rules: 'A sponsor funds a shared project over six turns. Each Pass earns 1 point for each player and gives the next turn to the other player. Take closes the project and gives the player who takes a 2-point closing bonus. If both pass all six turns, each earns 6.', payoffs: 'Take at node 1: 2 / 0 · 2: 1 / 3 · 3: 4 / 2 · 4: 3 / 5 · 5: 6 / 4 · 6: 5 / 7 · Both Pass All: 6 / 6 (Player 1 / Player 2)', roles: ['Player 1', 'Player 2'] },
   { id: 21, title: 'Cournot Duopoly', options: COURNOT_QUANTITIES, rules: 'You and a rival firm privately choose whole-unit production quantities from 10 to 45. Market price depends on combined output.', payoffs: 'Market price = max(0, 100 − combined output). Each firm earns quantity × (market price − 10) / 100 dollars. At 30 units each, profit is $9.00 each.' },
   { id: 22, title: 'Hotelling Beach', options: HOTELLING_LOCATIONS, rules: 'You and a rival privately choose a whole-number stand location from 0 to 100 on a beach with uniformly distributed customers.', payoffs: 'Each customer visits the closer stand. The midpoint between stands divides the market; matching locations split it equally. Your score is your market share in points out of 100.' },
   { id: 23, title: 'Colonel Blotto', options: BLOTTO_DEPLOYMENTS, rules: 'Choose how to deploy 100 troops across Fronts A, B, and C. Each number in a deployment plan is the troop count for one front. Your opponent chooses secretly.', payoffs: 'More troops wins a front. Win more fronts than your opponent: +1 point; lose more: −1 point; equal front wins: 0 points.' },
@@ -371,8 +371,7 @@ export function pointsFor(gameId: GameId, own: Choice, other: Choice, role: Role
       const first = role === 'first' ? own : other;
       const second = role === 'first' ? other : own;
       const node = centipedeExitNode(first, second);
-      const payoff: [number, number] = node === 1 ? [2, 0] : node === 2 ? [1, 4] : node === 3 ? [4, 2]
-        : node === 4 ? [3, 6] : node === 5 ? [6, 4] : node === 6 ? [5, 8] : [8, 8];
+      const payoff = centipedePayoff(node);
       return role === 'first' ? payoff : [payoff[1], payoff[0]];
     }
     case 2: {
@@ -487,6 +486,18 @@ export function centipedeExitNode(first: Choice, second: Choice): number {
   return Math.min(firstTake, secondTake);
 }
 
+// Each Pass earns one point for both players; Take ends play and gives the mover two more.
+export function centipedePayoff(exitNode: number): [number, number] {
+  if (!Number.isInteger(exitNode) || exitNode < 1 || exitNode > 7) {
+    throw new Error('Invalid Centipede exit node.');
+  }
+  if (exitNode === 7) return [6, 6];
+  const earnedByEach = exitNode - 1;
+  return exitNode % 2 === 1
+    ? [earnedByEach + 2, earnedByEach]
+    : [earnedByEach, earnedByEach + 2];
+}
+
 // Complete one student move, then resolve bot turns until the student moves again or the chain ends.
 export function advancePracticeCentipede(
   path: PracticeCentipedePath,
@@ -514,8 +525,7 @@ export function advancePracticeCentipede(
 }
 
 export function practiceCentipedePoints(exitNode: number, studentRole: Role): [number, number] {
-  const points = [[2, 0], [1, 4], [4, 2], [3, 6], [6, 4], [5, 8], [8, 8]][exitNode - 1];
-  if (!points) throw new Error('Invalid Centipede exit node.');
+  const points = centipedePayoff(exitNode);
   return studentRole === 'first' ? [points[0], points[1]] : [points[1], points[0]];
 }
 
@@ -719,7 +729,7 @@ export function centipedeTurnResults(room: LiveRoom): { choices: Record<string, 
     const otherNode = Object.entries(path.moves).find(([node, move]) => Number(node) % 2 === (first ? 0 : 1) && move === 'Take')?.[0];
     const ownChoice = ownNode ? `Take at Node ${ownNode}` as Choice : 'Pass All';
     const opponentChoice = otherNode ? `Take at Node ${otherNode}` as Choice : 'Pass All';
-    const payoffs = [[2, 0], [1, 4], [4, 2], [3, 6], [6, 4], [5, 8], [8, 8]][path.exitNode - 1];
+    const payoffs = centipedePayoff(path.exitNode);
     const opponentKind = assignment.kind === 'student' && !path.fallback ? 'student' : 'bot';
     choices[uid] = { round, choice: ownChoice };
     results[uid] = { round, ownChoice, opponentChoice, ownPoints: payoffs[first ? 0 : 1], opponentPoints: payoffs[first ? 1 : 0],

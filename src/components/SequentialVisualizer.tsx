@@ -1,4 +1,5 @@
 import React from 'react';
+import { centipedePayoff } from '../liveMatch';
 
 export interface SequentialVisualizerProps {
   gameId: number;
@@ -350,14 +351,11 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
 
   // Game 20: Centipede Sequential Node Tree
   if (gameId === 20) {
-    const nodes = [
-      { n: 1, mover: 'You', take: 'You 2 · Bot 0' },
-      { n: 2, mover: botName, take: 'You 1 · Bot 4' },
-      { n: 3, mover: 'You', take: 'You 4 · Bot 2' },
-      { n: 4, mover: botName, take: 'You 3 · Bot 6' },
-      { n: 5, mover: 'You', take: 'You 6 · Bot 4' },
-      { n: 6, mover: botName, take: 'You 5 · Bot 8' }
-    ];
+    const nodes = Array.from({ length: 6 }, (_, index) => {
+      const n = index + 1;
+      const [you, bot] = centipedePayoff(n);
+      return { n, mover: n % 2 ? 'You' : botName, take: `You ${you} · Bot ${bot}` };
+    });
 
     const activeNode = playedOutcome ? (playedOutcome.playerAction.includes('Node') ? parseInt(playedOutcome.playerAction.replace(/\D/g, '')) || centipedeNode : centipedeNode) : centipedeNode;
 
@@ -370,7 +368,7 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
           </span>
           <span className="text-amber-400 font-bold">Scores: You · Bot</span>
         </div>
-        <p className="text-xs text-slate-300">These are fixed example scores if someone Takes at that turn. Pass moves to the next turn, where the other player may Take.</p>
+        <p className="text-xs text-slate-300">A sponsor funds your shared project. Each Pass earns 1 point for both players and gives the other player a turn. Take closes the project and gives the taker a 2-point bonus.</p>
 
         {/* 6-Node Horizontal Chain Flow */}
         <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
@@ -406,7 +404,7 @@ export const SequentialVisualizer: React.FC<SequentialVisualizerProps> = ({
             );
           })}
         </div>
-        <p className="text-xs font-bold text-emerald-300">If both Pass all six turns: You 8 · Bot 8.</p>
+        <p className="text-xs font-bold text-emerald-300">If both Pass all six turns: You 6 · Bot 6.</p>
       </div>
     );
   }

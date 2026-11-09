@@ -1960,7 +1960,7 @@ export const CENTIPEDE_BOTS: GameSpecificBot[] = [
     },
     decide: ({ currentNode = 2 }) => {
       const node = currentNode || 2;
-      const botPayoff = node === 2 ? 4 : node === 4 ? 6 : 8;
+      const botPayoff = node === 2 ? 3 : node === 4 ? 5 : 7;
       const playerPayoff = node === 2 ? 1 : node === 4 ? 3 : 5;
       return {
         action: 'Take',
@@ -1999,7 +1999,7 @@ export const CENTIPEDE_BOTS: GameSpecificBot[] = [
       if (earlyTakes >= 2 && node === 2) {
         return {
           action: 'Take',
-          rationale: `Retaliation: You defected early in previous matches. Taking at Node 2 (+4 pts) to prevent exploitation.`
+          rationale: `Retaliation: You took early in previous matches. Taking at Node 2 (+3 pts) to prevent exploitation.`
         };
       }
 
@@ -2012,7 +2012,7 @@ export const CENTIPEDE_BOTS: GameSpecificBot[] = [
         // Node 6: Endgame harvest
         return {
           action: 'Take',
-          rationale: `Endgame Harvest: We reached Node 6 through mutual trust! Taking pot (+8 pts for Bot, +5 pts for You).`
+          rationale: `Endgame Harvest: We reached Node 6 through mutual trust! Taking earns 7 pts for Bot and 5 pts for You.`
         };
       }
     }
