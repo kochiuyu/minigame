@@ -2674,7 +2674,11 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         return renderCompactThumbStepper("Trust Transfer", trustInvestment, 0, 10, 1, `$${trustInvestment}`, setTrustInvestment);
       case 20:
         return (
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="space-y-1.5">
+            <p className="text-xs text-sky-100 leading-snug">
+              Fixed example scores. Take now: You {centipedeNode === 1 ? 2 : centipedeNode === 3 ? 4 : 6}, Bot {centipedeNode === 1 ? 0 : centipedeNode === 3 ? 2 : 4}. If you Pass and the bot Takes next: You {centipedeNode === 1 ? 1 : centipedeNode === 3 ? 3 : 5}, Bot {centipedeNode === 1 ? 4 : centipedeNode === 3 ? 6 : 8}.
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
               onClick={() => setCentipedeChoice('Pass')}
@@ -2685,7 +2689,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
               }`}
             >
               <span className="text-lg">➡️</span>
-              <span>Pass (Grow Pot)</span>
+              <span>Pass (Bot's turn)</span>
             </button>
             <button
               type="button"
@@ -2697,8 +2701,9 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
               }`}
             >
               <span className="text-lg">🛑</span>
-              <span>Take Pot (Exit)</span>
+              <span>Take (End match)</span>
             </button>
+            </div>
           </div>
         );
       case 21:
