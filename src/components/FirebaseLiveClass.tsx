@@ -9,6 +9,7 @@ import {
 import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, PracticeCentipedePath, RepeatedPath, RepeatedTurn, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
 import { LiveGamePicker } from './LiveGamePicker';
+import { ClassJoinQr } from './ClassJoinQr';
 import { CentipedeTree } from './CentipedeTree';
 import { FinalAnalysis, RoundAnalysis } from './RoundAnalysis';
 
@@ -479,6 +480,7 @@ export function FirebaseLiveClass() {
           {instructor ? (
             <>
               <p className="font-semibold">{config ? config.phase === 'finished' ? `All ${config.totalRounds} rounds complete` : `Round ${round}${config.totalRounds ? ` of ${config.totalRounds}` : ''} · ${config.phase === 'lobby' ? 'Waiting for students' : config.phase === 'playing' ? 'Collecting choices' : 'Results revealed'}` : 'No active class'}</p>
+              {config && config.phase !== 'finished' && <ClassJoinQr key={config.phase} defaultOpen={config.phase === 'lobby'} />}
               {legacyClass && <p className="text-sm text-amber-200">This class began before round limits were added. It can continue as before; start a new class to set a round limit and save a final report.</p>}
               {!config && <>
                 <LiveGamePicker id="new-class-game" label="First-round game" value={selectedGameId} onChange={setSelectedGameId} showFormat />

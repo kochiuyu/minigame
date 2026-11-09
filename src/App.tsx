@@ -13,7 +13,9 @@ import { safeStorage } from './utils/safeStorage';
 
 export default function App() {
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
-  const [platformMode, setPlatformMode] = useState<'solo' | 'live' | 'sandbox'>('solo');
+  const [platformMode, setPlatformMode] = useState<'solo' | 'live' | 'sandbox'>(() =>
+    new URLSearchParams(window.location.search).get('join') === 'live' ? 'live' : 'solo'
+  );
   const [sandboxGameId, setSandboxGameId] = useState<number>(7);
   const [studentInfo, setStudentInfo] = useState<StudentInfo>({ name: '', id: '', alias: '' });
   const [activeWeekId, setActiveWeekId] = useState<number>(7);
@@ -50,7 +52,8 @@ export default function App() {
       else setActiveWeekId(7); // Default to Auction Game as requested
       if (savedRound) setActiveRoundNum(parseInt(savedRound, 10));
       if (savedTotalRounds) setTotalRounds(parseInt(savedTotalRounds, 10));
-      if (savedPlatformMode === 'solo' || savedPlatformMode === 'live' || savedPlatformMode === 'sandbox') {
+      if (new URLSearchParams(window.location.search).get('join') !== 'live' &&
+        (savedPlatformMode === 'solo' || savedPlatformMode === 'live' || savedPlatformMode === 'sandbox')) {
         setPlatformMode(savedPlatformMode);
       }
       if (savedSandboxGame) setSandboxGameId(parseInt(savedSandboxGame, 10));
