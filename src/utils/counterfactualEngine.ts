@@ -5,6 +5,7 @@ export interface CounterfactualComparison {
   isBestResponse: boolean;
   difference: number;
   takeaway: string;
+  comparisonAvailable: boolean;
 }
 
 /**
@@ -36,6 +37,7 @@ export function computeWhatYouCouldHaveGot(
   let bestPayoff = earnedPayoff;
   let bestActionLabel = pActionStr;
   let takeaway = '';
+  let comparisonAvailable = true;
 
   switch (moduleId) {
     // -------------------------------------------------------------------------
@@ -485,9 +487,14 @@ export function computeWhatYouCouldHaveGot(
     case 20: {
       const myNode = context.centipedeNode ?? 1;
       const didBotTake = bActionStr.toLowerCase().includes('take');
-      if (didBotTake) {
+      const takePayoff = myNode === 1 ? 2 : myNode === 3 ? 4 : 6;
+      if (pActionStr.toLowerCase().includes('take')) {
+        // Taking ends the game before the bot acts. Its unplayed response cannot
+        // be used as an observed counterfactual, especially for a random bot.
+        comparisonAvailable = false;
+        takeaway = `Taking at Node ${myNode} earned ${earnedPayoff} points. Passing would have given the bot the next move, which was not played.`;
+      } else if (didBotTake) {
         // If bot took right after player passed, player could have taken on their own turn
-        const takePayoff = myNode === 1 ? 2 : myNode === 3 ? 4 : 6;
         bestPayoff = takePayoff;
         bestActionLabel = `Take at Node ${myNode}`;
         if (pActionStr.toLowerCase().includes('pass')) {
@@ -496,10 +503,12 @@ export function computeWhatYouCouldHaveGot(
           takeaway = `Taking at Node ${myNode} was your best response, pre-empting the bot's exit.`;
         }
       } else {
-        // Bot passed or endgame
-        bestPayoff = Math.max(earnedPayoff, 6);
-        bestActionLabel = 'Pass';
-        takeaway = 'Passing allowed the shared pot to grow, achieving mutual gains.';
+        // Compare the completed path with taking at the player's decision node.
+        bestPayoff = Math.max(earnedPayoff, takePayoff);
+        bestActionLabel = earnedPayoff >= takePayoff ? pActionStr : `Take at Node ${myNode}`;
+        takeaway = earnedPayoff >= takePayoff
+          ? 'Passing let the project grow and earned at least as much as taking at your turn.'
+          : `Taking at Node ${myNode} would have earned ${takePayoff - earnedPayoff} more points.`;
       }
       break;
     }
@@ -759,6 +768,7 @@ export function computeWhatYouCouldHaveGot(
     bestActionLabel,
     isBestResponse,
     difference,
-    takeaway
+    takeaway,
+    comparisonAvailable
   };
 }
