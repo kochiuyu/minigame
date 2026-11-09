@@ -57,10 +57,10 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div>
             <div className="text-xs sm:text-sm font-bold tracking-tight text-white whitespace-nowrap leading-tight">
-              DOTE 3090 <span className="text-slate-400 font-normal hidden sm:inline">Game Theory</span>
+              Game Theory <span className="text-slate-400 font-normal hidden sm:inline">Lab</span>
             </div>
             <div className="text-[10px] text-slate-400 font-medium hidden sm:flex items-center gap-1.5 leading-none mt-0.5">
-              <span>Room: <strong className="font-mono text-blue-300 font-bold">{authSession?.roomCode || 'DOTE-3090'}</strong></span>
+              <span>Interactive games</span>
               {currentMode === 'solo' ? (
                 <>
                   <span>·</span>
@@ -321,7 +321,6 @@ export const Header: React.FC<HeaderProps> = ({
               <span><strong>Name:</strong> {authSession.name}</span>
               <span><strong>Student ID:</strong> {authSession.id}</span>
               <span><strong>Codename:</strong> {authSession.alias}</span>
-              <span><strong>Room PIN:</strong> {authSession.roomCode}</span>
             </div>
             <button
               onClick={() => setIsProfileOpen(false)}
@@ -335,4 +334,3 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-
