@@ -9,6 +9,9 @@ export type RoomConfig = {
   centipedeNode?: number; // Current live decision, 1–6; 7 means all chains ended.
   repeatedTurn?: number; // Current Prisoner's Dilemma turn, 1–5; 6 means complete.
   totalRounds?: number; // Absent in classes started before round limits were added.
+  timerMinutes?: number; // Zero disables the shared round countdown.
+  timerStartedAt?: number; // Firebase server time when pairing starts.
+  timerExtraSeconds?: number; // Instructor extensions during a round.
   summaries?: Record<string, RoundSummary>; // Only rounds released to students.
 };
 export type Participant = { alias: string };

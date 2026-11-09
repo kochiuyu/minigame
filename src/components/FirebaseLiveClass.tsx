@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInAnonymously, signInWithPopup, signOut } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
+import { onValue, ref, remove, runTransaction, serverTimestamp, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
   BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPrice, commonValueBid, commonValueOutcome, dollarAuctionBid, cournotQuantity, hotellingLocation, centipedeTurnResults, classParticipants, contributionAmount, demandAmount, finishRound, gameFor, groupParticipants, guessAmount, investAmount, lemonsOffer, lemonsPayoff, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareLemonsResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomAuctionValue, randomLemonsQuality, randomSurveySignal, randomBeautyGuess, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeRound, travelerClaim, trawlerAmount,
@@ -45,6 +45,9 @@ export function FirebaseLiveClass() {
   const [myRepeatedPath, setMyRepeatedPath] = useState<RepeatedPath | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<GameId>(1);
   const [selectedTotalRounds, setSelectedTotalRounds] = useState(5);
+  const [selectedTimerMinutes, setSelectedTimerMinutes] = useState(2);
+  const [serverTimeOffset, setServerTimeOffset] = useState(0);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const [practiceGameId, setPracticeGameId] = useState<GameId>(1);
   const [choice, setChoice] = useState<Choice>('Cooperate');
   const [practiceChoice, setPracticeChoice] = useState<Choice>('Cooperate');
@@ -100,6 +103,12 @@ export function FirebaseLiveClass() {
     if (!next) leavingRef.current = false;
     setUser(next);
   }), []);
+
+  useEffect(() => {
+    const unsubscribe = onValue(ref(db, '.info/serverTimeOffset'), snapshot => setServerTimeOffset(snapshot.val() || 0));
+    const interval = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => { unsubscribe(); window.clearInterval(interval); };
+  }, []);
 
   useEffect(() => {
     setConfig(null);
@@ -205,6 +214,8 @@ export function FirebaseLiveClass() {
       repeatedPaths: null,
       ...(!config.totalRounds ? { results: null } : {}),
       'config/phase': 'playing',
+      'config/timerStartedAt': serverTimestamp(),
+      'config/timerExtraSeconds': 0,
       'config/step': [2, 5, 10, 16, 19, 28, 30].includes(config.gameId) ? 'offer' : null,
       'config/centipedeNode': config.gameId === 20 ? 1 : null,
       'config/repeatedTurn': config.gameId === 6 ? 1 : null,
@@ -280,6 +291,8 @@ export function FirebaseLiveClass() {
       ...(!config.totalRounds ? { results: null } : {}),
       'config/round': config.round + 1,
       'config/phase': 'lobby',
+      'config/timerStartedAt': null,
+      'config/timerExtraSeconds': null,
       'config/centipedeNode': null,
       'config/repeatedTurn': null,
     }));
@@ -419,6 +432,10 @@ export function FirebaseLiveClass() {
   const stepSubmitted = stepStudents.filter(uid => submissions[uid]?.round === round).length;
   const progressTotal = repeated ? repeatedActors.length : centipede ? centipedeActors.length : staged ? stepStudents.length : progress.joined;
   const progressDone = repeated ? repeatedReady : centipede ? centipedeReady : staged ? stepSubmitted : progress.submitted;
+  const timerSeconds = config?.timerMinutes && config.timerStartedAt
+    ? Math.max(0, Math.ceil((config.timerStartedAt + (config.timerMinutes * 60 + (config.timerExtraSeconds || 0)) * 1000 - clockNow - serverTimeOffset) / 1000))
+    : null;
+  const timerLabel = timerSeconds === null ? '' : `${Math.floor(timerSeconds / 60)}:${String(timerSeconds % 60).padStart(2, '0')}`;
   const clearControls = config && <div className="rounded-xl border border-red-800 bg-red-950/30 p-4 space-y-3">
     <h3 className="font-bold">Clear class data</h3>
     <p className="text-sm text-slate-300">This erases the class report, student aliases, choices, and scores from Firebase. Students will lose access to their reports. You can then start a new class.</p>
@@ -445,6 +462,11 @@ export function FirebaseLiveClass() {
       </div>
 
       {error && <p role="alert" className="rounded-lg border border-red-600 bg-red-950 p-3 text-red-200">{error}</p>}
+
+      {user?.isAnonymous && config?.phase === 'playing' && timerSeconds !== null && <div className={`rounded-xl border p-4 ${timerSeconds === 0 ? 'border-amber-500 bg-amber-950/40 text-amber-100' : 'border-blue-700 bg-blue-950/40 text-blue-100'}`} role="timer">
+        <p className="text-lg font-bold">{timerSeconds === 0 ? 'Time is up' : `Time left ${timerLabel}`}</p>
+        <p className="text-sm">The instructor decides when to advance or reveal. You can still submit while this round is open.</p>
+      </div>}
 
       {!user && (
         <div className="space-y-3 rounded-2xl border border-blue-700 bg-slate-900 p-5">
@@ -486,10 +508,18 @@ export function FirebaseLiveClass() {
                 <LiveGamePicker id="new-class-game" label="First-round game" value={selectedGameId} onChange={setSelectedGameId} showFormat />
                 <label htmlFor="total-rounds" className="block text-sm font-bold">Total rounds (1–20)</label>
                 <input id="total-rounds" type="number" min="1" max="20" step="1" value={selectedTotalRounds} onChange={event => setSelectedTotalRounds(Number(event.target.value))} className="w-32 rounded-lg bg-slate-950 border border-slate-600 p-3 text-white" />
-                <button disabled={busy || !Number.isInteger(selectedTotalRounds) || selectedTotalRounds < 1 || selectedTotalRounds > 20} onClick={() => run(() => set(ref(db, ROOT), { config: { round: 1, totalRounds: selectedTotalRounds, phase: 'lobby', gameId: selectedGameId } }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start class</button>
+                <label htmlFor="new-class-timer" className="block text-sm font-bold">Time per round</label>
+                <select id="new-class-timer" value={selectedTimerMinutes} onChange={event => setSelectedTimerMinutes(Number(event.target.value))} className="rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
+                  {[0, 1, 2, 3, 5, 10].map(minutes => <option key={minutes} value={minutes}>{minutes === 0 ? 'No timer' : `${minutes} minute${minutes === 1 ? '' : 's'}`}</option>)}
+                </select>
+                <button disabled={busy || !Number.isInteger(selectedTotalRounds) || selectedTotalRounds < 1 || selectedTotalRounds > 20} onClick={() => run(() => set(ref(db, ROOT), { config: { round: 1, totalRounds: selectedTotalRounds, timerMinutes: selectedTimerMinutes, phase: 'lobby', gameId: selectedGameId } }))} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start class</button>
               </>}
               {config?.phase === 'lobby' && <>
                 <LiveGamePicker id="class-game" label="Game for this round" value={game.id} onChange={id => run(() => update(ref(db, `${ROOT}/config`), { gameId: id }))} disabled={busy} showFormat />
+                <label htmlFor="round-timer" className="block text-sm font-bold">Time per round</label>
+                <select id="round-timer" value={config.timerMinutes || 0} onChange={event => run(() => update(ref(db, `${ROOT}/config`), { timerMinutes: Number(event.target.value) }))} disabled={busy} className="rounded-lg bg-slate-950 border border-slate-600 p-3 text-white">
+                  {[0, 1, 2, 3, 5, 10].map(minutes => <option key={minutes} value={minutes}>{minutes === 0 ? 'No timer' : `${minutes} minute${minutes === 1 ? '' : 's'}`}</option>)}
+                </select>
                 <p>{joinedStudents.length} students joined</p>
                 <p className="text-sm text-slate-300">{classwide ? 'All students submit one private guess. Late students can join this round; only submitted guesses count toward the target.' : publicGoods
                   ? 'Students are randomly grouped in fours. Bots fill empty seats, and late students play with three bots.'
@@ -497,6 +527,10 @@ export function FirebaseLiveClass() {
                 <button disabled={busy || joinedStudents.length === 0} onClick={startPairing} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">{classwide ? 'Start classwide round' : publicGoods ? 'Make groups and start round' : 'Pair students and start round'}</button>
               </>}
               {config?.phase === 'playing' && <>
+                {timerSeconds !== null && <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 ${timerSeconds === 0 ? 'border-amber-500 bg-amber-950/40 text-amber-100' : 'border-blue-700 bg-blue-950/40 text-blue-100'}`}>
+                  <p className="font-bold" role="timer">{timerSeconds === 0 ? 'Time is up' : `Time left ${timerLabel}`}</p>
+                  <button type="button" disabled={busy} onClick={() => run(() => update(ref(db, `${ROOT}/config`), { timerExtraSeconds: (config.timerExtraSeconds || 0) + 60 }))} className="rounded-lg border border-current px-3 py-2 text-sm font-semibold disabled:opacity-50">Add 1 minute</button>
+                </div>}
                 <p>{classwide ? `${roundAssignments.length} students in the classwide contest` : publicGoods ? `${groupSizes.size} groups of four · ${plannedBotSeats} planned bot seats`
                   : `${roundAssignments.filter(item => item.kind === 'student').length / 2} student pairs · ${roundAssignments.filter(item => item.kind === 'bot').length} bot matches`}</p>
               <p role="status" className="font-semibold">{repeated ? repeatedTurn <= 5 ? `Turn ${repeatedTurn} of 5 · ${repeatedReady} of ${repeatedActors.length} students decided` : 'All five turns complete' : centipede ? centipedeNode <= 6 ? `Node ${centipedeNode} of 6 · ${centipedeReady} of ${centipedeActors.length} active students decided` : 'All Centipede chains have ended' : staged ? `${stepSubmitted} of ${stepStudents.length} ${config.step === 'offer' ? entry ? 'first movers decided' : trust ? 'investors invested' : signaling ? 'sellers signaled' : lemons ? 'buyers offered' : 'proposers offered' : entry ? 'second movers decided' : trust ? 'trustees returned' : signaling ? 'buyers decided' : lemons ? 'sellers decided' : 'responders decided'}` : `${progress.submitted} of ${progress.joined} joined students submitted`}</p>
