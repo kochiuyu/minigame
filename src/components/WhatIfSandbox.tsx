@@ -2530,7 +2530,7 @@ export const WhatIfSandbox: React.FC<WhatIfSandboxProps> = ({
             const expN1 = 2.0;
             const expN3 = (1 - q) * 1 + q * 4;
             const expN5 = (1 - q) * 1 + q * (1 - q) * 3 + Math.pow(q, 2) * 6;
-            const expTerm = (1 - q) * 1 + q * (1 - q) * 3 + Math.pow(q, 2) * (1 - q) * 5 + Math.pow(q, 3) * 8;
+            const expTerm = (1 - q) * 1 + q * (1 - q) * 3 + Math.pow(q, 2) * (1 - q) * 5 + Math.pow(q, 3) * 6;
             return (
               <div className="space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
                 <div className="flex justify-between items-center border-b border-slate-800 pb-2">

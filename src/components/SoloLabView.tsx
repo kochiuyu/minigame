@@ -15,6 +15,7 @@ import { SequentialVisualizer } from './SequentialVisualizer';
 import { getGameStory, getGameQuickChips } from '../data/gameStories';
 import { computeWhatYouCouldHaveGot } from '../utils/counterfactualEngine';
 import { getGameTakeawaySentence } from '../data/curriculumOrder';
+import { centipedePayoff } from '../liveMatch';
 
 export interface SoloLabRoundHistoryEntry extends RoundHistoryEntry {
   botRationale: string;
@@ -1551,9 +1552,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       setCentipedePath(newPath);
 
       if (centipedeChoice === 'Take') {
-        if (myNode === 1) { playerPayoff = 2; botPayoff = 0; }
-        else if (myNode === 3) { playerPayoff = 4; botPayoff = 2; }
-        else if (myNode === 5) { playerPayoff = 6; botPayoff = 4; }
+        [playerPayoff, botPayoff] = centipedePayoff(myNode);
         playerAction = `Take at Node ${myNode}`;
         botDecision.action = 'Passed previously';
         setCentipedeExitNode(myNode);
@@ -1574,9 +1573,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         }
 
         if (botTakes) {
-          if (botNode === 2) { playerPayoff = 1; botPayoff = 4; }
-          else if (botNode === 4) { playerPayoff = 3; botPayoff = 6; }
-          else if (botNode === 6) { playerPayoff = 5; botPayoff = 8; }
+          [playerPayoff, botPayoff] = centipedePayoff(botNode);
           playerAction = `Pass at Node ${myNode}`;
           botDecision.action = `Take at Node ${botNode}`;
           setCentipedeExitNode(botNode);
@@ -1584,10 +1581,9 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
           setCentipedePath(p => [...p, { node: botNode, player: 'Bot', action: 'Take' }]);
         } else {
           if (botNode === 6) {
-            playerPayoff = 8;
-            botPayoff = 8;
+            [playerPayoff, botPayoff] = centipedePayoff(7);
             playerAction = `Pass at Node ${myNode}`;
-            botDecision.action = 'Pass at Node 6 (Terminal Optimum)';
+            botDecision.action = 'Pass at Node 6 (Both reach 6 points)';
             setCentipedeExitNode(6);
             setCentipedeExitAction('Terminal Cooperation');
             setCentipedePath(p => [...p, { node: 6, player: 'Bot', action: 'Pass' }]);
@@ -2056,7 +2052,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
       case 20:
         return {
           action: "On your turn, Take ends the game. Pass gives the bot the next turn.",
-          payoff: "Passing can lead to higher scores if the bot also passes. If both players pass all six turns, each earns 8 points."
+          payoff: "Each Pass earns 1 point for both players. Take ends the project and gives the taker 2 bonus points. If both pass six turns, each earns 6 points."
         };
       case 21:
         return {
@@ -2245,8 +2241,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         return (
           <>
             <li><strong className="text-white">Turn Order:</strong> Alternating sequential turns: you choose at <strong className="text-sky-400">Nodes 1, 3, 5</strong>; Bot chooses at <strong className="text-amber-400">Nodes 2, 4, 6</strong>.</li>
-            <li><strong className="text-amber-300">Payoffs:</strong> <strong className="text-emerald-400">Pass</strong> doubles the pot and hands the turn; <strong className="text-rose-400">Take</strong> ends the match to claim the larger share.</li>
-            <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="Passing all 6 nodes awards the social optimum of +8 pts each; backward induction predicts taking immediately at Node 1 (2, 0)." /></li>
+            <li><strong className="text-amber-300">Payoffs:</strong> <strong className="text-emerald-400">Pass</strong> earns 1 point for each player and hands over the turn; <strong className="text-rose-400">Take</strong> ends the match and gives the taker 2 bonus points.</li>
+            <li><strong className="text-sky-300">Goal: </strong><AnnotateGlossaryText text="Each Pass earns 1 point for both players; Take ends the game and gives the taker 2 bonus points. Six mutual Passes give 6 points each, while backward induction predicts Take at Node 1 (2, 0)." /></li>
           </>
         );
       case 21:
@@ -2676,10 +2672,10 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
         return (
           <div className="space-y-1.5">
             <p className="text-xs text-sky-100 leading-snug">
-              Fixed example scores. Take now: You {centipedeNode === 1 ? 2 : centipedeNode === 3 ? 4 : 6}, Bot {centipedeNode === 1 ? 0 : centipedeNode === 3 ? 2 : 4}. If you Pass and the bot Takes next: You {centipedeNode === 1 ? 1 : centipedeNode === 3 ? 3 : 5}, Bot {centipedeNode === 1 ? 4 : centipedeNode === 3 ? 6 : 8}.
+              Sponsor-funded project: each Pass earns 1 point for both. Take closes it and gives the taker a 2-point bonus. Take now: You {centipedePayoff(centipedeNode)[0]}, Bot {centipedePayoff(centipedeNode)[1]}. If you Pass and the bot Takes next: You {centipedePayoff(centipedeNode + 1)[0]}, Bot {centipedePayoff(centipedeNode + 1)[1]}.
             </p>
             <div className="grid grid-cols-2 gap-1.5">
-            <button
+              <button
               type="button"
               onClick={() => setCentipedeChoice('Pass')}
               className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
@@ -2690,8 +2686,8 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             >
               <span className="text-lg">➡️</span>
               <span>Pass (Bot's turn)</span>
-            </button>
-            <button
+              </button>
+              <button
               type="button"
               onClick={() => setCentipedeChoice('Take')}
               className={`min-h-[48px] py-1.5 px-3 rounded-xl border-2 font-black text-sm sm:text-base flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
@@ -2702,7 +2698,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
             >
               <span className="text-lg">🛑</span>
               <span>Take (End match)</span>
-            </button>
+              </button>
             </div>
           </div>
         );
@@ -4367,7 +4363,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                     <div className="space-y-3">
                       <div className="text-base font-bold text-white">Your turn at Node {centipedeNode}:</div>
                       <p className="rounded-xl border border-sky-800/60 bg-sky-950/30 p-3 text-sm text-sky-100 leading-relaxed">
-                        <strong>Why these points?</strong> They are fixed example scores, not a pot calculated each turn. Take ends the game with the scores shown. Pass can lead to more points, but lets the bot decide next. For example, Take at Node 1 gives you 2 and the bot 0; if you Pass and the bot Takes at Node 2, you get 1 and the bot gets 4.
+                        <strong>Why these points?</strong> A sponsor funds the project you and the bot build together. Each Pass earns 1 point for both players and hands the next turn to the other player. Take closes the project and gives the taker a 2-point bonus. At Node 1, Take gives you 2 and the bot 0; if you Pass and the bot Takes at Node 2, you get 1 and the bot gets 3.
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <button
@@ -4403,7 +4399,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                             <div>
                               <div className="font-black text-lg sm:text-xl">Take (End Match)</div>
                               <div className="text-xs sm:text-sm text-rose-300 font-semibold">
-                                Take now: You {centipedeNode === 1 ? 2 : centipedeNode === 3 ? 4 : 6} · Bot {centipedeNode === 1 ? 0 : centipedeNode === 3 ? 2 : 4}
+                                Take now: You {centipedePayoff(centipedeNode)[0]} · Bot {centipedePayoff(centipedeNode)[1]}
                               </div>
                             </div>
                           </div>
@@ -6386,9 +6382,9 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                       conceptBadge = "Backward Induction & Rosenthal's Paradox";
                       predictionLabel = "Subgame Perfect Nash Equilibrium (SPNE)";
                       predictionTitle = "SPNE Immediate Take at Node 1: (+2, 0) pts per chain";
-                      predictionExplanation = `Backward induction from Node 6 backward predicts that fear of partner defection compels Player 1 to defect immediately at Node 1, securing +2 pts while giving the bot 0 pts per chain (${matchRounds * 2} vs 0 over ${formatUnit(matchRounds, 'chain')}) instead of reaching the +8 pts each cooperative optimum (${matchRounds * 8} pts each over ${formatUnit(matchRounds, 'chain')}).`;
+                      predictionExplanation = `Backward induction from Node 6 backward predicts that fear of partner defection compels Player 1 to take immediately at Node 1, securing +2 pts while giving the bot 0 pts per chain (${matchRounds * 2} vs 0 over ${formatUnit(matchRounds, 'chain')}) instead of reaching the +6 pts each cooperative outcome (${matchRounds * 6} pts each over ${formatUnit(matchRounds, 'chain')}).`;
                       predictionFrequency = "Equilibrium Benchmark: 100% Immediate Take at Node 1 (SPNE Path)";
-                      predictionPayoff = `SPNE Defection: +2 pts/chain for you, 0 for bot (${matchRounds * 2} vs 0 over ${formatUnit(matchRounds, 'chain')}) · Social Optimum: +8 pts each/chain (${matchRounds * 8} pts each over ${formatUnit(matchRounds, 'chain')})`;
+                      predictionPayoff = `SPNE Take: +2 pts/chain for you, 0 for bot (${matchRounds * 2} vs 0 over ${formatUnit(matchRounds, 'chain')}) · Mutual Pass: +6 pts each/chain (${matchRounds * 6} pts each over ${formatUnit(matchRounds, 'chain')})`;
 
                       const n1Takes = history.filter(h => String(h.playerAction).includes('Node 1')).length;
                       const passedN1Count = matchRounds - n1Takes;
@@ -6403,7 +6399,7 @@ export const SoloLabView: React.FC<SoloLabViewProps> = ({
                         gapInterpretationSentence = `Productive deviation from theory: ${scoreCmp}. You passed beyond Node 1 in ${passedN1Pct}% of chains, directly defying backward induction to build sequential wealth.`;
                       }
                       actualPayoff = `Cumulative Match Score: You: ${formatSignedPayoff(playerTotal)} · ${activeBot.name}: ${formatSignedPayoff(botTotal)} (Wealth: ${totalMatchSurplus} pts)`;
-                      realPeopleSentence = "In laboratory experiments, real people routinely pass because reciprocal trust offers massive mutual gains, and players only risk losing a single point to double the pot.";
+                      realPeopleSentence = "In laboratory experiments, real people often pass because reciprocal trust offers larger mutual gains, even though the next player can take the closing bonus.";
                     }
 
                     return (

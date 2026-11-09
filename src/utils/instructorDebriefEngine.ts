@@ -729,7 +729,7 @@ export function getDebriefDistribution(
           {
             id: 'terminal',
             label: 'Nodes 5–6 / Terminal Cooperation',
-            sublabel: 'Mutual pass reaching maximum social surplus',
+            sublabel: 'Deep play can create a larger shared score',
             count: tCount,
             percentage: tPct,
             isNash: false,
@@ -741,7 +741,7 @@ export function getDebriefDistribution(
         nashPredictionHeadline: 'Subgame Perfect Nash: Take Immediately at Node 1 (2, 0)',
         nashOutcomeExplanation: 'Backward induction cascades from Node 6 back to Node 1, predicting zero trust and immediate collapse.',
         equilibriumGap: `Only ${nPct}% took immediately at Node 1; strict backward induction SPNE predicts 100% immediate exit at Node 1.`,
-        behavioralInsight: 'Passing costs little early while expanding the pie 4x–8x; altruism and bounded rationality sustain deep chain play.'
+        behavioralInsight: 'Passing adds points for both players while trusting the next mover not to take; reciprocity can sustain deeper play.'
       };
     }
 

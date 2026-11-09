@@ -654,13 +654,13 @@ export const GAMES: GameConfig[] = [
     icon: "🐛",
     keyTakeaway: "Subgame Perfect Nash Equilibrium (SPNE) predicts immediate Take at Node 1 (2, 0). Yet empirical players pass sequentially to reach higher nodes, achieving massive mutual welfare.",
     purpose: "Explore Rosenthal's famous Centipede paradox where strict theoretical backward induction causes cooperative unraveling, contrasting with behavioral trust and empirical lab findings.",
-    strategies: "At your turn (Nodes 1, 3, 5), choose 'Pass' (grow the collective pot and hand move to opponent) or 'Take' (end game and take the larger share).",
-    payoffs: "N1: (2, 0) · N2: (1, 4) · N3: (4, 2) · N4: (3, 6) · N5: (6, 4) · N6: (5, 8) · Terminal: (8, 8).",
+    strategies: "Two players grow a shared project. Each Pass earns 1 point for both players and gives the other player the turn. Take ends play and gives the mover 2 bonus points.",
+    payoffs: "N1: (2, 0) · N2: (1, 3) · N3: (4, 2) · N4: (3, 5) · N5: (6, 4) · N6: (5, 7) · All Pass: (6, 6). Scores are Player 1, Player 2.",
     partners: 1,
     instructions: [
       "Players alternate decision nodes along a 6-node extensive-form tree.",
-      "At your turn, choose 'Pass' to grow the pot and give your partner the move, or 'Take' to end the match.",
-      "If both players Pass all 6 nodes, both receive the maximum cooperative terminal payoff of 8 points each."
+      "At your turn, Pass earns 1 point for both players and gives your partner the next move; Take ends the match and earns you 2 bonus points.",
+      "If both players Pass all 6 nodes, each earns 6 points."
     ],
     fields: [
       { id: 'exitNode', label: 'Node Where Match Ended', type: 'select', options: ['Node 1 (You Took)', 'Node 2 (Partner Took)', 'Node 3 (You Took)', 'Node 4 (Partner Took)', 'Node 5 (You Took)', 'Node 6 (Partner Took)', 'Terminal (Mutual Pass)'], step: 1 },
@@ -675,23 +675,23 @@ export const GAMES: GameConfig[] = [
         myScore = 2; botScore = 0;
         outcome = "You Took at Node 1! SPNE outcome achieved (+2 pts for you, 0 for partner).";
       } else if (data.exitNode === 'Node 2 (Partner Took)') {
-        myScore = 1; botScore = 4;
-        outcome = "Partner Took at Node 2 (+4 pts for partner, +1 pt for you).";
+        myScore = 1; botScore = 3;
+        outcome = "Partner Took at Node 2 (+3 pts for partner, +1 pt for you).";
       } else if (data.exitNode === 'Node 3 (You Took)') {
         myScore = 4; botScore = 2;
         outcome = "You Took at Node 3 (+4 pts for you, +2 pts for partner).";
       } else if (data.exitNode === 'Node 4 (Partner Took)') {
-        myScore = 3; botScore = 6;
-        outcome = "Partner Took at Node 4 (+6 pts for partner, +3 pts for you).";
+        myScore = 3; botScore = 5;
+        outcome = "Partner Took at Node 4 (+5 pts for partner, +3 pts for you).";
       } else if (data.exitNode === 'Node 5 (You Took)') {
         myScore = 6; botScore = 4;
         outcome = "You Took at Node 5 (+6 pts for you, +4 pts for partner).";
       } else if (data.exitNode === 'Node 6 (Partner Took)') {
-        myScore = 5; botScore = 8;
-        outcome = "Partner Took at Node 6 (+8 pts for partner, +5 pts for you).";
+        myScore = 5; botScore = 7;
+        outcome = "Partner Took at Node 6 (+7 pts for partner, +5 pts for you).";
       } else {
-        myScore = 8; botScore = 8;
-        outcome = "Terminal Mutual Cooperation! Both passed all nodes (+8 pts each).";
+        myScore = 6; botScore = 6;
+        outcome = "Terminal Mutual Cooperation! Both passed all nodes (+6 pts each).";
       }
 
       return {

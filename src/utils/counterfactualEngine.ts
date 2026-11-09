@@ -497,7 +497,7 @@ export function computeWhatYouCouldHaveGot(
         }
       } else {
         // Bot passed or endgame
-        bestPayoff = Math.max(earnedPayoff, 8);
+        bestPayoff = Math.max(earnedPayoff, 6);
         bestActionLabel = 'Pass';
         takeaway = 'Passing allowed the shared pot to grow, achieving mutual gains.';
       }

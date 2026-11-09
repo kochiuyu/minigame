@@ -505,7 +505,7 @@ export const SOLO_LAB_QUIZZES: Record<number, QuizQuestion[]> = {
       id: 'centipede-2',
       question: 'Why is the backward induction outcome ((Take at Node 1)) considered a paradox of rationality?',
       options: [
-        'Taking at Node 1 leaves players with trivial payouts ($2 / $0) when passing could have generated $8 each',
+        'Taking at Node 1 pays only 2 / 0 when six mutual Passes would pay 6 / 6',
         'The game has no mathematical solution',
         'Taking at Node 1 violates game rules',
         'The total points in the pot decrease over time'

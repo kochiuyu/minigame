@@ -253,17 +253,17 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
       case 20:
         return {
           concept: "Backward Induction & Rosenthal's Centipede Paradox",
-          formula: "\\text{SPNE: } s_1^* = \\text{Take at } N_1 \\implies (2, 0) \\quad \\text{vs.} \\quad \\text{Social Optimum: } (8, 8)",
+          formula: "\\text{SPNE: } s_1^* = \\text{Take at } N_1 \\implies (2, 0) \\quad \\text{vs.} \\quad \\text{Mutual Pass: } (6, 6)",
           keyFinding:
             data.botInfo?.id === 'always_defect_centipede'
-              ? "Zero executed textbook backward induction: defecting at his very first opportunity (Node 2) to claim 4 pts (leaving you with 1 pt), validating the cold Subgame Perfect Nash Equilibrium (SPNE)."
+              ? "Zero took at his first opportunity (Node 2), earning 3 points while leaving you with 1 point. This matches the backward-induction choice at that node."
               : data.botInfo?.id === 'tit_for_tat_centipede'
-              ? "Echo reciprocated your trust by passing at earlier nodes to grow the collective pot, allowing you to reach advanced nodes and multiply wealth 4x beyond the SPNE prediction!"
+              ? "Echo reciprocated your trust by passing at earlier nodes, allowing both players to earn more points before the project ended."
               : "Backward induction predicts that rational self-interest unravels from the final terminal node back to Node 1, ending the game immediately for (2, 0). Yet real human experiments (McKelvey & Palfrey, 1992) show players routinely Pass, generating massive mutual gains.",
           caseStudy: "Venture Capital Milestone Tranches: In high-growth startups, investors do not deploy $50M on Day 1. Instead, they release capital sequentially in tranches (Seed -> Series A -> Series B). Each milestone passed increases valuation and mutual surplus, relying on sequential reciprocal trust rather than immediate liquidation.",
           rulesSummary: [
-            "Subgame Perfect Unraveling: At Node 6, Bot takes (8 > 7). Anticipating this, Player takes at Node 5 (6 > 5). This logic ripples all the way back to Node 1, predicting an immediate (2, 0) exit.",
-            "Rosenthal's Paradox: The SPNE prediction is Pareto-dominated by almost every subsequent outcome in the game. Pure theoretical rationality yields the single worst collective outcome.",
+            "Subgame Perfect Unraveling: At Node 6, Bot takes (7 > 6). Anticipating this, Player takes at Node 5 (6 > 5). This logic ripples all the way back to Node 1, predicting an immediate (2, 0) exit.",
+            "Rosenthal's Paradox: Passing can increase the total score, yet the next player may take and leave the passer worse off than taking now.",
             "Empirical Altruism & Bounded Rationality: Laboratory experiments find only ~7% of games end at Node 1. Real humans use altruism, quantal response (noise), or conditional trust to build huge mutual surpluses."
           ]
         };
@@ -566,7 +566,7 @@ export const TheoryDebrief: React.FC<TheoryDebriefProps> = ({
         const passedN1 = count - n1Takes;
         const pct = Math.round((passedN1 / count) * 100);
         const scoreCmp = getScoreCmp(pScore, bScore);
-        equilibriumBenchmark = `SPNE Defection: +2 pts/chain for you, 0 for bot (${count * 2} vs 0 over ${formatUnit(count, 'chain')}) · Social Optimum: +8 pts each/chain (${count * 8} pts each over ${formatUnit(count, 'chain')})`;
+        equilibriumBenchmark = `SPNE Take: +2 pts/chain for you, 0 for bot (${count * 2} vs 0 over ${formatUnit(count, 'chain')}) · Mutual Pass: +6 pts each/chain (${count * 6} pts each over ${formatUnit(count, 'chain')})`;
         studentFrequencies = `${n1Takes}/${count} Node 1 Takes · ${passedN1}/${count} Chains Passed Beyond Node 1 (${pct}% Passing Rate)`;
         if (pct <= 15) {
           gapSentence = pScore >= bScore

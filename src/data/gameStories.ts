@@ -222,14 +222,14 @@ export const GAME_STORIES: Record<number, GameStory> = {
   },
   20: {
     moduleId: 20,
-    title: "The Escalating Mountain of Gold",
-    hook: "You and a bot take turns. Take ends the game and pays the points shown. Pass gives the bot the next turn. If you both keep passing, you can both earn more.",
-    setup: "There are up to six turns. You play turns 1, 3, and 5; the bot plays turns 2, 4, and 6.",
-    choices: "Take ends the game. Pass lets the next player decide.",
-    stakesDetail: "If you both Pass on all six turns, each gets 8 points. Taking earlier ends the game with the points shown.",
+    title: "The Shared Project",
+    hook: "A sponsor funds a project that you and a bot build over six turns. Each Pass earns 1 point for both of you. Take closes the project and gives the taker a 2-point closing bonus.",
+    setup: "You play turns 1, 3, and 5; the bot plays turns 2, 4, and 6. Each Pass hands the next decision to the other player.",
+    choices: "Pass earns 1 point for each player and continues the project. Take ends it and gives you 2 extra points.",
+    stakesDetail: "If both Pass on all six turns, each gets 6 points. At Node 1, Take pays 2 / 0; if the bot Takes next, it pays 1 / 3 (You / Bot).",
     yourRole: "Player 1 (turns 1, 3, and 5)",
     counterpartRole: "Bot (turns 2, 4, and 6)",
-    stakes: "Take now or Pass for a chance at more points"
+    stakes: "Take the bonus now or keep growing the shared score"
   },
   21: {
     moduleId: 21,
@@ -440,7 +440,7 @@ export const GAME_QUICK_CHIPS: Record<number, GameQuickChips> = {
   20: {
     role: "You and the bot take turns",
     choices: "Take ends the game; Pass gives the bot a turn",
-    howYouWin: "If you both pass every turn, you each get 8 points"
+    howYouWin: "Each Pass earns 1 point for both; six Passes give 6 points each"
   },
   21: {
     role: "Crude oil refinery operations manager",
