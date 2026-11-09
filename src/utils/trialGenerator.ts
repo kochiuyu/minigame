@@ -43,7 +43,7 @@ export function generateFreshSampleStudent(): GeneratedStudent {
     name,
     id,
     alias,
-    roomCode: 'DOTE-3090'
+    roomCode: 'CLASSROOM'
   };
 }
 
