@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { gameFor, summarizeClass, summarizePeople, summarizePerson } from '../liveMatch';
-import type { MatchResult, RoundArchive, RoundSummary } from '../liveMatch';
+import type { ClassScore, MatchResult, RoundArchive, RoundSummary } from '../liveMatch';
 import { buildReportCsv } from '../reportExport';
 import { CentipedeTree } from './CentipedeTree';
 
@@ -152,11 +152,13 @@ function PersonAnalysis({ analysis, title }: { analysis: ReturnType<typeof summa
   </div>;
 }
 
-export function FinalAnalysis({ summaries, archives, personalResults, alias, studentView = false }: {
+export function FinalAnalysis({ summaries, archives, personalResults, alias, leaderboard, viewerUid, studentView = false }: {
   summaries: RoundSummary[];
   archives?: Record<string, RoundArchive>;
   personalResults?: Record<string, MatchResult>;
   alias?: string;
+  leaderboard?: ClassScore[];
+  viewerUid?: string;
   studentView?: boolean;
 }) {
   const reportRef = useRef<HTMLDivElement>(null);
@@ -195,6 +197,21 @@ export function FinalAnalysis({ summaries, archives, personalResults, alias, stu
       </div>
       <p className="text-xs text-slate-400">Scores are compared within each game because games use different point scales.</p>
     </div>
+    {leaderboard && <section className="rounded-xl border border-emerald-700 bg-emerald-950/20 p-4" aria-labelledby="class-scores-title">
+      <h3 id="class-scores-title" className="text-lg font-bold">Class scores</h3>
+      <p className="mt-1 text-xs text-slate-300">Total points across all class rounds, highest first. Ties share a place; games may use different point scales.</p>
+      {leaderboard.length ? <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead><tr className="border-b border-slate-700 text-slate-300"><th scope="col" className="py-2 pr-3">Place</th><th scope="col" className="py-2 pr-3">Student</th><th scope="col" className="py-2 pr-3">Rounds played</th><th scope="col" className="py-2 text-right">Total score</th></tr></thead>
+          <tbody>{leaderboard.map(person => <tr key={person.uid} className={`border-b border-slate-800 ${person.uid === viewerUid ? 'bg-blue-950/60 font-bold' : ''}`}>
+            <td className="py-2 pr-3 tabular-nums">{leaderboard.findIndex(item => item.points === person.points) + 1}</td>
+            <th scope="row" className="py-2 pr-3 font-medium">{person.alias}{person.uid === viewerUid ? ' (you)' : ''}</th>
+            <td className="py-2 pr-3 tabular-nums">{person.played} / {summaries.length}</td>
+            <td className="py-2 text-right font-semibold tabular-nums">{score(person.points)}</td>
+          </tr>)}</tbody>
+        </table>
+      </div> : <p className="mt-3 text-sm text-slate-300">No students joined this class.</p>}
+    </section>}
     {ownAnalysis && <details className="rounded-xl border border-blue-700 bg-blue-950/20">
       <summary className="cursor-pointer p-4 font-semibold">Your results · {ownAnalysis.played}/{summaries.length} rounds{latestOwnResult?.result ? ` · Latest: ${latestOwnResult.result.ownPoints} points (round ${latestOwnResult.round})` : ''}</summary>
       <div className="border-t border-blue-700 p-4"><PersonAnalysis analysis={ownAnalysis} title="Your analysis across all rounds" /></div>
