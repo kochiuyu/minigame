@@ -13,7 +13,9 @@ export type RoomConfig = {
   timerStartedAt?: number; // Firebase server time when pairing starts.
   timerExtraSeconds?: number; // Instructor extensions during a round.
   summaries?: Record<string, RoundSummary>; // Only rounds released to students.
+  leaderboard?: ClassScore[]; // Alias and score only; published when the class finishes.
 };
+export type ClassScore = { uid: string; alias: string; points: number; played: number };
 export type Participant = { alias: string };
 export type Assignment = {
   round: number;
@@ -1194,10 +1196,32 @@ export function finishRound(room: LiveRoom, revealNow: boolean): LiveRoom | null
     config: {
       ...config,
       summaries: publishedSummaries,
+      ...(isFinal ? { leaderboard: rankClassScores(archive, room.participants || {}) } : {}),
       phase: isFinal ? 'finished' : revealNow ? 'revealed' : 'lobby',
       round: isFinal || revealNow ? round : round + 1,
     },
   };
+}
+
+export function rankClassScores(archives: Record<string, RoundArchive>, participants: Record<string, Participant> = {}): ClassScore[] {
+  const scores = new Map<string, ClassScore>();
+  for (const [uid, participant] of Object.entries(participants)) {
+    scores.set(uid, { uid, alias: participant.alias, points: 0, played: 0 });
+  }
+  for (const round of Object.keys(archives).sort((a, b) => Number(a) - Number(b))) {
+    const saved = archives[round];
+    for (const uid of new Set([...Object.keys(saved.aliases || {}), ...Object.keys(saved.results || {})])) {
+      const previous = scores.get(uid) || { uid, alias: 'Student who left', points: 0, played: 0 };
+      const result = saved.results?.[uid];
+      scores.set(uid, {
+        ...previous,
+        alias: saved.aliases?.[uid] || previous.alias,
+        points: previous.points + (result?.ownPoints ?? 0),
+        played: previous.played + (result ? 1 : 0),
+      });
+    }
+  }
+  return Array.from(scores.values()).sort((a, b) => b.points - a.points || a.alias.localeCompare(b.alias) || a.uid.localeCompare(b.uid));
 }
 
 export function summarizeClass(summaries: RoundSummary[]) {
