@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, centipedePayoff, classParticipants, commonValueBid, commonValueOutcome, contributionAmount, cournotPoints, cournotQuantity, dollarAuctionBid, dollarAuctionPoints, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, lemonsOffer, lemonsPayoff, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareLemonsResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, travelerClaim, travelerPoints, trawlerAmount } from '../src/liveMatch.ts';
+import { ALIAS_ICONS, BLOTTO_DEPLOYMENTS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, LIVE_GAMES, ULTIMATUM_OFFERS, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPoints, bertrandPrice, blottoAllocation, centipedeExitNode, centipedePayoff, classParticipants, commonValueBid, commonValueOutcome, contributionAmount, cournotPoints, cournotQuantity, dollarAuctionBid, dollarAuctionPoints, hotellingLocation, hotellingShares, demandAmount, finishRound, fisheryPoints, groupParticipants, guessAmount, investAmount, lemonsOffer, lemonsPayoff, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareLemonsResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomChoice, randomStudentAlias, rankClassScores, repeatedTurnResults, resolveResults, returnAmount, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeClass, summarizePeople, summarizePerson, summarizeRound, travelerClaim, travelerPoints, trawlerAmount } from '../src/liveMatch.ts';
 
 test('Lemons Market gives the seller private quality and sequential sale choices', () => {
   assert.equal(lemonsOffer('Offer 1000'), 1000);
@@ -971,6 +971,22 @@ test('hidden rounds stay private until the final round publishes every result', 
   assert.equal(second.results.a[1].ownPoints, 0);
   assert.equal(second.results.a[2].ownPoints, 10);
   assert.equal(second.archive[1].aliases.a, 'A');
+  assert.deepEqual(second.config.leaderboard.map(item => [item.alias, item.points, item.played]), [['B', 13, 2], ['A', 10, 2]]);
+});
+
+test('class scores include missed rounds and departed students, sorted high to low', () => {
+  const archives = {
+    1: { aliases: { a: 'Fox', b: 'Bee', c: 'Cat' }, results: {
+      a: { ownPoints: 5 }, b: { ownPoints: 3 }, c: { ownPoints: -2 },
+    } },
+    2: { aliases: { a: 'Fox', b: 'Bee', d: 'Dog' }, results: {
+      a: { ownPoints: 0 }, b: { ownPoints: 2 }, d: { ownPoints: 1 },
+    } },
+  };
+  const ranked = rankClassScores(archives, { a: { alias: 'Fox' }, b: { alias: 'Bee' }, e: { alias: 'Eel' } });
+  assert.deepEqual(ranked.map(item => [item.alias, item.points, item.played]), [
+    ['Bee', 5, 2], ['Fox', 5, 2], ['Dog', 1, 1], ['Eel', 0, 0], ['Cat', -2, 1],
+  ]);
 });
 
 test('a revealed round publishes only that round before class completion', () => {
