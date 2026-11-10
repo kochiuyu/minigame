@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onValue, ref, remove, runTransaction, serverTimestamp, set, update } from 'firebase/database';
 import { auth, db } from '../firebase';
 import {
-  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPrice, commonValueBid, commonValueOutcome, dollarAuctionBid, cournotQuantity, hotellingLocation, centipedeTurnResults, classParticipants, contributionAmount, demandAmount, finishRound, gameFor, groupParticipants, guessAmount, investAmount, lemonsOffer, lemonsPayoff, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareLemonsResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomAuctionValue, randomLemonsQuality, randomSurveySignal, randomBeautyGuess, randomChoice, randomReturn, returnAmount, randomStudentAlias, repeatedTurnResults, resolveResults, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeRound, travelerClaim, trawlerAmount,
+  BOT_ALIAS, CENTIPEDE_FIRST, CENTIPEDE_SECOND, PUBLIC_GOODS_GROUP_SIZE, advanceCentipede, advancePracticeCentipede, advanceRepeated, auctionBid, auctionPayoff, firstPriceAuctionPayoff, beautyContest, bertrandPrice, commonValueBid, commonValueOutcome, dollarAuctionBid, cournotQuantity, hotellingLocation, centipedeTurnResults, classParticipants, contributionAmount, demandAmount, finishRound, gameFor, groupParticipants, guessAmount, investAmount, lemonsOffer, lemonsPayoff, offerAmount, pairParticipants, pointsFor, practiceCentipedePoints, prepareEntryResponses, prepareLemonsResponses, prepareSignalingResponses, prepareTrustResponses, prepareUltimatumResponses, publicGoodsPoints, randomAuctionValue, randomLemonsQuality, randomSurveySignal, randomBeautyGuess, randomChoice, randomReturn, returnAmount, randomStudentAlias, rankClassScores, repeatedTurnResults, resolveResults, signalingPoints, shuffleAliasIcon, submissionProgress, summarizeRound, travelerClaim, trawlerAmount,
 } from '../liveMatch';
 import type { Assignment, CentipedeDecision, CentipedePath, Choice, GameId, LiveRoom, MatchResult, Participant, PracticeCentipedePath, RepeatedPath, RepeatedTurn, RoomConfig, RoundArchive, Submission, VisibleOffer } from '../liveMatch';
 import { PracticeGameDiagram } from './PracticeGameDiagram';
@@ -400,6 +400,13 @@ export function FirebaseLiveClass() {
   const legacySummary = summarizeRound(assignments, submissions, legacyResults, round, game.id);
   const currentSummary = legacyClass ? config?.phase === 'revealed' ? legacySummary : null : config?.summaries?.[round] || null;
   const publishedSummaries = Object.values(config?.summaries || {}).sort((a, b) => a.round - b.round);
+  const finalLeaderboard = config?.leaderboard || (instructor && config?.phase === 'finished' ? rankClassScores(archive, participants) : undefined);
+  useEffect(() => {
+    if (!instructor || config?.phase !== 'finished' || config.leaderboard !== undefined ||
+        !config.totalRounds || Object.keys(archive).length < config.totalRounds) return;
+    runTransaction(ref(db, `${ROOT}/config/leaderboard`), current => current || rankClassScores(archive, participants),
+      { applyLocally: false }).catch(err => setError(errorText(err)));
+  }, [instructor, config?.phase, config?.leaderboard, config?.totalRounds, archive, participants]);
   const lastRound = Boolean(config?.totalRounds && round >= config.totalRounds);
   const roleLabel = currentAssignment && game.roles ? game.roles[currentAssignment.role === 'second' ? 1 : 0] : null;
   const publicGoods = game.id === 12;
@@ -564,7 +571,7 @@ export function FirebaseLiveClass() {
                 <button disabled={busy} onClick={startNextRound} className="rounded-lg bg-blue-600 px-4 py-3 font-bold disabled:opacity-50">Start next round</button>
               </>}
               {config?.phase === 'finished' && <>
-                <FinalAnalysis summaries={publishedSummaries} archives={archive} />
+                <FinalAnalysis summaries={publishedSummaries} archives={archive} leaderboard={finalLeaderboard} />
                 <p className="text-sm text-slate-300">Students can view this report until you clear the class data.</p>
                 {clearControls}
               </>}
@@ -592,7 +599,7 @@ export function FirebaseLiveClass() {
           ) : !config ? (
             <p>Waiting for the instructor to start the class. You can open bot practice below.</p>
           ) : config.phase === 'finished' ? (
-            <FinalAnalysis summaries={publishedSummaries} personalResults={personalResults} alias={participant?.alias || alias.trim()} studentView />
+            <FinalAnalysis summaries={publishedSummaries} personalResults={personalResults} alias={participant?.alias || alias.trim()} leaderboard={finalLeaderboard} viewerUid={user?.uid} studentView />
           ) : !participant ? (
             <p>{alias.trim() ? 'Joining classroom…' : 'Your alias is missing. Leave and rejoin with an alias.'}</p>
           ) : config.phase === 'lobby' ? (
